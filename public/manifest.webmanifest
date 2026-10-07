@@ -1,0 +1,18 @@
+{
+  "name": "Teachly — Interactive Whiteboard",
+  "short_name": "Teachly",
+  "description": "Smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "file_handlers": [
+    { "action": "./", "accept": { "application/json": [".teachly"] } }
+  ]
+}
