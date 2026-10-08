@@ -37,7 +37,7 @@ import { installApp, isInstalled, shareApp } from './install';
 import { Library } from './library';
 import { PagesPanel } from './pages';
 import { toast } from './panel';
-import { computeUiScale, inkScale, scaleFloating, ui, type UiSize } from './scale';
+import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 
 const COLORS = ['#1e293b', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e', '#2563eb', '#a855f7'];
 /** Three pens like Note 3 (plus the highlighter). */
@@ -184,9 +184,9 @@ export class App {
     this.applyScale();
     window.addEventListener('resize', () => this.applyScale());
     // Only a new button size needs a re-layout (other settings keep the menu open).
-    let layout = `${store.settings.uiSize}|${store.settings.tbPos}`;
+    let layout = store.settings.tbPos;
     store.on('settings', () => {
-      const now = `${store.settings.uiSize}|${store.settings.tbPos}`;
+      const now = store.settings.tbPos;
       if (now === layout) return;
       layout = now;
       this.applyScale();
@@ -460,8 +460,6 @@ export class App {
           </div>
           <div class="pop-title">Toolbar position</div>
           <div class="seg">${(['bottom', 'top', 'left', 'right'] as const).map((z) => `<button class="${s.tbPos === z ? 'on' : ''}" data-tbpos="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
-          <div class="pop-title">Button size</div>
-          <div class="seg">${([['xsmall', 'Extra small'], ['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']] as [UiSize, string][]).map(([z, n]) => `<button class="${s.uiSize === z ? 'on' : ''}" data-uisize="${z}">${n}</button>`).join('')}</div>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers move the board)</label>
           <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>
           <label class="check"><input type="checkbox" id="opt-zoom" data-set="allowZoom" ${s.allowZoom ? 'checked' : ''}> Allow zoom with two fingers (off = board stays fixed)</label>`;
@@ -528,9 +526,6 @@ export class App {
     } else if (d.tbpos) {
       this.closePopover();
       this.setToolbarPos(d.tbpos as 'bottom');
-      return;
-    } else if (d.uisize) {
-      store.setSettings({ uiSize: d.uisize as UiSize });
       return;
     } else if (d.bg) this.setBoard({ bg: d.bg });
     else if (d.pattern) this.setBoard({ pattern: d.pattern as BgPattern });
@@ -905,7 +900,8 @@ export class App {
     const one = L + R + 40;
     const stacked = avail / one < 0.85;
     this.root.classList.toggle('tb-stacked', stacked);
-    computeUiScale(store.settings.uiSize, stacked ? Math.max(L, R) + 20 : one, avail);
+    // Buttons are always the small size (big boards still scale them up).
+    computeUiScale('small', stacked ? Math.max(L, R) + 20 : one, avail);
     // The page fills the whole screen; the toolbars float on top of it.
     this.board.insets = { top: 0, right: 0, bottom: 0, left: 0 };
     this.board.resize();
