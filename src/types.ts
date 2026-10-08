@@ -107,7 +107,7 @@ export interface Camera {
   z: number;
 }
 
-export type ToolId = 'select' | 'pen' | 'eraser' | 'shape' | 'fill' | 'text' | 'compass' | 'laser' | 'tape';
+export type ToolId = 'select' | 'pen' | 'eraser' | 'shape' | 'fill' | 'text' | 'compass' | 'laser' | 'tape' | 'hand';
 
 export type ShapeKind =
   | 'line'

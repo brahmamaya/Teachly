@@ -21,7 +21,7 @@ import { FillTool } from '../tools/fill';
 import { LaserTool } from '../tools/laser';
 import { TapeTool } from '../tools/tape';
 import { makeTable, resizeTable, TableEditor } from '../tools/table';
-import { CompassTool, ShapeTool } from '../tools/misc';
+import { CompassTool, HandTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
 import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
@@ -146,6 +146,7 @@ export class App {
       ['compass', new CompassTool(this.board)],
       ['laser', new LaserTool(this.board)],
       ['tape', new TapeTool(this.board)],
+      ['hand', new HandTool()],
     ];
     for (const [id, t] of tools) this.board.tools.set(id, t);
     this.board.updateCursor();
@@ -233,6 +234,7 @@ export class App {
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       <button class="tb-grip" data-grip title="Drag to move the toolbar to any edge" aria-label="Move toolbar"><svg viewBox="0 0 12 20" width="10" height="18" fill="currentColor"><circle cx="3" cy="4" r="1.6"/><circle cx="9" cy="4" r="1.6"/><circle cx="3" cy="10" r="1.6"/><circle cx="9" cy="10" r="1.6"/><circle cx="3" cy="16" r="1.6"/><circle cx="9" cy="16" r="1.6"/></svg></button>
       ${tool('select', 'select', 'Select')}
+      ${tool('hand', 'pan', 'Hand — drag to move the board, pinch or scroll to zoom')}
       ${tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
       ${tool('eraser', 'eraser', 'Eraser')}
       ${tool('shape', 'shapes', 'Shapes')}
@@ -302,6 +304,7 @@ export class App {
       else {
         this.closePopover();
         store.setTool({ tool: id });
+        if (id === 'hand') toast('Hand: drag to move · pinch or scroll to zoom · double-tap to zoom in / whole page', 3500);
         // Shapes: show the picker right away, a shape must be chosen first.
         if (id === 'shape') this.togglePopover('shape', this.toolbar.querySelector('[data-tool=shape]') as HTMLElement);
       }

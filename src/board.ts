@@ -177,10 +177,19 @@ export class Board {
    * The board never drifts: you cannot zoom out past the page, and when
    * zoomed in you can only move around inside it.
    */
+  /** The view was moved with the Hand tool: keep it until "Whole page". */
+  private navFree = false;
+  private lastHandTap = { t: 0, x: 0, y: 0 };
+
+  /** May the view move / zoom right now? (Hand tool, or zoom allowed in the menu.) */
+  private get free(): boolean {
+    return store.settings.allowZoom || store.tool.tool === 'hand' || this.navFree;
+  }
+
   setCam(c: Camera): void {
     const fit = this.fitCam();
     // Locked page (the default): it never moves or zooms when touched.
-    if (!store.settings.allowZoom) {
+    if (!this.free) {
       if (!this.isFit || store.camera.x !== fit.x || store.camera.y !== fit.y) store.setCamera(fit);
       return;
     }
@@ -189,6 +198,7 @@ export class Board {
       store.setCamera(fit);
       return;
     }
+    if (store.tool.tool === 'hand') this.navFree = true;
     const vw = this.w / z, vh = this.h / z;
     const x = Math.max(PAGE.x - 40 / z, Math.min(PAGE.x + PAGE.w - vw + 40 / z, c.x));
     const y = Math.max(PAGE.y - 40 / z, Math.min(PAGE.y + PAGE.h - vh + 40 / z, c.y));
@@ -197,7 +207,7 @@ export class Board {
 
   /** Give a page that has never been shown the fitted view. */
   ensureCam(): void {
-    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3 || (!store.settings.allowZoom && !this.isFit)) store.setCamera(this.fitCam());
+    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3 || (!this.free && !this.isFit)) store.setCamera(this.fitCam());
   }
 
   panBy(dsx: number, dsy: number): void {
@@ -214,6 +224,7 @@ export class Board {
 
   /** Back to the whole page. */
   fitPage(): void {
+    this.navFree = false;
     store.setCamera(this.fitCam());
   }
 
@@ -416,7 +427,8 @@ export class Board {
         e.preventDefault();
         const r = this.el.getBoundingClientRect();
         const sx = e.clientX - r.left, sy = e.clientY - r.top;
-        if (e.ctrlKey || e.metaKey) {
+        // Ctrl / pinch-to-zoom on a trackpad, or any scroll with the Hand tool: zoom.
+        if (e.ctrlKey || e.metaKey || (store.tool.tool === 'hand' && this.isFit)) {
           this.zoomAt(sx, sy, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)));
         } else {
           const k = e.deltaMode ? 30 : 1;
@@ -454,6 +466,21 @@ export class Board {
     }
     if (this.gesture && p.type === 'touch') {
       this.routed.set(p.id, 'gesture');
+      return;
+    }
+
+    // Hand tool: every finger, pen or mouse moves the board; double-tap
+    // zooms in 2× there, or back to the whole page.
+    if (store.tool.tool === 'hand') {
+      const now = performance.now(), lt = this.lastHandTap;
+      if (now - lt.t < 320 && Math.hypot(p.sx - lt.x, p.sy - lt.y) < 40) {
+        if (this.isFit) this.zoomAt(p.sx, p.sy, 2);
+        else this.fitPage();
+        this.lastHandTap = { t: 0, x: 0, y: 0 };
+      } else this.lastHandTap = { t: now, x: p.sx, y: p.sy };
+      this.routed.set(p.id, 'pan');
+      this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
+      this.el.classList.add('panning');
       return;
     }
 
