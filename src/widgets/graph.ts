@@ -6,6 +6,7 @@ import { drawEls, isDarkColor, measureText } from '../renderer';
 import { store } from '../store';
 import type { El, PathEl, TextEl } from '../types';
 import { closePanel, floatingPanel, toast } from '../ui/panel';
+import { mathKeyboard } from './mathkeys';
 
 // Graph plotter: type y = f(x) (up to three), see a live preview, and put a
 // clean graph with axes, grid and numbers on the board. Everything it adds
@@ -250,22 +251,20 @@ const EXAMPLES: [string, string][] = [
   ['a·x²+b·x+c', 'a x^2 + b x + c'],
   ['a·sin(b·x)', 'a sin(b x)'],
 ];
-const KEYS: [string, string][] = [
-  ['x', 'x'], ['x²', '^2'], ['^', '^'], ['√', 'sqrt('], ['(', '('], [')', ')'], ['π', 'pi'],
-  ['sin', 'sin('], ['cos', 'cos('], ['tan', 'tan('], ['|x|', 'abs('], ['/', '/'], ['a', 'a'], ['⌫', 'DEL'],
-];
-
 export function openGraph(host: HTMLElement, board: Board): void {
-  const body = floatingPanel(host, { id: 'graph', title: 'Graph', iconName: 'graph', width: 400 });
+  // Wide screens: equations + keyboard on the left, preview on the right.
+  const wide = window.innerWidth >= 900;
+  const body = floatingPanel(host, { id: 'graph', title: 'Graph', iconName: 'graph', width: wide ? 780 : 400, className: wide ? 'g-wide' : '' });
   if (!body) return;
   const s = load();
   const params: Record<string, number> = { a: 1, b: 1, c: 0, k: 1, m: 1, ...(s.params ?? {}) };
   let marks = s.marks ?? true;
   let active = 0;
-  body.innerHTML = `
+  body.innerHTML = `<div class="g-col">
     <div class="g-examples">${EXAMPLES.map(([n, f]) => `<button class="g-ex" data-ex="${f}">${n}</button>`).join('')}</div>
-    ${s.fns.map((f, i) => `<label class="g-row ${i === 0 ? 'on' : ''}" data-row="${i}"><i style="background:${CURVES[i]}"></i><span>y =</span><input data-f="${i}" value="${f.replace(/"/g, '&quot;')}" placeholder="${['tap an example or type', 'second graph (optional)', 'third graph (optional)'][i]}" autocomplete="off" spellcheck="false" inputmode="text"><button class="g-clear" data-clear="${i}" aria-label="Clear">×</button></label>`).join('')}
-    <div class="g-keys">${KEYS.map(([n, v]) => `<button class="g-key" data-key="${v}">${n}</button>`).join('')}</div>
+    ${s.fns.map((f, i) => `<label class="g-row ${i === 0 ? 'on' : ''}" data-row="${i}"><i style="background:${CURVES[i]}"></i><span>y =</span><input data-f="${i}" value="${f.replace(/"/g, '&quot;')}" placeholder="${['tap an example or type', 'second graph (optional)', 'third graph (optional)'][i]}" autocomplete="off" spellcheck="false"><button class="g-clear" data-clear="${i}" aria-label="Clear">×</button></label>`).join('')}
+    <div class="g-kb"></div>
+    </div><div class="g-col">
     <div class="g-sliders"></div>
     <div class="g-range">
       <label>x from <input type="number" data-r="x0" value="${s.x0}"></label>
@@ -279,7 +278,7 @@ export function openGraph(host: HTMLElement, board: Board): void {
     </div>
     <canvas class="g-preview" width="720" height="440"></canvas>
     <div class="g-err muted small"></div>
-    <div class="g-put"><button class="btn primary wide" data-put>Put graph on board</button></div>`;
+    <div class="g-put"><button class="btn primary wide" data-put>Put graph on board</button></div></div>`;
   const cv = body.querySelector('canvas') as HTMLCanvasElement;
   const err = body.querySelector('.g-err') as HTMLElement;
   const inputs = [...body.querySelectorAll<HTMLInputElement>('[data-f]')];
@@ -340,6 +339,10 @@ export function openGraph(host: HTMLElement, board: Board): void {
     body.querySelectorAll<HTMLElement>('[data-row]').forEach((r) => r.classList.toggle('on', Number(r.dataset.row) === i));
   };
   inputs.forEach((inp, i) => inp.addEventListener('focus', () => setActive(i)));
+  // Our maths keyboard instead of the device keyboard on touch screens.
+  const touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  if (touch) inputs.forEach((inp) => (inp.inputMode = 'none'));
+  (body.querySelector('.g-kb') as HTMLElement).appendChild(mathKeyboard(() => inputs[active], preview));
   body.addEventListener('input', (e) => {
     const el = e.target as HTMLInputElement;
     if (el.dataset.param) {
@@ -368,18 +371,6 @@ export function openGraph(host: HTMLElement, board: Board): void {
     } else if (d.clear !== undefined) {
       inputs[Number(d.clear)].value = '';
       setActive(Number(d.clear));
-      preview();
-    } else if (d.key !== undefined) {
-      const inp = inputs[active];
-      const a = inp.selectionStart ?? inp.value.length, z = inp.selectionEnd ?? a;
-      if (d.key === 'DEL') {
-        const from = a === z ? Math.max(0, a - 1) : a;
-        inp.value = inp.value.slice(0, from) + inp.value.slice(z);
-        inp.setSelectionRange(from, from);
-      } else {
-        inp.value = inp.value.slice(0, a) + d.key + inp.value.slice(z);
-        inp.setSelectionRange(a + d.key.length, a + d.key.length);
-      }
       preview();
     }
   });

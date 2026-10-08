@@ -2764,3 +2764,119 @@ button:focus-visible {
 .panel-body {
   flex: 1 1 auto;
 }
+
+/* ---------- Maths keyboard (graph tool) ---------- */
+
+.mk {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.mk-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(127, 127, 127, 0.14);
+}
+
+.mk-tab {
+  flex: 1;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  border-radius: 9px;
+  padding: 7px 0;
+  font: 700 14px 'Exo 2', system-ui, sans-serif;
+  transition: background 0.2s, color 0.2s;
+}
+
+.mk-tab.on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.mk-grid,
+.mk-bottom {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+}
+
+.mk-bottom {
+  grid-template-columns: 1fr 1fr 1.2fr 1.4fr 1.6fr;
+}
+
+.mk-key {
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: 600 16px 'Exo 2', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0 2px;
+  transition: transform 0.08s, background 0.15s;
+}
+
+.mk-key:active {
+  transform: scale(0.92);
+  background: var(--accent-soft);
+}
+
+.mk-key.op {
+  background: rgba(127, 127, 127, 0.16);
+  font-size: 19px;
+}
+
+.mk-key.var {
+  font-style: italic;
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 20px;
+  color: #38bdf8;
+}
+
+.mk-key.soft {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.mk-bottom .mk-key {
+  background: rgba(127, 127, 127, 0.16);
+}
+
+/* Graph tool layout: two columns on wide screens. */
+.g-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.panel.g-wide .panel-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.panel.g-wide .g-preview {
+  max-height: none;
+}
+/* Keep tool panels clear of the toolbars. */
+.panel {
+  max-height: calc((100vh - 24px) / var(--ui) - 96px);
+  max-height: calc((100dvh - 24px) / var(--ui) - 96px);
+}
+#app.tb-stacked .panel {
+  max-height: calc((100vh - 24px) / var(--ui) - 160px);
+  max-height: calc((100dvh - 24px) / var(--ui) - 160px);
+}
