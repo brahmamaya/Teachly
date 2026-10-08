@@ -84,6 +84,7 @@ export class App {
         <span class="brand-mark" aria-hidden="true">T</span>
         <span class="brand-text"><b>Teachly</b><small>by Physica</small></span>
       </div>
+      <div class="clock" aria-live="off"><b data-time></b><small data-date></small></div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <nav class="toolbar" aria-label="Tools"></nav>
       <div class="pagebar">
@@ -118,11 +119,15 @@ export class App {
     store.on('tool', () => this.renderToolbar());
     store.on('doc', () => {
       this.updatePageLabel();
+      this.updateBoardTone();
       this.renderProps();
       this.updateUndo();
       this.scheduleSave();
     });
-    store.on('page', () => this.updatePageLabel());
+    store.on('page', () => {
+      this.updatePageLabel();
+      this.updateBoardTone();
+    });
     store.on('camera', () => {
       this.updateZoom();
       this.positionProps();
@@ -133,6 +138,8 @@ export class App {
     });
     this.updatePageLabel();
     this.updateZoom();
+    this.updateBoardTone();
+    this.startClock();
     void loadLocal().then((doc) => doc && store.loadDoc(doc));
   }
 
@@ -596,6 +603,23 @@ export class App {
 
   private updatePageLabel(): void {
     (this.root.querySelector('.page-label') as HTMLElement).textContent = `${store.index + 1} / ${store.doc.pages.length}`;
+  }
+
+  /** Logo and clock switch to light text on green / black boards. */
+  private updateBoardTone(): void {
+    this.root.dataset.board = isDarkColor(store.page.bg) ? 'dark' : 'light';
+  }
+
+  private startClock(): void {
+    const time = this.root.querySelector('[data-time]') as HTMLElement;
+    const date = this.root.querySelector('[data-date]') as HTMLElement;
+    const tick = () => {
+      const d = new Date();
+      time.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      date.textContent = d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+    tick();
+    window.setInterval(tick, 10_000);
   }
 
   private updateZoom(): void {

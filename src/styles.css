@@ -900,30 +900,18 @@ button:focus-visible {
   display: none !important;
 }
 
-/* Full-screen presentation: slimmer chrome */
-#app.is-fullscreen .brand {
-  opacity: 0.4;
-}
-
-#app.is-fullscreen .brand:hover {
-  opacity: 1;
-}
-
 /* ---------- Brand ---------- */
 
 .brand {
+  /* Sits lightly on the board: no card, just soft text. */
   position: absolute;
   top: calc(14px + env(safe-area-inset-top, 0px));
-  left: 14px;
+  left: 16px;
   z-index: 3999;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 14px 6px 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  opacity: 0.55;
   pointer-events: none;
 }
 
@@ -997,4 +985,40 @@ button:focus-visible {
 .slider-preview .eraser-prev {
   background: #fff;
   border: 2px solid var(--muted);
+}
+
+.clock {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3999;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  opacity: 0.5;
+  pointer-events: none;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.clock b {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.clock small {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#app[data-board='dark'] .brand,
+#app[data-board='dark'] .clock {
+  color: #fff;
+  opacity: 0.6;
+}
+
+#app[data-board='dark'] .brand-text small {
+  color: rgba(255, 255, 255, 0.8);
 }
