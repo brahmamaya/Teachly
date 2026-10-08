@@ -132,18 +132,27 @@ button:focus-visible {
   border-radius: var(--radius);
 }
 
+/* Tools in the bottom-left corner, actions in the bottom-right corner. */
 .toolbar {
   position: absolute;
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%) scale(var(--ui));
-  transform-origin: 50% 100%;
+  transform: scale(var(--ui));
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 6px;
   z-index: 4000;
   white-space: nowrap;
+}
+
+.tb-left {
+  left: 14px;
+  transform-origin: 0 100%;
+}
+
+.tb-right {
+  right: 14px;
+  transform-origin: 100% 100%;
 }
 
 .tb-btn {
@@ -202,31 +211,23 @@ button:focus-visible {
   box-shadow: 0 0 0 1px var(--border);
 }
 
-.tb-sep {
-  width: 1px;
-  height: 40px;
-  background: var(--border);
-  margin: 0 4px;
-  flex: none;
-}
-
 /* ---------- Page bar & zoom ---------- */
 
 .pagebar {
   position: absolute;
-  right: 14px;
+  left: 50%;
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
   padding: 6px;
   z-index: 3999;
-  transform: scale(var(--ui));
-  transform-origin: 100% 100%;
+  transform: translateX(-50%) scale(var(--ui));
+  transform-origin: 50% 100%;
 }
 
 /* When the toolbar is too wide, the page arrows sit just above it. */
 #app.pagebar-up .pagebar {
-  bottom: calc(26px + env(safe-area-inset-bottom, 0px) + 78px * var(--ui));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px) + 78px * var(--ui));
 }
 
 .page-label {
@@ -283,8 +284,7 @@ button:focus-visible {
     min-width: 46px;
     height: 54px;
   }
-  .tb-label,
-  .tb-sep {
+  .tb-label {
     display: none;
   }
 }
@@ -1020,11 +1020,6 @@ button:focus-visible {
   font-weight: 700;
 }
 
-.clock small {
-  font-size: 14px;
-  font-weight: 600;
-}
-
 #app[data-board='dark'] .brand,
 #app[data-board='dark'] .clock {
   color: #fff;
@@ -1037,8 +1032,7 @@ button:focus-visible {
 
 /* Phones: keep the top line short so logo and clock never collide. */
 @media (max-width: 640px) {
-  .brand-text,
-  .clock small {
+  .brand-text {
     display: none;
   }
 }

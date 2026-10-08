@@ -85,9 +85,9 @@ export class App {
         <span class="brand-mark" aria-hidden="true">T</span>
         <span class="brand-text"><b>Teachly</b><small>by Physica</small></span>
       </div>
-      <div class="clock" aria-live="off"><b data-time></b><small data-date></small></div>
+      <div class="clock" aria-live="off"><b data-time></b></div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
-      <nav class="toolbar" aria-label="Tools"></nav>
+      <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav></div>
       <div class="pagebar">
         <button class="icon-btn" data-act="prev" title="Previous page">${icon('prev')}</button>
         <span class="page-label"></span>
@@ -110,7 +110,7 @@ export class App {
     for (const [id, t] of tools) this.board.tools.set(id, t);
     this.board.updateCursor();
 
-    this.toolbar = root.querySelector('.toolbar') as HTMLElement;
+    this.toolbar = root.querySelector('.toolbars') as HTMLElement;
     this.props = root.querySelector('.props') as HTMLElement;
     this.renderToolbar();
     this.bindChrome();
@@ -155,16 +155,17 @@ export class App {
     const dot = t.penStyle === 'highlighter' ? t.hlColor : t.color;
     const tool = (id: ToolId, ic: string, label: string, extra = '') =>
       `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 26)}<span class="tb-label">${label}</span>${extra}</button>`;
-    this.toolbar.innerHTML = `
+    const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
+    const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
+    left.innerHTML = `
       ${tool('select', 'select', 'Select')}
       ${tool('pen', t.penStyle === 'highlighter' ? 'highlighter' : 'pen', 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
       ${tool('eraser', 'eraser', 'Eraser')}
       ${tool('shape', 'shapes', 'Shapes')}
-      ${tool('text', 'text', 'Text')}
-      <span class="tb-sep"></span>
+      ${tool('text', 'text', 'Text')}`;
+    right.innerHTML = `
       <button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 26)}<span class="tb-label">Undo</span></button>
       <button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 26)}<span class="tb-label">Redo</span></button>
-      <span class="tb-sep"></span>
       <button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 26)}<span class="tb-label">Insert</span></button>
       <button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 26)}<span class="tb-label">Tools</span></button>
       <button class="tb-btn ${this.popFor === 'menu' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 26)}<span class="tb-label">Menu</span></button>`;
@@ -620,14 +621,16 @@ export class App {
 
   /** Size the toolbar and panels for this screen (phone → 86" panel). */
   private applyScale(): void {
-    // The toolbar's own width is unaffected by its CSS transform.
-    computeUiScale(store.settings.uiSize, this.toolbar.offsetWidth);
-    // Lift the page arrows above the toolbar when they would overlap.
-    const k = ui();
-    const tbRight = window.innerWidth / 2 + (this.toolbar.offsetWidth * k) / 2;
+    // Widths are unaffected by the CSS scale transform.
+    const L = (this.toolbar.querySelector('.tb-left') as HTMLElement).offsetWidth;
+    const R = (this.toolbar.querySelector('.tb-right') as HTMLElement).offsetWidth;
     const pb = this.root.querySelector('.pagebar') as HTMLElement;
-    const pbLeft = window.innerWidth - 14 - pb.offsetWidth * k;
-    this.root.classList.toggle('pagebar-up', tbRight > pbLeft - 8);
+    // Both halves must fit side by side with a small gap between them.
+    computeUiScale(store.settings.uiSize, L + R + 24);
+    // Page arrows sit in the middle, or just above when there is no room.
+    const k = ui();
+    const free = window.innerWidth - 28 - (L + R) * k;
+    this.root.classList.toggle('pagebar-up', free < pb.offsetWidth * k + 24);
     this.closePopover();
     this.positionProps();
   }
@@ -639,14 +642,13 @@ export class App {
 
   private startClock(): void {
     const time = this.root.querySelector('[data-time]') as HTMLElement;
-    const date = this.root.querySelector('[data-date]') as HTMLElement;
+    // Just the time, e.g. "9:05" — no date, no AM/PM.
     const tick = () => {
       const d = new Date();
-      time.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      date.textContent = d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+      time.textContent = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
     };
     tick();
-    window.setInterval(tick, 10_000);
+    window.setInterval(tick, 5_000);
   }
 
   private updateZoom(): void {
