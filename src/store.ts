@@ -7,6 +7,8 @@ export interface Settings {
   uiSize: 'small' | 'normal' | 'large';
   /** Many students write at once: every touch draws (no pinch zoom). */
   multiWrite: boolean;
+  /** Pinch / wheel zoom. Off = the page is locked in place. */
+  allowZoom: boolean;
 }
 
 export interface ToolState {
@@ -45,6 +47,7 @@ function loadSettings(): Settings {
     palmErase: true,
     uiSize: 'normal',
     multiWrite: false,
+    allowZoom: false,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

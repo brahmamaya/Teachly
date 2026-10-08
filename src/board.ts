@@ -177,6 +177,11 @@ export class Board {
    */
   setCam(c: Camera): void {
     const fit = this.fitCam();
+    // Locked page (the default): it never moves or zooms when touched.
+    if (!store.settings.allowZoom) {
+      if (!this.isFit || store.camera.x !== fit.x || store.camera.y !== fit.y) store.setCamera(fit);
+      return;
+    }
     const z = Math.max(fit.z, Math.min(fit.z * 6, c.z));
     if (z - fit.z < 1e-3) {
       store.setCamera(fit);
@@ -190,7 +195,7 @@ export class Board {
 
   /** Give a page that has never been shown the fitted view. */
   ensureCam(): void {
-    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3) store.setCamera(this.fitCam());
+    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3 || (!store.settings.allowZoom && !this.isFit)) store.setCamera(this.fitCam());
   }
 
   panBy(dsx: number, dsy: number): void {

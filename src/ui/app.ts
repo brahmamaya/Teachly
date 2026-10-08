@@ -412,10 +412,12 @@ export class App {
           <div class="pop-title">Button size</div>
           <div class="seg">${(['small', 'normal', 'large'] as UiSize[]).map((z) => `<button class="${s.uiSize === z ? 'on' : ''}" data-uisize="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers move the board)</label>
-          <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>`;
+          <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>
+          <label class="check"><input type="checkbox" id="opt-zoom" data-set="allowZoom" ${s.allowZoom ? 'checked' : ''}> Allow zoom with two fingers (off = board stays fixed)</label>`;
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
           if (el.dataset.set) store.setSettings({ [el.dataset.set]: el.checked });
+          if (el.dataset.set === 'allowZoom' && !el.checked) this.board.fitPage();
           if (el.dataset.bgpick !== undefined) {
             this.setBoard({ bg: el.value });
             this.fillPopover();
