@@ -9,18 +9,21 @@ import {
   loadLocal,
   openFile,
   pasteElements,
+  pickFiles,
   readAsDataURL,
   saveFile,
   saveLocal,
 } from '../io/files';
 import { isDarkColor, measureText } from '../renderer';
 import { newPage, store } from '../store';
+import { importPptx } from '../io/office';
 import { EraserTool } from '../tools/eraser';
+import { makeTable, resizeTable, TableEditor } from '../tools/table';
 import { CompassTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
 import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
-import type { BgPattern, El, PathEl, ShapeKind, ToolId } from '../types';
+import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types';
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openTimer } from '../widgets/timer';
 import { icon } from './icons';
@@ -74,6 +77,7 @@ export class App {
   private propSection: PropSection = null;
   private selectTool: SelectTool;
   private pages: PagesPanel;
+  private tableEditor: TableEditor;
   private newArmed = 0;
 
   constructor(root: HTMLElement) {
@@ -89,6 +93,8 @@ export class App {
     this.board = new Board(root.querySelector('#board') as HTMLElement);
     this.editor = new TextEditor(this.board);
     this.selectTool = new SelectTool(this.board, this.editor);
+    this.tableEditor = new TableEditor(this.board);
+    this.selectTool.tableEditor = this.tableEditor;
     const tools: [ToolId, Tool][] = [
       ['select', this.selectTool],
       ['pen', new PenTool(this.board)],
@@ -118,6 +124,7 @@ export class App {
     });
     store.on('page', () => {
       this.updatePageLabel();
+      this.updateZoom();
       this.updateBoardTone();
     });
     store.on('camera', () => {
@@ -271,7 +278,22 @@ export class App {
         pop.innerHTML = `<div class="grid-btns">
           ${this.gridBtn('image', 'image', 'Picture')}
           ${this.gridBtn('pdf', 'pdf', 'PDF / Book')}
+          ${this.gridBtn('pptx', 'slides', 'PowerPoint')}
+          ${this.gridBtn('table', 'table', 'Table')}
           ${this.gridBtn('page', 'pages', 'New page')}</div>`;
+        break;
+      case 'table':
+        // Word-style picker: slide over the grid to choose rows × columns.
+        pop.innerHTML = `<div class="pop-title">Table <span data-tsize>3 × 3</span></div>
+          <div class="table-picker">${Array.from({ length: 8 * 10 }, (_, i) => `<button data-tr="${Math.floor(i / 10) + 1}" data-tc="${(i % 10) + 1}" aria-label="${Math.floor(i / 10) + 1} by ${(i % 10) + 1}"></button>`).join('')}</div>
+          <div class="muted small center">Tap to insert. Double-tap a cell later to type.</div>`;
+        pop.onpointerover = (e) => {
+          const b = (e.target as HTMLElement).closest('[data-tr]') as HTMLElement | null;
+          if (!b) return;
+          const r = Number(b.dataset.tr), c = Number(b.dataset.tc);
+          (pop.querySelector('[data-tsize]') as HTMLElement).textContent = `${r} × ${c}`;
+          pop.querySelectorAll<HTMLElement>('[data-tr]').forEach((x) => x.classList.toggle('on', Number(x.dataset.tr) <= r && Number(x.dataset.tc) <= c));
+        };
         break;
       case 'tools': {
         const ins = this.board.instruments;
@@ -333,6 +355,17 @@ export class App {
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();
+      return;
+    } else if (d.tr) {
+      const tbl = makeTable(this.board, Number(d.tr), Number(d.tc));
+      this.closePopover();
+      store.addEls([tbl]);
+      store.setTool({ tool: 'select' });
+      store.select([tbl.id]);
+      this.tableEditor.open(tbl, 0, 0);
+      return;
+    } else if (d.uisize) {
+      store.setSettings({ uiSize: d.uisize as UiSize });
       return;
     } else if (d.bg) this.setBoard({ bg: d.bg });
     else if (d.pattern) this.setBoard({ pattern: d.pattern as BgPattern });
@@ -412,6 +445,11 @@ export class App {
       case 'pdf':
         void this.withProgress('Opening PDF', (p) => importPdf(b, undefined, p));
         return;
+      case 'pptx':
+        void pickFiles('.pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation').then((f) => f[0] && this.openSlides(f[0]));
+        return;
+      case 'table':
+        return this.togglePopover('table', this.toolbar.querySelector('[data-pop=insert]') as HTMLElement);
       case 'ruler':
       case 'protractor':
         b.instruments.toggle(act);
@@ -451,6 +489,14 @@ export class App {
     }
   }
 
+  private openSlides(f: File): Promise<void> {
+    if (/\.ppt$/i.test(f.name)) {
+      toast('Old .ppt files are not supported — save it as .pptx or PDF in PowerPoint', 5000);
+      return Promise.resolve();
+    }
+    return this.withProgress('Opening slides', (p) => importPptx(this.board, f, p));
+  }
+
   private async withProgress(label: string, fn: (p: (d: number, t: number) => void) => Promise<void>): Promise<void> {
     const el = document.createElement('div');
     el.className = 'progress-toast';
@@ -479,13 +525,15 @@ export class App {
     }
     const paths = els.filter((e): e is PathEl => e.type === 'path');
     const texts = els.filter((e) => e.type === 'text');
-    const colorable = paths.length + texts.length > 0;
-    const fillable = paths.some((p) => p.closed);
-    const first = (paths[0] ?? texts[0]) as { color: string } | undefined;
+    const tables = els.filter((e): e is TableEl => e.type === 'table');
+    const table = els.length === 1 ? tables[0] : undefined;
+    const colorable = paths.length + texts.length + tables.length > 0;
+    const fillable = paths.some((p) => p.closed) || tables.length > 0;
+    const first = (paths[0] ?? texts[0] ?? tables[0]) as { color: string } | undefined;
     const color = first?.color ?? null;
     // Thickness is shown in the same units as the pen slider.
     const width = (paths[0]?.size ?? 0) / inkScale();
-    const fill = paths.find((p) => p.closed)?.fill ?? null;
+    const fill = paths.find((p) => p.closed)?.fill ?? tables[0]?.fill ?? null;
     const sec = this.propSection;
 
     let panel = '';
@@ -503,6 +551,13 @@ export class App {
         ${colorable ? btn('color', 'Colour', `<i class="prop-color" style="background:${color}"></i>`) : ''}
         ${paths.length ? btn('width', 'Thickness', `<i class="prop-width"><b style="height:${Math.max(2, Math.min(12, width))}px"></b></i>`) : ''}
         ${fillable ? btn('fill', 'Fill', `<i class="prop-color ${fill ? '' : 'empty'}" style="background:${fill ?? 'transparent'}"></i>`) : ''}
+        ${
+          table
+            ? `<div class="prop-size"><button class="icon-btn" data-trows="-1" aria-label="Remove row">−</button><span>Rows ${table.rows}</span><button class="icon-btn" data-trows="1" aria-label="Add row">+</button></div>
+        <div class="prop-size"><button class="icon-btn" data-tcols="-1" aria-label="Remove column">−</button><span>Cols ${table.cols}</span><button class="icon-btn" data-tcols="1" aria-label="Add column">+</button></div>
+        <button class="prop-btn ${table.header ? 'on' : ''}" data-pact="header">${icon('table', 20)}<span>Header</span></button>`
+            : ''
+        }
         <div class="prop-size"><button class="icon-btn" data-scale="0.85" aria-label="Smaller">−</button><span>Size</span><button class="icon-btn" data-scale="1.18" aria-label="Bigger">+</button></div>
         <button class="prop-btn" data-pact="dup">${icon('copy', 20)}<span>Copy</span></button>
         <button class="prop-btn danger" data-pact="delete">${icon('trash', 20)}<span>Delete</span></button>
@@ -530,13 +585,17 @@ export class App {
       this.renderProps();
     } else if (d.pcolor) {
       const c = d.pcolor;
-      store.mapEls(store.selection, (el) => (el.type === 'path' || el.type === 'text' ? ({ ...el, color: c } as El) : el));
+      store.mapEls(store.selection, (el) => (el.type === 'path' || el.type === 'text' || el.type === 'table' ? ({ ...el, color: c } as El) : el));
       if (store.selectedEls().some((x) => x.type === 'path' && x.style === 'shape')) store.setTool({ shapeColor: c });
     } else if (d.pw) this.setWidth(Number(d.pw) * inkScale(), true);
     else if (d.pfill) {
       const f = d.pfill === 'none' ? null : d.pfill;
-      store.mapEls(store.selection, (el) => (el.type === 'path' && el.closed ? { ...el, fill: f } : el));
+      store.mapEls(store.selection, (el) => ((el.type === 'path' && el.closed) || el.type === 'table' ? { ...el, fill: f } : el));
       store.setTool({ shapeFill: f });
+    } else if (d.trows || d.tcols) {
+      store.mapEls(store.selection, (el) => (el.type === 'table' ? resizeTable(el, Number(d.trows ?? 0), Number(d.tcols ?? 0)) : el));
+    } else if (d.pact === 'header') {
+      store.mapEls(store.selection, (el) => (el.type === 'table' ? { ...el, header: !el.header } : el));
     } else if (d.scale) this.scaleSelection(Number(d.scale));
     else if (d.pact === 'dup') this.duplicate();
     else if (d.pact === 'delete') this.deleteSelection();
@@ -748,6 +807,7 @@ export class App {
       if (images.length) await insertImages(this.board, images);
       for (const f of files) {
         if (f.type === 'application/pdf') await this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p));
+        else if (/\.pptx?$/i.test(f.name)) await this.openSlides(f);
         else if (/\.(teachly|json)$/i.test(f.name)) await openFile(f);
       }
     });

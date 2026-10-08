@@ -88,3 +88,41 @@ describe('partial eraser', () => {
     expect(splitPath(path([[0, 0], [200, 0]]), 100, 100, 100, 200, 10)).toBeNull();
   });
 });
+
+describe('tables', () => {
+  const base = {
+    id: 't',
+    type: 'table' as const,
+    rows: 2,
+    cols: 3,
+    cells: [
+      ['a', 'b', 'c'],
+      ['d', 'e', 'f'],
+    ],
+    header: true,
+    color: '#000',
+    fill: null,
+    headerFill: '#eee',
+    fontSize: 20,
+    x: 0,
+    y: 0,
+    w: 300,
+    h: 100,
+    rot: 0,
+  };
+  it('adds and removes rows and columns keeping text and cell size', async () => {
+    const { resizeTable } = await import('../src/tools/table');
+    const t = resizeTable(base, 1, -1);
+    expect([t.rows, t.cols, t.w, t.h]).toEqual([3, 2, 200, 150]);
+    expect(t.cells).toEqual([
+      ['a', 'b'],
+      ['d', 'e'],
+      ['', ''],
+    ]);
+  });
+  it('finds the cell under a point', async () => {
+    const { cellAt } = await import('../src/tools/table');
+    expect(cellAt(base, 250, 75)).toEqual([1, 2]);
+    expect(cellAt(base, 400, 10)).toBeNull();
+  });
+});

@@ -48,7 +48,23 @@ export interface ImageEl extends BoxBase {
   src: string;
 }
 
-export type BoxEl = TextEl | ImageEl;
+export interface TableEl extends BoxBase {
+  type: 'table';
+  rows: number;
+  cols: number;
+  /** cells[row][col] */
+  cells: string[][];
+  /** First row drawn as a header. */
+  header: boolean;
+  /** Line and text colour. */
+  color: string;
+  /** Cell background (null = transparent). */
+  fill: string | null;
+  headerFill: string;
+  fontSize: number;
+}
+
+export type BoxEl = TextEl | ImageEl | TableEl;
 export type El = PathEl | BoxEl;
 
 export type BgPattern = 'none' | 'grid' | 'lines' | 'fourline';

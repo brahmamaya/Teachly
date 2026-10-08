@@ -173,7 +173,7 @@ export function transformEl<T extends El>(el: T, m: Mat): T {
   const [cx, cy] = applyMat(m, el.x + el.w / 2, el.y + el.h / 2);
   const w = el.w * s, h = el.h * s;
   const out = { ...el, x: cx - w / 2, y: cy - h / 2, w, h, rot: el.rot + matRotation(m) } as BoxEl;
-  if (out.type === 'text') out.fontSize = (el as unknown as { fontSize: number }).fontSize * s;
+  if (out.type === 'text' || out.type === 'table') out.fontSize = (el as unknown as { fontSize: number }).fontSize * s;
   return out as T;
 }
 

@@ -1,6 +1,6 @@
 import { getStroke } from 'perfect-freehand';
 import { bbox, rectsIntersect } from './geometry';
-import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TextEl } from './types';
+import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TableEl, TextEl } from './types';
 
 // ---------------------------------------------------------------------------
 // Stroke geometry
@@ -183,6 +183,54 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.roundRect(x, y, w, h, r);
 }
 
+function drawTable(ctx: CanvasRenderingContext2D, el: TableEl): void {
+  const { rows, cols, w, h } = el;
+  const cw = w / cols, rh = h / rows;
+  if (el.fill) {
+    ctx.fillStyle = el.fill;
+    ctx.fillRect(0, 0, w, h);
+  }
+  if (el.header) {
+    ctx.fillStyle = el.headerFill;
+    ctx.fillRect(0, 0, w, rh);
+  }
+  ctx.strokeStyle = el.color;
+  ctx.lineWidth = Math.max(1.5, el.fontSize / 14);
+  ctx.beginPath();
+  for (let r = 0; r <= rows; r++) {
+    ctx.moveTo(0, r * rh);
+    ctx.lineTo(w, r * rh);
+  }
+  for (let c = 0; c <= cols; c++) {
+    ctx.moveTo(c * cw, 0);
+    ctx.lineTo(c * cw, h);
+  }
+  ctx.stroke();
+  ctx.fillStyle = el.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const pad = el.fontSize * 0.3;
+  for (let r = 0; r < rows; r++) {
+    ctx.font = textFont({ fontSize: el.fontSize, bold: el.header && r === 0 });
+    for (let c = 0; c < cols; c++) {
+      const text = el.cells[r]?.[c] ?? '';
+      if (!text) continue;
+      const lines = wrapText(ctx, text, cw - pad * 2);
+      const lh = el.fontSize * 1.25;
+      const maxLines = Math.max(1, Math.floor((rh - pad) / lh));
+      const shown = lines.slice(0, maxLines);
+      const y0 = r * rh + rh / 2 - ((shown.length - 1) * lh) / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(c * cw, r * rh, cw, rh);
+      ctx.clip();
+      shown.forEach((l, k) => ctx.fillText(l, c * cw + cw / 2, y0 + k * lh));
+      ctx.restore();
+    }
+  }
+  ctx.textAlign = 'left';
+}
+
 function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
   ctx.save();
   ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
@@ -191,6 +239,9 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
   switch (el.type) {
     case 'text':
       drawText(ctx, el);
+      break;
+    case 'table':
+      drawTable(ctx, el);
       break;
     case 'image': {
       const img = getImage(el.src);

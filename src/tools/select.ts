@@ -4,6 +4,7 @@ import { drawEl } from '../renderer';
 import { ui } from '../ui/scale';
 import { store } from '../store';
 import type { El, Rect, TextEl } from '../types';
+import { cellAt, type TableEditor } from './table';
 import type { TextEditor } from './text';
 
 type Mode =
@@ -26,6 +27,9 @@ export class SelectTool implements Tool {
   /** Anchor and stretch factors while resizing. */
   private resizeArgs: [number, number, number, number] | null = null;
 
+  /** Set by the app: typing into table cells. */
+  tableEditor: TableEditor | null = null;
+
   constructor(private board: Board, private editor: TextEditor) {}
 
   private bounds(): Rect | null {
@@ -34,7 +38,7 @@ export class SelectTool implements Tool {
 
   /** Can the selection be stretched in one direction (no text, pictures or rotated items)? */
   private stretchable(): boolean {
-    return store.selectedEls().every((e) => e.type === 'path');
+    return store.selectedEls().every((e) => e.type === 'path' || e.type === 'table');
   }
 
   private handles(r: Rect): { grips: Handle[]; rot: [number, number] } {
@@ -182,6 +186,9 @@ export class SelectTool implements Tool {
         if (dbl && el.type === 'text') {
           store.clearSelection();
           this.editor.open(el as TextEl, false);
+        } else if (dbl && el.type === 'table' && !el.rot && this.tableEditor) {
+          const cell = cellAt(el, p.x, p.y);
+          if (cell) this.tableEditor.open(el, cell[0], cell[1]);
         }
       }
     } else if (m.k === 'resize' && this.resizeArgs) {

@@ -1169,3 +1169,41 @@ button:focus-visible {
 .btn {
   color: var(--text);
 }
+
+/* ---------- Tables ---------- */
+
+.table-picker {
+  display: grid;
+  grid-template-columns: repeat(10, 26px);
+  gap: 4px;
+}
+
+.table-picker button {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 0;
+  transition: background 0.1s ease;
+}
+
+.table-picker button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cell-editor {
+  position: absolute;
+  z-index: 6;
+  resize: none;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.08);
+  outline: none;
+  text-align: center;
+  padding: 4px;
+  overflow: hidden;
+  user-select: text;
+  -webkit-user-select: text;
+}

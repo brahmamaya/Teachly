@@ -148,8 +148,9 @@ export async function insertImages(board: Board, files?: File[]): Promise<void> 
 export async function importPdf(board: Board, file?: File, onProgress?: (done: number, total: number) => void): Promise<void> {
   file ??= (await pickFiles('application/pdf'))[0];
   if (!file) return;
-  const pdfjs = await import('pdfjs-dist');
-  const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+  // The legacy build carries polyfills, so PDFs open on older tablets and boards too.
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const workerUrl = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages: Page[] = [];
@@ -168,7 +169,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     await page.render({ canvasContext: ctx, viewport: vp, canvas } as Parameters<typeof page.render>[0]).promise;
     const h = (W * vp.height) / vp.width;
     const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.88), x: 0, y: 0, w: W, h, rot: 0, locked: true };
-    const p = newPage('#e2e8f0', 'none');
+    const p = newPage(store.page.bg, 'none');
     p.els = [img];
     pages.push(p);
     onProgress?.(i, pdf.numPages);

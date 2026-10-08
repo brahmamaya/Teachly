@@ -13,9 +13,11 @@
   },
   "license": "MIT",
   "dependencies": {
+    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "pdfjs-dist": "^6.4.299",
-    "perfect-freehand": "^1.2.3"
+    "perfect-freehand": "^1.2.3",
+    "pptx-preview": "^1.0.7"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

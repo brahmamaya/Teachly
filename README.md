@@ -56,11 +56,13 @@ Teachly is deliberately simple: one toolbar at the bottom, big buttons, and opti
 | **Shapes** | 18 shapes including 3D (cube, cylinder, cone, sphere). A new shape stays selected so you can change it straight away |
 | **Text** | Tap and type |
 | **Undo / Redo** | Every step, including clearing a page |
-| **Insert** | Picture, PDF / book pages, new page |
+| **Insert** | Picture, PDF / book pages, PowerPoint (.pptx) slides, table, new page |
 | **Tools** | Ruler and protractor (the pen snaps to their edges), compass, timer, spotlight, screen cover |
 | **Menu** | Board colour (white / green / black) and lines, new / open / save lesson, save as PDF, full screen |
 
 **Change a shape:** tap it, and a bar appears with **Colour**, **Thickness**, **Fill**, **Size − / +**, **Copy** and **Delete**.
+
+**Tables:** pick rows × columns from the grid, type straight away (Tab / Enter moves to the next cell), double-tap any cell later to edit. The bar adds **Rows ± / Columns ±**, **Header** on/off, line colour and cell fill; drag the edges to stretch.
 
 Pinch with two fingers to zoom and move the board. Pages are switched with the arrows at the bottom right. Everything is saved automatically in the browser.
 
