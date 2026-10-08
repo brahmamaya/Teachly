@@ -1,5 +1,6 @@
 import './styles.css';
 import { App } from './ui/app';
+import './ui/install';
 
 const root = document.getElementById('app')!;
 const app = new App(root);

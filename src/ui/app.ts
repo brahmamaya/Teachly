@@ -27,6 +27,7 @@ import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openTimer } from '../widgets/timer';
 import { icon } from './icons';
+import { installApp, isInstalled } from './install';
 import { PagesPanel } from './pages';
 import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui, type UiSize } from './scale';
@@ -322,6 +323,7 @@ export class App {
             <button class="menu-item" data-act="export">${icon('download', 20)}Save as PDF</button>
             <button class="menu-item" data-act="delete-page">${icon('trash', 20)}Delete this page</button>
             <button class="menu-item" data-act="fullscreen">${icon('fullscreen', 20)}Full screen</button>
+            ${isInstalled() ? '' : `<button class="menu-item" data-act="install">${icon('download', 20)}Install app</button>`}
           </div>
           <div class="pop-title">Button size</div>
           <div class="seg">${(['small', 'normal', 'large'] as UiSize[]).map((z) => `<button class="${s.uiSize === z ? 'on' : ''}" data-uisize="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
@@ -481,6 +483,9 @@ export class App {
         return toast('Lesson saved to Downloads');
       case 'export':
         void this.withProgress('Making PDF', () => exportPdf(b));
+        return;
+      case 'install':
+        void installApp(this.root);
         return;
       case 'fullscreen':
         if (document.fullscreenElement) void document.exitFullscreen();
