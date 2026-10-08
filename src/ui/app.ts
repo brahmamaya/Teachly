@@ -121,10 +121,7 @@ export class App {
       <div class="board" id="board"></div>
       <div class="corner" aria-hidden="true">
         <div class="clock"><b data-time></b></div>
-        <div class="brand">
-          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4"><circle cx="32" cy="32" r="17"/><ellipse cx="32" cy="32" rx="25" ry="8.6" transform="rotate(-55 32 32)"/><circle cx="32" cy="32" r="4" fill="currentColor" stroke="none"/></svg>
-          <span><b>TEACHLY</b><small>by physica</small></span>
-        </div>
+        <div class="brand">Teachly</div>
       </div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav></div>

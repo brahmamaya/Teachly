@@ -2332,3 +2332,12 @@ button:focus-visible {
 #app[data-board='dark'] {
   --bar-solid: #141414;
 }
+
+/* Logo: just the word "Teachly". */
+.brand {
+  font-family: 'Exo 2', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
