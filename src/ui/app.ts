@@ -31,11 +31,8 @@ import { computeUiScale, inkScale, scaleFloating, ui, type UiSize } from './scal
 const COLORS = ['#1e293b', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e', '#2563eb', '#a855f7'];
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
 const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#e2e8f0', '#1e293b', '#ef4444', '#2563eb', '#22c55e'];
-const BOARDS: [string, string][] = [
-  ['#ffffff', 'White'],
-  ['#14532d', 'Green board'],
-  ['#0f172a', 'Black board'],
-];
+/** Board colours: dark boards first (default black), then light ones. */
+const BOARDS = ['#111418', '#1f2937', '#0f1e3d', '#123524', '#14532d', '#3b0d14', '#2e1065', '#ffffff', '#fdf6e3', '#e5e7eb', '#dbeafe', '#dcfce7'];
 const PATTERNS: [BgPattern, string][] = [
   ['none', 'Plain'],
   ['grid', 'Grid'],
@@ -83,10 +80,6 @@ export class App {
     this.root = root;
     root.innerHTML = `
       <div class="board" id="board"></div>
-      <div class="brand" aria-label="Teachly by Physica">
-        <span class="brand-mark" aria-hidden="true">T</span>
-        <span class="brand-text"><b>Teachly</b><small>by Physica</small></span>
-      </div>
       <div class="clock" aria-live="off"><b data-time></b></div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav></div>
@@ -152,7 +145,7 @@ export class App {
     const t = store.tool;
     const dot = t.penStyle === 'highlighter' ? t.hlColor : t.color;
     const tool = (id: ToolId, ic: string, label: string, extra = '') =>
-      `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 26)}<span class="tb-label">${label}</span>${extra}</button>`;
+      `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 22)}${extra}</button>`;
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
     left.innerHTML = `
@@ -162,17 +155,17 @@ export class App {
       ${tool('shape', 'shapes', 'Shapes')}
       ${tool('text', 'text', 'Text')}`;
     right.innerHTML = `
-      <button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 26)}<span class="tb-label">Undo</span></button>
-      <button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 26)}<span class="tb-label">Redo</span></button>
-      <button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 26)}<span class="tb-label">Insert</span></button>
-      <button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 26)}<span class="tb-label">Tools</span></button>
+      <button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 22)}</button>
+      <button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 22)}</button>
+      <button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 22)}</button>
+      <button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 22)}</button>
       <div class="tb-pagenav">
         <button class="icon-btn" data-act="prev" title="Previous page" aria-label="Previous page">${icon('prev')}</button>
         <span class="page-label">${store.index + 1} / ${store.doc.pages.length}</span>
         <button class="icon-btn" data-act="next" title="Next page" aria-label="Next page">${icon('next')}</button>
       </div>
-      <button class="tb-btn ${this.pages.open ? 'open' : ''}" data-act="pages" title="All pages">${icon('pages', 26)}<span class="tb-label">Pages</span></button>
-      <button class="tb-btn ${this.popFor === 'menu' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 26)}<span class="tb-label">Menu</span></button>`;
+      <button class="tb-btn ${this.pages.open ? 'open' : ''}" data-act="pages" title="All pages">${icon('pages', 22)}</button>
+      <button class="tb-btn ${this.popFor === 'menu' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 22)}</button>`;
     this.updateUndo();
     if (this.popover) {
       const anchor = this.toolbar.querySelector(`[data-tool="${this.popFor}"],[data-pop="${this.popFor}"]`) as HTMLElement | null;
@@ -296,7 +289,8 @@ export class App {
         const s = store.settings;
         pop.innerHTML = `
           <div class="pop-title">Board</div>
-          <div class="board-swatches">${BOARDS.map(([c, n]) => `<button class="board-swatch ${p.bg === c ? 'on' : ''}" data-bg="${c}"><span style="background:${c}"></span>${n}</button>`).join('')}</div>
+          <div class="board-palette">${BOARDS.map((c) => `<button class="swatch ${p.bg === c ? 'on' : ''}" style="background:${c}" data-bg="${c}" aria-label="Board colour ${c}"></button>`).join('')}
+            <label class="swatch custom" title="Any colour"><input type="color" id="board-color" value="${p.bg}" data-bgpick aria-label="Pick any board colour"></label></div>
           <div class="seg">${PATTERNS.map(([k, n]) => `<button class="${p.pattern === k ? 'on' : ''}" data-pattern="${k}">${n}</button>`).join('')}</div>
           <div class="pop-title">Lesson</div>
           <div class="menu-list">
@@ -314,6 +308,10 @@ export class App {
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
           if (el.dataset.set) store.setSettings({ [el.dataset.set]: el.checked });
+          if (el.dataset.bgpick !== undefined) {
+            this.setBoard({ bg: el.value });
+            this.fillPopover();
+          }
         };
         break;
       }
@@ -367,7 +365,7 @@ export class App {
     if (patch.bg) {
       // Keep the pen readable on dark boards.
       const dark = isDarkColor(patch.bg);
-      if (dark && store.tool.color === '#1e293b') store.setTool({ color: '#ffffff', shapeColor: '#ffffff' });
+      if (dark && store.tool.color === '#1e293b') store.setTool({ color: '#ffffff', shapeColor: '#60a5fa' });
       if (!dark && store.tool.color === '#ffffff') store.setTool({ color: '#1e293b', shapeColor: '#2563eb' });
     }
   }
@@ -617,6 +615,11 @@ export class App {
     });
     this.root.querySelector('.zoom-pill')!.addEventListener('click', () => this.action('zoom-reset'));
     this.board.el.addEventListener('pointerdown', () => this.closePopover(), true);
+    // While writing, the toolbars fade back so the board is fully visible.
+    this.board.el.addEventListener('pointerdown', () => this.root.classList.add('drawing'));
+    const done = () => this.root.classList.remove('drawing');
+    window.addEventListener('pointerup', done);
+    window.addEventListener('pointercancel', done);
   }
 
   private updatePageLabel(): void {
@@ -629,18 +632,12 @@ export class App {
     // Widths are unaffected by the CSS scale transform.
     const L = (this.toolbar.querySelector('.tb-left') as HTMLElement).offsetWidth;
     const R = (this.toolbar.querySelector('.tb-right') as HTMLElement).offsetWidth;
-    const brand = this.root.querySelector('.brand') as HTMLElement;
-    const B = brand.offsetWidth;
-    const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
-    // One row when everything fits at a comfortable size; on phones the
+    // One row when both halves fit at a comfortable size; on phones the
     // action bar moves up into a second row above the drawing tools.
-    const oneRow = L + R + B + 40;
+    const oneRow = L + R + 40;
     const stacked = window.innerWidth / oneRow < 0.85;
     this.root.classList.toggle('tb-stacked', stacked);
-    computeUiScale(store.settings.uiSize, stacked ? Math.max(L + B + 40, R + 12) : oneRow);
-    const k = ui();
-    // The logo owns the bottom-right corner; the action bar sits just left of it.
-    right.style.right = stacked ? '' : `${14 + B * k + 14}px`;
+    computeUiScale(store.settings.uiSize, stacked ? Math.max(L, R) + 20 : oneRow);
     this.closePopover();
     this.positionProps();
   }

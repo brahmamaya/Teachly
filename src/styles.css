@@ -4,6 +4,7 @@
   --accent-soft: rgba(37, 99, 235, 0.12);
   --bg: #ffffff;
   --surface: #ffffff;
+  --surface-solid: #ffffff;
   --surface-2: #f1f5f9;
   --border: rgba(15, 23, 42, 0.12);
   --text: #0f172a;
@@ -139,9 +140,13 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px;
+  padding: 4px;
   z-index: 4000;
   white-space: nowrap;
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: opacity 0.25s ease, background 0.25s ease;
 }
 
 .tb-left {
@@ -154,26 +159,19 @@ button:focus-visible {
   transform-origin: 100% 100%;
 }
 
+
 .tb-btn {
   position: relative;
-  min-width: 64px;
-  height: 64px;
+  width: 46px;
+  height: 46px;
   border: 0;
   background: none;
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
   flex: none;
-  transition: background 0.12s, transform 0.08s;
-}
-
-.tb-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
+  color: var(--text);
+  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease;
 }
 
 .tb-btn:hover,
@@ -188,10 +186,7 @@ button:focus-visible {
 .tb-btn.active {
   background: var(--accent);
   color: #fff;
-}
-
-.tb-btn.active .tb-label {
-  color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
 }
 
 .tb-btn:disabled {
@@ -201,10 +196,10 @@ button:focus-visible {
 
 .swatch-dot {
   position: absolute;
-  right: 12px;
-  top: 8px;
-  width: 12px;
-  height: 12px;
+  right: 6px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px var(--border);
@@ -250,19 +245,6 @@ button:focus-visible {
   transform-origin: 0 0;
 }
 
-@media (max-width: 640px) {
-  .toolbar {
-    padding: 4px;
-    gap: 0;
-  }
-  .tb-btn {
-    min-width: 46px;
-    height: 54px;
-  }
-  .tb-label {
-    display: none;
-  }
-}
 
 /* ---------- Popovers ---------- */
 
@@ -275,12 +257,13 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  animation: pop 0.14s ease-out;
+  animation: pop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes pop {
   from {
     opacity: 0;
+    translate: 0 8px;
   }
 }
 
@@ -427,36 +410,6 @@ button:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-soft);
-}
-
-.board-swatches {
-  display: flex;
-  gap: 8px;
-}
-
-.board-swatch {
-  flex: 1;
-  border: 2px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface);
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.board-swatch span {
-  width: 100%;
-  height: 36px;
-  border-radius: 8px;
-  box-shadow: inset 0 0 0 1px var(--border);
-}
-
-.board-swatch.on {
-  border-color: var(--accent);
 }
 
 .menu-list {
@@ -884,55 +837,6 @@ button:focus-visible {
   display: none !important;
 }
 
-/* ---------- Brand ---------- */
-
-.brand {
-  /* Sits lightly on the board: no card, just soft text. */
-  position: absolute;
-  /* Bottom-right corner, centred on the toolbar row. */
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px) + 18px * var(--ui));
-  right: 16px;
-  z-index: 3999;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  opacity: 0.55;
-  pointer-events: none;
-  transform: scale(var(--ui));
-  transform-origin: 100% 100%;
-}
-
-.brand-mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: 20px;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
-}
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
-
-.brand-text b {
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
-.brand-text small {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.02em;
-}
-
 /* ---------- Size sliders ---------- */
 
 .slider-row {
@@ -992,26 +896,16 @@ button:focus-visible {
 }
 
 .clock b {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 700;
 }
 
-#app[data-board='dark'] .brand,
 #app[data-board='dark'] .clock {
   color: #fff;
   opacity: 0.6;
 }
 
-#app[data-board='dark'] .brand-text small {
-  color: rgba(255, 255, 255, 0.8);
-}
 
-/* Phones: keep the top line short so logo and clock never collide. */
-@media (max-width: 640px) {
-  .brand-text {
-    display: none;
-  }
-}
 
 /* ---------- Page navigation in the toolbar ---------- */
 
@@ -1022,13 +916,16 @@ button:focus-visible {
 }
 
 .tb-pagenav .icon-btn {
-  width: 40px;
-  height: 64px;
+  width: 34px;
+  height: 46px;
+  color: var(--text);
 }
 
 .page-label {
   font-weight: 700;
-  min-width: 52px;
+  font-size: 14px;
+  color: var(--text);
+  min-width: 44px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -1177,4 +1074,98 @@ button:focus-visible {
 
 #app.tb-stacked .pages-panel {
   bottom: calc(34px + env(safe-area-inset-bottom, 0px) + 124px * var(--ui));
+}
+
+/* ---------- Calm chrome ---------- */
+
+/* On dark boards the controls turn dark too, so they don't glare. */
+#app[data-board='dark'] {
+  --surface: rgba(28, 32, 40, 0.88);
+  --surface-solid: #1c2028;
+  --surface-2: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+#app[data-board='light'] .toolbar {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+/* While writing, everything on top of the board steps back. */
+.clock,
+.props,
+.zoom-pill {
+  transition: opacity 0.25s ease;
+}
+
+#app.drawing .toolbar,
+#app.drawing .clock,
+#app.drawing .zoom-pill {
+  opacity: 0.18;
+}
+
+.board-palette {
+  display: grid;
+  grid-template-columns: repeat(7, 40px);
+  gap: 8px;
+}
+
+.board-palette .swatch {
+  border-radius: 10px;
+  border-color: transparent;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.board-palette .swatch.on {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.swatch.custom {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  background: conic-gradient(#ef4444, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444);
+}
+
+.swatch.custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar,
+  .tb-btn,
+  .clock,
+  .props {
+    transition: none;
+  }
+}
+
+/* Panels re-read the theme colours (inherited text colour would stay light-theme). */
+.toolbar,
+.popover,
+.props,
+.panel,
+.pages-panel,
+.zoom-pill {
+  color: var(--text);
+}
+
+.popover,
+.props,
+.panel,
+.pages-panel {
+  background: var(--surface-solid);
+}
+
+.btn {
+  color: var(--text);
 }

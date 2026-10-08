@@ -48,7 +48,7 @@ function loadSettings(): Settings {
   return defaults;
 }
 
-export function newPage(bg = '#ffffff', pattern: BgPattern = 'none'): Page {
+export function newPage(bg = '#111418', pattern: BgPattern = 'none'): Page {
   return { id: uid(), bg, pattern, els: [] };
 }
 
@@ -61,12 +61,12 @@ export class Store {
   tool: ToolState = {
     tool: 'pen',
     penStyle: 'pen',
-    color: '#1e293b',
+    color: '#ffffff',
     size: 4,
     hlColor: '#facc15',
     hlSize: 22,
     shape: 'rect',
-    shapeColor: '#2563eb',
+    shapeColor: '#60a5fa',
     shapeSize: 4,
     shapeFill: null,
     eraserMode: 'point',
