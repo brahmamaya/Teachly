@@ -1,5 +1,5 @@
 import { Board, type Tool } from '../board';
-import { similarity, transformEl, translateEl, uid } from '../geometry';
+import { regroup, similarity, transformEl, translateEl, uid } from '../geometry';
 import {
   copySelection,
   exportPdf,
@@ -773,6 +773,7 @@ export class App {
             : ''
         }
         <div class="prop-size"><button class="icon-btn" data-scale="0.85" aria-label="Smaller">−</button><span>Size</span><button class="icon-btn" data-scale="1.18" aria-label="Bigger">+</button></div>
+        ${els.some((e) => e.group) ? `<button class="prop-btn" data-pact="ungroup">${icon('shapes', 20)}<span>Ungroup</span></button>` : ''}
         <button class="prop-btn" data-pact="dup">${icon('copy', 20)}<span>Copy</span></button>
         <button class="prop-btn danger" data-pact="delete">${icon('trash', 20)}<span>Delete</span></button>
       </div>
@@ -814,7 +815,12 @@ export class App {
     } else if (d.pact === 'header') {
       store.mapEls(store.selection, (el) => (el.type === 'table' ? { ...el, header: !el.header } : el));
     } else if (d.scale) this.scaleSelection(Number(d.scale));
-    else if (d.pact === 'dup') this.duplicate();
+    else if (d.pact === 'ungroup') {
+      // Split into separate pieces (e.g. to change one label of a graph).
+      const ids = new Set(store.selection);
+      store.mapEls(ids, (e) => ({ ...e, group: undefined }) as El);
+      store.clearSelection();
+    } else if (d.pact === 'dup') this.duplicate();
     else if (d.pact === 'delete') this.deleteSelection();
   }
 
@@ -852,7 +858,7 @@ export class App {
 
   private duplicate(): void {
     const off = 30 / this.board.cam.z;
-    const copies = store.selectedEls().map((e) => ({ ...translateEl(e, off, off), id: uid() }) as El);
+    const copies = regroup(store.selectedEls().map((e) => ({ ...translateEl(e, off, off), id: uid() }) as El));
     store.addEls(copies);
     store.select(copies.map((c) => c.id));
   }

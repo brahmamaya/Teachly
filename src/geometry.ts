@@ -234,3 +234,14 @@ export function resizeEl<T extends El>(el: T, ax: number, ay: number, sx: number
   if (out.type === 'text') out.fontSize = (el as unknown as { fontSize: number }).fontSize * Math.abs(sx);
   return out as T;
 }
+
+/** Give copied pieces fresh group ids (so copies are separate groups). */
+export function regroup<T extends El>(els: T[]): T[] {
+  const map = new Map<string, string>();
+  return els.map((e) => {
+    if (!e.group) return e;
+    let g = map.get(e.group);
+    if (!g) map.set(e.group, (g = uid()));
+    return { ...e, group: g };
+  });
+}

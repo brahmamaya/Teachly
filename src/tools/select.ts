@@ -104,7 +104,23 @@ export class SelectTool implements Tool {
     for (let i = els.length - 1; i >= 0; i--) {
       if (!els[i].locked && hitTest(els[i], x, y, tol)) return els[i];
     }
-    return null;
+    // A group (e.g. a graph) can be grabbed anywhere inside its outline.
+    const boxes = new Map<string, { r: Rect; el: El; z: number }>();
+    els.forEach((e, z) => {
+      if (!e.group || e.locked) return;
+      const b = bbox(e), cur = boxes.get(e.group);
+      if (!cur) boxes.set(e.group, { r: { ...b }, el: e, z });
+      else {
+        const x1 = Math.min(cur.r.x, b.x), y1 = Math.min(cur.r.y, b.y);
+        cur.r = { x: x1, y: y1, w: Math.max(cur.r.x + cur.r.w, b.x + b.w) - x1, h: Math.max(cur.r.y + cur.r.h, b.y + b.h) - y1 };
+        cur.z = z;
+      }
+    });
+    let best: { el: El; z: number } | null = null;
+    for (const g of boxes.values()) {
+      if (x >= g.r.x && x <= g.r.x + g.r.w && y >= g.r.y && y <= g.r.y + g.r.h && (!best || g.z > best.z)) best = g;
+    }
+    return best?.el ?? null;
   }
 
   /** Does the pointer land on the current selection or one of its handles? */
@@ -332,8 +348,11 @@ export class SelectTool implements Tool {
     // Outline of each selected element (subtle).
     ctx.strokeStyle = inkSoft;
     ctx.lineWidth = 1 * px;
-    if (store.selection.size > 1) {
-      for (const el of store.selectedEls()) {
+    const sel = store.selectedEls();
+    // One group (a graph): just the outer frame, no box around every piece.
+    const oneGroup = sel.length > 1 && !!sel[0].group && sel.every((e) => e.group === sel[0].group);
+    if (store.selection.size > 1 && !oneGroup) {
+      for (const el of sel) {
         const b = bbox(el);
         this.polyRect(ctx, b, mat);
         ctx.stroke();

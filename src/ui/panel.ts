@@ -49,7 +49,7 @@ export function floatingPanel(host: HTMLElement, opts: PanelOpts, toggle = true)
     const W = el.offsetWidth * ui(), H = el.offsetHeight * ui();
     // Keep clear of the bottom toolbar where possible.
     const x = opts.x ?? Math.max(12, Math.min(window.innerWidth - W - 12, window.innerWidth / 2 - W / 2 + n * 28));
-    const y = opts.y ?? Math.max(12, Math.min(window.innerHeight - H - 96, 72 + n * 28));
+    const y = opts.y ?? Math.max(12, Math.min(window.innerHeight - H - 96, 72 + n * 28, window.innerHeight - H - 12));
     el.style.left = `${Math.max(0, x)}px`;
     el.style.top = `${y}px`;
     el.style.visibility = '';

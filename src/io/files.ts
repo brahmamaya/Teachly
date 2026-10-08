@@ -1,5 +1,5 @@
 import type { Board } from '../board';
-import { uid } from '../geometry';
+import { regroup, uid } from '../geometry';
 import { fitInPage, PAGE } from '../page';
 import { renderRegion } from '../renderer';
 import { newPage, store } from '../store';
@@ -210,7 +210,7 @@ export function copySelection(): void {
 export function pasteElements(board: Board): boolean {
   if (!elementClipboard.length) return false;
   const off = 24 / board.cam.z;
-  const els = elementClipboard.map((e) => {
+  const els = regroup(elementClipboard).map((e) => {
     const c = structuredClone(e) as El;
     c.id = uid();
     if (c.type === 'path') c.pts = c.pts.map((v, i) => (i % 3 === 2 ? v : v + off));

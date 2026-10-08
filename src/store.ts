@@ -257,7 +257,12 @@ export class Store {
   }
 
   select(ids: Iterable<string>): void {
-    this.selection = new Set(ids);
+    // A piece of a group (a graph, a 3-D shape) brings the whole group.
+    const set = new Set(ids);
+    const groups = new Set<string>();
+    for (const e of this.page.els) if (e.group && set.has(e.id)) groups.add(e.group);
+    if (groups.size) for (const e of this.page.els) if (e.group && groups.has(e.group)) set.add(e.id);
+    this.selection = set;
     this.emit('selection');
   }
 

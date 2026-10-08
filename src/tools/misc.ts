@@ -78,6 +78,11 @@ export class ShapeTool implements Tool {
     }
     this.preview = [];
     this.guides = [];
+    // Shapes made of several lines (3-D shapes, axes) stay together.
+    if (els.length > 1) {
+      const group = uid();
+      els = els.map((e) => ({ ...e, group }));
+    }
     store.addEls(els);
     store.select(els.map((e) => e.id));
   }

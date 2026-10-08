@@ -146,6 +146,17 @@ function keyPoints(f: Fn, x0: number, x1: number, span: number): [number, number
   return pts;
 }
 
+/** Tidy signs after filling in values: "+ (-2)" → "− 2", "1x" → "x". */
+function tidy(src: string): string {
+  return src
+    .replace(/\+\s*\((-[\d.]+)\)/g, (_, v: string) => `- ${v.slice(1)}`)
+    .replace(/-\s*\((-[\d.]+)\)/g, (_, v: string) => `+ ${v.slice(1)}`)
+    .replace(/^\((-[\d.]+)\)/, '$1')
+    .replace(/(^|[^\d.])1\s*(?=[a-z(])/gi, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Put the slider values into the equation for its label (a x^2 → 2x^2). */
 function withValues(src: string, params: Record<string, number>): string {
   return src.replace(/(^|[^a-z])([abckm])(?![a-z])/gi, (all, pre: string, name: string) => {
@@ -211,7 +222,7 @@ export function buildGraph(spec: Spec, box: { x: number; y: number; w: number; h
       const pts = run.map(([x, y]) => [X(x), Math.max(box.y - 40, Math.min(box.y + box.h + 40, Y(y)))] as [number, number]);
       els.push(line(pts, q.color, 4));
     }
-    els.push(label(`y = ${prettyExpr(q.src)}`, box.x + 12, box.y + 18 + i * fontSize * 1.5, q.color, fontSize * 1.1, 'l'));
+    els.push(label(`y = ${prettyExpr(tidy(q.src))}`, box.x + 12, box.y + 18 + i * fontSize * 1.5, q.color, fontSize * 1.1, 'l'));
     if (spec.marks) {
       for (const [px, py] of keyPoints(q.f, x0, x1, y1 - y0)) {
         if (py < y0 || py > y1) continue;
@@ -268,7 +279,7 @@ export function openGraph(host: HTMLElement, board: Board): void {
     </div>
     <canvas class="g-preview" width="720" height="440"></canvas>
     <div class="g-err muted small"></div>
-    <button class="btn primary wide" data-put>Put graph on board</button>`;
+    <div class="g-put"><button class="btn primary wide" data-put>Put graph on board</button></div>`;
   const cv = body.querySelector('canvas') as HTMLCanvasElement;
   const err = body.querySelector('.g-err') as HTMLElement;
   const inputs = [...body.querySelectorAll<HTMLInputElement>('[data-f]')];
@@ -380,7 +391,9 @@ export function openGraph(host: HTMLElement, board: Board): void {
     const w = Math.min(PAGE.w * 0.55, v.w * 0.6), h = Math.min(PAGE.h * 0.62, v.h * 0.62, w * 0.68);
     const cx = Math.max(PAGE.x + w / 2 + 40, Math.min(PAGE.x + PAGE.w - w / 2 - 40, v.x + v.w / 2));
     const cy = Math.max(PAGE.y + h / 2 + 50, Math.min(PAGE.y + PAGE.h - h / 2 - 40, v.y + v.h / 2));
-    const els = buildGraph(spec, { x: cx - w / 2, y: cy - h / 2, w, h }, isDarkColor(store.page.bg) ? '#ffffff' : '#1e293b');
+    // The whole graph is one piece: tap anywhere on it to select it all.
+    const group = uid();
+    const els = buildGraph(spec, { x: cx - w / 2, y: cy - h / 2, w, h }, isDarkColor(store.page.bg) ? '#ffffff' : '#1e293b').map((e) => ({ ...e, group }) as El);
     store.addEls(els);
     store.setTool({ tool: 'select' });
     store.select(els.map((e) => e.id));

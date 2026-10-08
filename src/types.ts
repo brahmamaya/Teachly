@@ -19,6 +19,8 @@ export interface PathEl {
   dash?: boolean;
   /** 0 = none, 1 = end, 2 = both ends */
   arrow?: 0 | 1 | 2;
+  /** Pieces with the same group id are selected and moved together. */
+  group?: string;
   /** An arc shape: its bend can be changed with the handle at its middle. */
   arc?: boolean;
   /** Pressure was simulated (mouse / touch). */
@@ -34,6 +36,8 @@ export interface BoxBase {
   h: number;
   /** Rotation in radians around the box centre. */
   rot: number;
+  /** Pieces with the same group id are selected and moved together. */
+  group?: string;
   locked?: boolean;
 }
 

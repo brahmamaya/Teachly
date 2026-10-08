@@ -2735,3 +2735,32 @@ button:focus-visible {
   flex-wrap: wrap;
   gap: 4px 16px;
 }
+
+/* Tool panels never run off the screen: the body scrolls instead, and the
+   main button of the graph tool stays visible at the bottom. */
+.panel {
+  max-height: calc((100vh - 24px) / var(--ui));
+  max-height: calc((100dvh - 24px) / var(--ui));
+}
+.panel-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+.g-put {
+  position: sticky;
+  bottom: -14px;
+  margin: 0 -14px -14px;
+  padding: 10px 14px 14px;
+  background: var(--surface-solid, var(--surface));
+  border-top: 1px solid var(--border);
+  z-index: 1;
+}
+.g-preview {
+  max-height: 34vh;
+  object-fit: contain;
+}
+.panel-body {
+  flex: 1 1 auto;
+}
