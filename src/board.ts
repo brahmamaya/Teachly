@@ -3,6 +3,7 @@ import { Instruments } from './instruments';
 import { PAGE, setPageSize } from './page';
 import { drawBackground, drawEls, setAssetLoadCallback } from './renderer';
 import { store } from './store';
+import { toast } from './ui/panel';
 import type { Camera, El, Rect, ToolId } from './types';
 
 export interface Ptr {
@@ -78,6 +79,7 @@ export class Board {
   private gesture: { ids: [number, number]; startDist: number; startAngle: number; cam: Camera; wx: number; wy: number } | null = null;
   private panStart: { sx: number; sy: number; cam: Camera } | null = null;
   spaceDown = false;
+  /** A stylus has been used in this session. */
   private sawPen = false;
   private lastHover: Ptr | null = null;
 
@@ -458,8 +460,25 @@ export class Board {
     // Middle button, space+drag, or finger when pen-only → pan.
     // Once a stylus has been used, fingers and palms only move the board
     // (palm rejection, like a real tablet).
-    if (p.type === 'pen') this.sawPen = true;
-    if (p.button === 1 || this.spaceDown || (!multi && (store.settings.penOnly || this.sawPen) && p.type === 'touch')) {
+    if (p.type === 'pen') {
+      // First stylus on this device: from now on fingers and palms don't
+      // draw ("Write with stylus only" in the menu, which can turn it off).
+      if (!this.sawPen && !store.settings.penOnly) {
+        store.setSettings({ penOnly: true });
+        toast('Stylus found — now only the pen writes (change it in Menu)', 3500);
+      }
+      this.sawPen = true;
+      // The palm usually lands a moment before the pen: drop what it was drawing.
+      let palmDrawing = false;
+      for (const [id, r] of this.routed) {
+        if (id !== p.id && (r === 'tool' || r === 'override') && this.pointers.get(id)?.type === 'touch') {
+          this.routed.set(id, 'pan');
+          palmDrawing = true;
+        }
+      }
+      if (palmDrawing) this.cancelTool();
+    }
+    if (p.button === 1 || this.spaceDown || (!multi && store.settings.penOnly && p.type === 'touch')) {
       this.routed.set(p.id, 'pan');
       this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
       this.el.classList.add('panning');

@@ -185,7 +185,29 @@ export class App {
     this.updateBoardTone();
     this.startClock();
     this.applyScale();
-    window.addEventListener('resize', () => this.applyScale());
+    // Re-fit the toolbars whenever the screen size really changes. iPad
+    // Safari reports the new size late (split view, rotation, tab bar), so
+    // also check again a moment later and watch the app's own box.
+    let lastSize = '';
+    let t = 0;
+    const relayout = () => {
+      cancelAnimationFrame(t);
+      t = requestAnimationFrame(() => {
+        const size = `${window.innerWidth}x${window.innerHeight}`;
+        if (size === lastSize) return;
+        lastSize = size;
+        this.applyScale();
+      });
+    };
+    window.addEventListener('resize', relayout);
+    window.addEventListener('orientationchange', () => {
+      relayout();
+      window.setTimeout(relayout, 350);
+      window.setTimeout(relayout, 900);
+    });
+    new ResizeObserver(relayout).observe(root);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && window.setTimeout(relayout, 200));
+    window.setTimeout(relayout, 600);
     // Only a new button size needs a re-layout (other settings keep the menu open).
     let layout = store.settings.tbPos;
     store.on('settings', () => {
@@ -469,7 +491,7 @@ export class App {
           </div>
           <div class="pop-title">Toolbar position</div>
           <div class="seg">${(['bottom', 'top', 'left', 'right'] as const).map((z) => `<button class="${s.tbPos === z ? 'on' : ''}" data-tbpos="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
-          <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers move the board)</label>
+          <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers and palm don't draw)</label>
           <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>
           <label class="check"><input type="checkbox" id="opt-zoom" data-set="allowZoom" ${s.allowZoom ? 'checked' : ''}> Allow zoom with two fingers (off = board stays fixed)</label>`;
         pop.onchange = (e) => {
