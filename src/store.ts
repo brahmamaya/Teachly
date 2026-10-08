@@ -48,7 +48,7 @@ function loadSettings(): Settings {
   return defaults;
 }
 
-export function newPage(bg = '#111418', pattern: BgPattern = 'none'): Page {
+export function newPage(bg = '#000000', pattern: BgPattern = 'none'): Page {
   return { id: uid(), bg, pattern, els: [] };
 }
 
@@ -66,7 +66,7 @@ export class Store {
     hlColor: '#facc15',
     hlSize: 22,
     shape: 'rect',
-    shapeColor: '#60a5fa',
+    shapeColor: '#ffffff',
     shapeSize: 4,
     shapeFill: null,
     eraserMode: 'point',

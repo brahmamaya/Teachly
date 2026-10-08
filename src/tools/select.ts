@@ -1,6 +1,6 @@
 import type { Board, Ptr, Tool } from '../board';
 import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, resizeEl, similarity, transformEl } from '../geometry';
-import { drawEl } from '../renderer';
+import { drawEl, isDarkColor } from '../renderer';
 import { ui } from '../ui/scale';
 import { store } from '../store';
 import type { El, Rect, TextEl } from '../types';
@@ -245,6 +245,10 @@ export class SelectTool implements Tool {
 
   drawOverlay(ctx: CanvasRenderingContext2D): void {
     if (store.tool.tool !== 'select' && store.tool.tool !== 'shape') return;
+    // Monochrome (Physica style): white on dark boards, near-black on light ones.
+    const ink = isDarkColor(store.page.bg) ? '#ffffff' : '#111111';
+    const inkSoft = isDarkColor(store.page.bg) ? 'rgba(255,255,255,0.45)' : 'rgba(17,17,17,0.45)';
+    const inkFill = isDarkColor(store.page.bg) ? 'rgba(255,255,255,0.08)' : 'rgba(17,17,17,0.06)';
     const px = this.board.px;
     // Handles are sized for fingers on big panels too.
     const hp = px * ui();
@@ -254,10 +258,10 @@ export class SelectTool implements Tool {
       ctx.moveTo(m.pts[0], m.pts[1]);
       for (let i = 2; i < m.pts.length; i += 2) ctx.lineTo(m.pts[i], m.pts[i + 1]);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(59,130,246,0.08)';
+      ctx.fillStyle = inkFill;
       ctx.fill();
       ctx.setLineDash([6 * px, 5 * px]);
-      ctx.strokeStyle = '#3b82f6';
+      ctx.strokeStyle = ink;
       ctx.lineWidth = 1.5 * px;
       ctx.stroke();
       ctx.setLineDash([]);
@@ -266,7 +270,7 @@ export class SelectTool implements Tool {
     if (!r) return;
     const mat = this.mat;
     // Outline of each selected element (subtle).
-    ctx.strokeStyle = 'rgba(59,130,246,0.45)';
+    ctx.strokeStyle = inkSoft;
     ctx.lineWidth = 1 * px;
     if (store.selection.size > 1) {
       for (const el of store.selectedEls()) {
@@ -277,7 +281,7 @@ export class SelectTool implements Tool {
     }
     const pad = 6 * px;
     const R = { x: r.x - pad, y: r.y - pad, w: r.w + pad * 2, h: r.h + pad * 2 };
-    ctx.strokeStyle = '#3b82f6';
+    ctx.strokeStyle = ink;
     ctx.lineWidth = 1.5 * px;
     ctx.setLineDash([5 * px, 4 * px]);
     this.polyRect(ctx, R, mat);
@@ -299,7 +303,7 @@ export class SelectTool implements Tool {
       ctx.fillStyle = '#fff';
       ctx.fill();
       ctx.lineWidth = 2 * px;
-      ctx.strokeStyle = '#3b82f6';
+      ctx.strokeStyle = ink;
       ctx.stroke();
     };
     for (const g of h.grips) {
@@ -313,12 +317,12 @@ export class SelectTool implements Tool {
         ctx.fillStyle = '#fff';
         ctx.fill();
         ctx.lineWidth = 2 * px;
-        ctx.strokeStyle = '#3b82f6';
+        ctx.strokeStyle = ink;
         ctx.stroke();
       }
     }
     handle(rx, ry2, true);
-    ctx.fillStyle = '#3b82f6';
+    ctx.fillStyle = ink;
     ctx.font = `700 ${12 * hp}px system-ui`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

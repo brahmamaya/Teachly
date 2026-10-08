@@ -36,7 +36,7 @@ const COLORS = ['#1e293b', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e'
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
 const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#e2e8f0', '#1e293b', '#ef4444', '#2563eb', '#22c55e'];
 /** Board colours: dark boards first (default black), then light ones. */
-const BOARDS = ['#111418', '#1f2937', '#0f1e3d', '#123524', '#14532d', '#3b0d14', '#2e1065', '#ffffff', '#fdf6e3', '#e5e7eb', '#dbeafe', '#dcfce7'];
+const BOARDS = ['#000000', '#1f2937', '#0f1e3d', '#123524', '#14532d', '#3b0d14', '#2e1065', '#ffffff', '#fdf6e3', '#e5e7eb', '#dbeafe', '#dcfce7'];
 const PATTERNS: [BgPattern, string][] = [
   ['none', 'Plain'],
   ['grid', 'Grid'],
@@ -401,8 +401,8 @@ export class App {
     if (patch.bg) {
       // Keep the pen readable on dark boards.
       const dark = isDarkColor(patch.bg);
-      if (dark && store.tool.color === '#1e293b') store.setTool({ color: '#ffffff', shapeColor: '#60a5fa' });
-      if (!dark && store.tool.color === '#ffffff') store.setTool({ color: '#1e293b', shapeColor: '#2563eb' });
+      if (dark && store.tool.color === '#1e293b') store.setTool({ color: '#ffffff', shapeColor: '#ffffff' });
+      if (!dark && store.tool.color === '#ffffff') store.setTool({ color: '#1e293b', shapeColor: '#1e293b' });
     }
   }
 
