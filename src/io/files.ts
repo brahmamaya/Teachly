@@ -150,8 +150,13 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   if (!file) return;
   // The legacy build carries polyfills, so PDFs open on older tablets and boards too.
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const workerUrl = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  if (import.meta.env.MODE === 'single') {
+    // Single-file offline build: the worker travels inside the page as text.
+    const code = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?raw')).default;
+    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+  } else {
+    pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
+  }
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages: Page[] = [];
   const W = 1280;

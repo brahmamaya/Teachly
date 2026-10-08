@@ -14,6 +14,7 @@ npm run dev        # http://localhost:5173  (also on your LAN, so you can open i
 npm run build      # production build → dist/
 npm run preview    # serve the production build
 npm test           # unit tests
+npm run build:single   # dist-single/Teachly.html — one offline file for pen drives / smart boards
 ```
 
 Smart board par: build ko kisi bhi static host (GitHub Pages, Netlify, school server) par daalo, browser mein kholo, aur **"Install app"** dabao — Teachly full-screen app ki tarah offline chalega.

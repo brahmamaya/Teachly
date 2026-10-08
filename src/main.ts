@@ -15,7 +15,8 @@ if (splash) {
 }
 (window as unknown as { teachly: App }).teachly = app;
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// No service worker for the single-file version opened from a pen drive (file://).
+if ('serviceWorker' in navigator && import.meta.env.PROD && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker

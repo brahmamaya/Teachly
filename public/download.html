@@ -198,6 +198,14 @@
         background: rgba(59, 130, 246, 0.16);
         color: #93c5fd;
       }
+      h3 {
+        margin: 6px 0 10px;
+        font-size: 16px;
+        color: #93c5fd;
+      }
+      h3 + ol {
+        margin-bottom: 18px;
+      }
       ol li span {
         padding-top: 4px;
         min-width: 0;
@@ -343,7 +351,8 @@
         <div class="tabs" role="tablist">
           <button class="tab" role="tab" id="t-ios" aria-controls="p-ios" aria-selected="true">iPad / iPhone</button>
           <button class="tab" role="tab" id="t-android" aria-controls="p-android" aria-selected="false">Android</button>
-          <button class="tab" role="tab" id="t-pc" aria-controls="p-pc" aria-selected="false">Laptop / Board</button>
+          <button class="tab" role="tab" id="t-pc" aria-controls="p-pc" aria-selected="false">Laptop / PC</button>
+          <button class="tab" role="tab" id="t-board" aria-controls="p-board" aria-selected="false">Digital board</button>
         </div>
         <div role="tabpanel" id="p-ios" aria-labelledby="t-ios">
           <ol>
@@ -366,6 +375,21 @@
             <li><span>Click <b>Install app</b> above, or the install icon <kbd>⊕</kbd> at the right end of the address bar.<em class="hi">Upar "Install app" ya address bar ke install icon par click kijiye.</em></span></li>
             <li><span>Teachly opens in its own window and gets a desktop / Start menu icon.<em class="hi">Teachly apni window mein khulega, desktop par icon bhi aa jayega.</em></span></li>
           </ol>
+        </div>
+        <div role="tabpanel" id="p-board" aria-labelledby="t-board" hidden>
+          <p class="hi" style="margin: 0 0 14px">Works on Android smart panels and Windows (OPS) boards. Pick one way:</p>
+          <h3>A. Board has internet</h3>
+          <ol>
+            <li><span>Open this page in the board's <b>Chrome</b> or <b>Edge</b> browser.<em class="hi">Board ke Chrome ya Edge mein yeh page kholiye.</em></span></li>
+            <li><span>Tap <b>Install app</b> (top of this page or the browser menu <kbd>⋮</kbd>). Teachly gets its own icon on the board.<em class="hi">"Install app" dabaiye — board par Teachly ka icon aa jayega.</em></span></li>
+          </ol>
+          <h3>B. No internet, or the browser can't install apps</h3>
+          <ol>
+            <li><span>Download the single file <b>Teachly.html</b> (4 MB) — on the board itself, or on a laptop and copy it to a <b>pen drive</b>.<em class="hi">Teachly.html download kijiye, ya laptop se pen drive mein copy kijiye.</em></span></li>
+            <li><span>On the board, open the file from Files / File Manager — it opens in the browser. No internet or install needed.<em class="hi">Board par file kholiye — bina internet ke chalega.</em></span></li>
+            <li><span>Keep using the same file each time: your lessons are saved inside that board's browser.<em class="hi">Har baar wahi file kholiye, lesson save rehte hain.</em></span></li>
+          </ol>
+          <p style="margin: 16px 0 0"><a class="btn primary" href="./Teachly.html" download="Teachly.html">Download Teachly.html</a></p>
         </div>
       </section>
 
@@ -394,7 +418,7 @@
         </ul>
       </section>
 
-      <footer>Teachly by Physica · Free · Your lessons stay on your device</footer>
+      <footer>Teachly by Physica · Free · Your lessons stay on your device · <a href="./Teachly.html" download="Teachly.html" style="color: inherit">Offline file (Teachly.html)</a></footer>
     </main>
     <div class="toast" id="toast" role="status"></div>
 
@@ -419,7 +443,9 @@
         tabs.forEach(function (t) { t.addEventListener('click', function () { select(t.id); }); });
         var ua = navigator.userAgent;
         var apple = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-        select(apple ? 't-ios' : /Android/.test(ua) ? 't-android' : 't-pc');
+        // Big touch screens that are not phones/tablets are most likely classroom boards.
+        var bigTouch = navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) >= 1000;
+        select(apple ? 't-ios' : bigTouch ? 't-board' : /Android/.test(ua) ? 't-android' : 't-pc');
 
         // One-tap install where the browser supports it (Chrome, Edge, Android).
         var deferred = null;

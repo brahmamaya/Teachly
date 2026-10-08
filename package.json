@@ -2,14 +2,15 @@
   "name": "teachly",
   "private": true,
   "version": "1.0.0",
-  "description": "Teachly — a smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
+  "description": "Teachly \u2014 a smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:single": "vite build --mode single --config vite.single.config.ts"
   },
   "license": "MIT",
   "dependencies": {
