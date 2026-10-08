@@ -895,11 +895,6 @@ export class App {
     });
     this.root.querySelector('.zoom-pill')!.addEventListener('click', () => this.action('zoom-reset'));
     this.board.el.addEventListener('pointerdown', () => this.closePopover(), true);
-    // While writing, the toolbars fade back so the board is fully visible.
-    this.board.el.addEventListener('pointerdown', () => this.root.classList.add('drawing'));
-    const done = () => this.root.classList.remove('drawing');
-    window.addEventListener('pointerup', done);
-    window.addEventListener('pointercancel', done);
   }
 
   private updatePageLabel(): void {
