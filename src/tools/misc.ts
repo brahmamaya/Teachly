@@ -279,11 +279,3 @@ export class CompassTool implements Tool {
   }
 }
 
-/** Hand tool: the board does the moving (drag) and zooming (pinch / double-tap). */
-export class HandTool implements Tool {
-  cursor = 'grab';
-  down(): void {}
-  move(): void {}
-  up(): void {}
-  cancel(): void {}
-}

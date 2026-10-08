@@ -3219,3 +3219,18 @@ button:focus-visible {
   background: #16213a;
   color: #a5f3fc;
 }
+
+/* Slide mode toggle (✋): glows while on, independent of the active tool. */
+#app .tb-btn.tb-toggle.on {
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.14);
+  box-shadow: inset 0 0 0 1.5px rgba(34, 211, 238, 0.7), 0 0 14px rgba(34, 211, 238, 0.35);
+}
+#app:not([data-board='dark']) .tb-btn.tb-toggle.on {
+  color: #0e7490;
+  background: rgba(14, 116, 144, 0.1);
+  box-shadow: inset 0 0 0 1.5px rgba(14, 116, 144, 0.7);
+}
+#app.slide-on .board {
+  cursor: grab;
+}

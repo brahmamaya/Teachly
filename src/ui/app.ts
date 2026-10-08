@@ -21,7 +21,7 @@ import { FillTool } from '../tools/fill';
 import { LaserTool } from '../tools/laser';
 import { TapeTool } from '../tools/tape';
 import { makeTable, resizeTable, TableEditor } from '../tools/table';
-import { CompassTool, HandTool, ShapeTool } from '../tools/misc';
+import { CompassTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
 import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
@@ -146,7 +146,6 @@ export class App {
       ['compass', new CompassTool(this.board)],
       ['laser', new LaserTool(this.board)],
       ['tape', new TapeTool(this.board)],
-      ['hand', new HandTool()],
     ];
     for (const [id, t] of tools) this.board.tools.set(id, t);
     this.board.updateCursor();
@@ -234,7 +233,7 @@ export class App {
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       <button class="tb-grip" data-grip title="Drag to move the toolbar to any edge" aria-label="Move toolbar"><svg viewBox="0 0 12 20" width="10" height="18" fill="currentColor"><circle cx="3" cy="4" r="1.6"/><circle cx="9" cy="4" r="1.6"/><circle cx="3" cy="10" r="1.6"/><circle cx="9" cy="10" r="1.6"/><circle cx="3" cy="16" r="1.6"/><circle cx="9" cy="16" r="1.6"/></svg></button>
       ${tool('select', 'select', 'Select')}
-      ${tool('hand', 'pan', 'Hand — drag to move the board, pinch or scroll to zoom')}
+      <button class="tb-btn tb-toggle ${t.slide ? 'on' : ''}" data-act="slide" title="Slide mode — move the board while you write" aria-pressed="${t.slide}">${icon('pan', 22)}</button>
       ${tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
       ${tool('eraser', 'eraser', 'Eraser')}
       ${tool('shape', 'shapes', 'Shapes')}
@@ -304,7 +303,6 @@ export class App {
       else {
         this.closePopover();
         store.setTool({ tool: id });
-        if (id === 'hand') toast('Hand: slide the board any way for more space · pinch to zoom · double-tap = zoom / back to page', 4000);
         // Shapes: show the picker right away, a shape must be chosen first.
         if (id === 'shape') this.togglePopover('shape', this.toolbar.querySelector('[data-tool=shape]') as HTMLElement);
       }
@@ -611,6 +609,19 @@ export class App {
         this.closePopover();
         this.pages.toggle();
         return;
+      case 'slide': {
+        const on = !store.tool.slide;
+        store.setTool({ slide: on });
+        if (on && store.tool.tool !== 'pen' && store.tool.tool !== 'eraser') store.setTool({ tool: 'pen' });
+        return toast(
+          on
+            ? store.settings.penOnly
+              ? 'Slide ON — pen writes, finger slides the board · pinch to zoom'
+              : 'Slide ON — one finger writes, two fingers slide · mouse: right-drag or scroll slides'
+            : 'Slide OFF — board fixed',
+          3500,
+        );
+      }
       case 'zoom-reset':
         return b.fitPage();
       case 'prev':

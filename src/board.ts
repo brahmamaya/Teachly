@@ -177,13 +177,13 @@ export class Board {
    * The board never drifts: you cannot zoom out past the page, and when
    * zoomed in you can only move around inside it.
    */
-  /** The view was moved with the Hand tool: keep it until "Whole page". */
+  /** The view was moved in slide mode: keep it until "Back to page". */
   private navFree = false;
   private lastHandTap = { t: 0, x: 0, y: 0 };
 
   /** May the view move / zoom right now? (Hand tool, or zoom allowed in the menu.) */
   private get free(): boolean {
-    return store.settings.allowZoom || store.tool.tool === 'hand' || this.navFree;
+    return store.settings.allowZoom || store.tool.slide || this.navFree;
   }
 
   setCam(c: Camera): void {
@@ -196,7 +196,7 @@ export class Board {
     // Free board: slide anywhere (the board goes on beyond the page),
     // zoom from a wide overview up to 6× the page.
     const z = Math.max(fit.z * 0.3, Math.min(fit.z * 6, c.z));
-    if (store.tool.tool === 'hand') this.navFree = true;
+    if (store.tool.slide) this.navFree = true;
     store.setCamera({ x: c.x, y: c.y, z });
   }
 
@@ -467,21 +467,6 @@ export class Board {
       return;
     }
 
-    // Hand tool: every finger, pen or mouse moves the board; double-tap
-    // zooms in 2× there, or back to the whole page.
-    if (store.tool.tool === 'hand') {
-      const now = performance.now(), lt = this.lastHandTap;
-      if (now - lt.t < 320 && Math.hypot(p.sx - lt.x, p.sy - lt.y) < 40) {
-        if (this.isHome) this.zoomAt(p.sx, p.sy, 2);
-        else this.fitPage();
-        this.lastHandTap = { t: 0, x: 0, y: 0 };
-      } else this.lastHandTap = { t: now, x: p.sx, y: p.sy };
-      this.routed.set(p.id, 'pan');
-      this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
-      this.el.classList.add('panning');
-      return;
-    }
-
     // Middle button, space+drag, or finger when pen-only → pan.
     // Once a stylus has been used, fingers and palms only move the board
     // (palm rejection, like a real tablet).
@@ -503,7 +488,21 @@ export class Board {
       }
       if (palmDrawing) this.cancelTool();
     }
-    if (p.button === 1 || this.spaceDown || (!multi && store.settings.penOnly && p.type === 'touch')) {
+    // Slide mode (✋): the pen keeps writing while fingers (once a stylus is
+    // in use) or the right mouse button slide the board; on boards without
+    // a stylus one finger writes and two fingers slide.
+    const slide = store.tool.slide;
+    const slidePan = slide && (p.button === 2 || (p.type === 'touch' && store.settings.penOnly && !multi));
+    if (p.button === 1 || this.spaceDown || slidePan || (!multi && store.settings.penOnly && p.type === 'touch')) {
+      if (slide) {
+        // Double-tap: zoom in 2× there, or back to the whole page.
+        const now = performance.now(), lt = this.lastHandTap;
+        if (now - lt.t < 320 && Math.hypot(p.sx - lt.x, p.sy - lt.y) < 40) {
+          if (this.isHome) this.zoomAt(p.sx, p.sy, 2);
+          else this.fitPage();
+          this.lastHandTap = { t: 0, x: 0, y: 0 };
+        } else this.lastHandTap = { t: now, x: p.sx, y: p.sy };
+      }
       this.routed.set(p.id, 'pan');
       this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
       this.el.classList.add('panning');

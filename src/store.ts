@@ -32,6 +32,8 @@ export interface ToolState {
   fillColor: string;
   laserColor: string;
   tapeColor: string;
+  /** Slide mode (✋): the board can be slid / zoomed while writing. */
+  slide: boolean;
 }
 
 type Listener = () => void;
@@ -88,6 +90,7 @@ export class Store {
     fillColor: '#3b82f6',
     laserColor: '#ef4444',
     tapeColor: '#f59e0b',
+    slide: false,
   };
 
   private undoStack: Snapshot[] = [];
