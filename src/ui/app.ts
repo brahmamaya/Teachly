@@ -223,6 +223,8 @@ export class App {
       <button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 22)}</button>
       <button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 22)}</button>
       <button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 22)}</button>
+      <button class="tb-btn" data-act="timer" title="Timer for a question">${icon('timer', 22)}</button>
+      <button class="tb-btn" data-act="graph" title="Graph from an equation (y = …)">${icon('graph', 22)}</button>
       <div class="tb-pagenav">
         <button class="icon-btn" data-act="prev" title="Previous page" aria-label="Previous page">${icon('prev')}</button>
         <span class="page-label">${store.index + 1} / ${store.doc.pages.length}</span>
@@ -399,6 +401,7 @@ export class App {
         break;
       case 'shape':
         pop.innerHTML = `<div class="shape-grid">${SHAPES.map(([k, n, svg]) => `<button class="shape-btn ${t.shape === k ? 'on' : ''}" data-shape="${k}" title="${n}" aria-label="${n}"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${svg}</svg></button>`).join('')}</div>
+          <button class="btn wide" data-act="graph">${icon('graph', 20)} Graph from an equation (y = …)</button>
           <div class="muted small center">Draw it on the board, then tap it to change colour, size or fill.</div>`;
         break;
       case 'insert':

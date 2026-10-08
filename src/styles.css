@@ -2315,3 +2315,304 @@ button:focus-visible {
   letter-spacing: 0.02em;
   text-transform: none;
 }
+
+/* ---------- Question timer: liquid glass ---------- */
+
+.qtimer {
+  --g-text: #ffffff;
+  --g-soft: rgba(255, 255, 255, 0.72);
+  --g-line: rgba(255, 255, 255, 0.28);
+  --g-fill: rgba(255, 255, 255, 0.1);
+  --ring: #ffffff;
+  position: fixed;
+  z-index: 4700;
+  width: 300px;
+  padding: 14px 18px 16px;
+  border-radius: 34px;
+  color: var(--g-text);
+  font-family: 'Exo 2', system-ui, sans-serif;
+  /* Liquid glass: frosted, slightly tinted, with a bright rim and soft depth. */
+  background:
+    radial-gradient(120% 60% at 20% 0%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+  backdrop-filter: blur(26px) saturate(190%) brightness(1.05);
+  -webkit-backdrop-filter: blur(26px) saturate(190%) brightness(1.05);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    0 4px 14px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: qt-in 0.45s cubic-bezier(0.34, 1.36, 0.64, 1);
+  transition: width 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), padding 0.35s, border-radius 0.35s, box-shadow 0.3s;
+}
+
+#app:not([data-board='dark']) .qtimer {
+  --g-text: #0f172a;
+  --g-soft: rgba(15, 23, 42, 0.65);
+  --g-line: rgba(15, 23, 42, 0.14);
+  --g-fill: rgba(15, 23, 42, 0.06);
+  --ring: #0f172a;
+  background:
+    radial-gradient(120% 60% at 20% 0%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.32));
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 24px 60px rgba(15, 23, 42, 0.22),
+    0 4px 14px rgba(15, 23, 42, 0.12);
+}
+
+@keyframes qt-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+}
+
+.qt-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.qt-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--g-soft);
+}
+
+.qt-icon {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--g-fill);
+  color: var(--g-text);
+  display: grid;
+  place-items: center;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.qt-icon:active {
+  transform: scale(0.9);
+}
+
+.qt-ring {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  cursor: grab;
+  touch-action: none;
+  transition: width 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), height 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.qt-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.qt-track {
+  fill: none;
+  stroke: var(--g-line);
+  stroke-width: 10;
+}
+
+.qt-prog {
+  fill: none;
+  stroke: var(--ring);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear, stroke 0.3s;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+}
+
+.qt-time {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 800 64px/1 'Orbitron', 'Exo 2', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  padding-bottom: 14px;
+}
+
+.qt-sub {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 54px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--g-soft);
+}
+
+.qt-presets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.qt-chip {
+  border: 1px solid var(--g-line);
+  background: var(--g-fill);
+  color: var(--g-text);
+  border-radius: 999px;
+  padding: 7px 13px;
+  font: 700 13px 'Exo 2', system-ui, sans-serif;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.qt-chip:active,
+.qt-round:active {
+  transform: scale(0.92);
+}
+
+.qt-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.qt-round {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 1px solid var(--g-line);
+  background: var(--g-fill);
+  color: var(--g-text);
+  font: 700 13px 'Exo 2', system-ui, sans-serif;
+  transition: transform 0.15s, background 0.2s;
+}
+
+.qt-go {
+  width: 92px;
+  height: 58px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--ring);
+  color: #fff;
+  font: 800 17px 'Exo 2', system-ui, sans-serif;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.3s;
+}
+
+#app[data-board='dark'] .qt-go {
+  color: #000;
+}
+
+.qt-go:active {
+  transform: scale(0.94);
+}
+
+.qt-reset {
+  border: 0;
+  background: none;
+  color: var(--g-soft);
+  font: 600 13px 'Exo 2', system-ui, sans-serif;
+  padding: 2px 10px;
+}
+
+/* Last 10 seconds: amber; time up: red glow and a gentle pulse. */
+.qtimer.warn {
+  --ring: #f59e0b;
+}
+
+.qtimer.done {
+  --ring: #ef4444;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 0 0 2px rgba(239, 68, 68, 0.6),
+    0 0 60px rgba(239, 68, 68, 0.55),
+    0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.qtimer.done .qt-time {
+  animation: qt-pulse 0.9s ease-in-out infinite;
+  color: #ef4444;
+}
+
+#app[data-board='dark'] .qtimer.done .qt-go {
+  color: #fff;
+}
+
+@keyframes qt-pulse {
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+/* Small pill while students work: just the ring and time. Tap to open. */
+.qtimer.mini {
+  width: 150px;
+  padding: 10px;
+  border-radius: 50%;
+  gap: 0;
+}
+
+.qtimer.mini .qt-head,
+.qtimer.mini .qt-presets,
+.qtimer.mini .qt-ctrl,
+.qtimer.mini .qt-reset,
+.qtimer.mini .qt-sub {
+  display: none;
+}
+
+.qtimer.mini .qt-ring {
+  width: 130px;
+  height: 130px;
+  cursor: pointer;
+}
+
+.qtimer.mini .qt-time {
+  font-size: 34px;
+  padding-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qtimer,
+  .qtimer.done .qt-time {
+    animation: none;
+  }
+}
+
+/* Bigger on big boards, like the rest of the controls. */
+.qtimer {
+  scale: var(--ui);
+  transform-origin: 0 0;
+}
+
+/* Glass tint strong enough that the time stays readable over any writing
+   (some boards draw ink on a fast layer the blur cannot see). */
+.qtimer {
+  background:
+    radial-gradient(120% 60% at 20% 0%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(160deg, rgba(48, 48, 54, 0.72), rgba(14, 14, 18, 0.78));
+}
+#app:not([data-board='dark']) .qtimer {
+  background:
+    radial-gradient(120% 60% at 20% 0%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(236, 239, 244, 0.78));
+}
