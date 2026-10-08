@@ -145,8 +145,87 @@ export function buildShape(kind: ShapeKind, x1: number, y1: number, x2: number, 
         mk(ellipsePts(cx, cy, rr, rr * 0.3, Math.PI, Math.PI * 2), false, s2, { dash: true }),
       ];
     }
+    case 'axes2':
+      return axes2(l, t, r, b, st);
+    case 'axes3':
+      return axes3(l, t, r, b, st);
   }
   return [];
+}
+
+// ---------------------------------------------------------------------------
+// Graph axes. Labels are drawn as strokes too, so the whole set scales,
+// recolours and moves together like any other shape.
+
+function letter(ch: string, cx: number, cy: number, s: number, st: ShapeStyle): PathEl[] {
+  const h = s / 2;
+  const ls = { ...st, fill: null, size: Math.max(1.5, st.size * 0.75) };
+  switch (ch) {
+    case 'x':
+      return [mk([[cx - h, cy - h], [cx + h, cy + h]], false, ls), mk([[cx + h, cy - h], [cx - h, cy + h]], false, ls)];
+    case 'y':
+      return [mk([[cx - h, cy - h], [cx, cy + h * 0.15]], false, ls), mk([[cx + h, cy - h], [cx - h * 0.55, cy + h * 1.6]], false, ls)];
+    case 'z':
+      return [mk([[cx - h, cy - h], [cx + h, cy - h], [cx - h, cy + h], [cx + h, cy + h]], false, ls)];
+    case 'O':
+      return [mk(ellipsePts(cx, cy, h * 0.75, h), true, { ...ls, fill: null })];
+  }
+  return [];
+}
+
+function ticks(ax: number, ay: number, bx: number, by: number, n: number, len: number, st: ShapeStyle): PathEl[] {
+  // Small marks across the segment a→b (excluding the ends).
+  const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1;
+  const nx = (-dy / L) * len, ny = (dx / L) * len;
+  const ts = { ...st, fill: null, size: Math.max(1.2, st.size * 0.6) };
+  const out: PathEl[] = [];
+  for (let i = 1; i < n; i++) {
+    const x = ax + (dx * i) / n, y = ay + (dy * i) / n;
+    out.push(mk([[x - nx, y - ny], [x + nx, y + ny]], false, ts));
+  }
+  return out;
+}
+
+/** x–y axes through the middle of the box, with arrows, ticks and labels. */
+function axes2(l: number, t: number, r: number, b: number, st: ShapeStyle): PathEl[] {
+  const cx = (l + r) / 2, cy = (t + b) / 2;
+  const s = Math.max(12, Math.min(36, Math.min(r - l, b - t) * 0.06));
+  const a = { ...st, fill: null };
+  const n = 5; // ticks per half axis
+  return [
+    mk([[l, cy], [r, cy]], false, a, { arrow: 2 }),
+    mk([[cx, b], [cx, t]], false, a, { arrow: 2 }),
+    ...ticks(cx, cy, r, cy, n, s * 0.22, a),
+    ...ticks(cx, cy, l, cy, n, s * 0.22, a),
+    ...ticks(cx, cy, cx, t, n, s * 0.22, a),
+    ...ticks(cx, cy, cx, b, n, s * 0.22, a),
+    ...letter('x', r - s * 0.5, cy + s * 1.1, s, st),
+    ...letter('y', cx + s * 1.0, t + s * 0.5, s, st),
+    ...letter('O', cx - s * 0.75, cy + s * 0.95, s * 0.9, st),
+  ];
+}
+
+/** 3-D axes: z up, y to the right, x coming out towards the viewer. */
+function axes3(l: number, t: number, r: number, b: number, st: ShapeStyle): PathEl[] {
+  const w = r - l, h = b - t;
+  const ox = l + w * 0.42, oy = t + h * 0.58;
+  const s = Math.max(12, Math.min(36, Math.min(w, h) * 0.06));
+  const a = { ...st, fill: null };
+  // +x points down-left (towards the viewer); the hidden halves are dashed.
+  const xx = l + w * 0.06, xy = b - h * 0.04;
+  const k = 0.45;
+  return [
+    mk([[ox, oy], [r, oy]], false, a, { arrow: 1 }),
+    mk([[ox, oy], [ox, t]], false, a, { arrow: 1 }),
+    mk([[ox, oy], [xx, xy]], false, a, { arrow: 1 }),
+    mk([[ox, oy], [ox - (r - ox) * k, oy]], false, a, { dash: true }),
+    mk([[ox, oy], [ox, oy + (oy - t) * k]], false, a, { dash: true }),
+    mk([[ox, oy], [ox + (ox - xx) * k, oy + (oy - xy) * k]], false, a, { dash: true }),
+    ...letter('y', r - s * 0.4, oy + s * 1.2, s, st),
+    ...letter('z', ox + s * 1.0, t + s * 0.5, s, st),
+    ...letter('x', xx + s * 1.3, xy - s * 0.2, s, st),
+    ...letter('O', ox + s * 0.8, oy + s * 0.95, s * 0.9, st),
+  ];
 }
 
 /**

@@ -81,6 +81,8 @@ const SHAPES: [ShapeKind, string, string][] = [
   ['cylinder', 'Cylinder', '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/>'],
   ['cone', 'Cone', '<path d="M12 2L4 19M12 2l8 17"/><ellipse cx="12" cy="19" rx="8" ry="3"/>'],
   ['sphere', 'Sphere', '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="9" ry="3"/>'],
+  ['axes2', 'x–y axes (graph)', '<path d="M2 12h20M12 22V2M20 10l2 2-2 2M10 4l2-2 2 2M4 10l-2 2 2 2M10 20l2 2 2-2"/>'],
+  ['axes3', 'x–y–z axes (3D)', '<path d="M10 14h12M10 14V2M10 14l-7 7M20 12l2 2-2 2M8 4l2-2 2 2"/><path d="M10 14H5M10 14v5M10 14l4-4" stroke-dasharray="2 2"/>'],
 ];
 
 type PropSection = 'color' | 'width' | 'fill' | null;
@@ -405,6 +407,7 @@ export class App {
           ${this.gridBtn('pdf', 'pdf', 'PDF / Book')}
           ${this.gridBtn('pptx', 'slides', 'PowerPoint')}
           ${this.gridBtn('table', 'table', 'Table')}
+          ${this.gridBtn('graph', 'graph', 'Graph y = f(x)')}
           ${this.gridBtn('page', 'pages', 'New page')}</div>`;
         break;
       case 'table':
@@ -449,6 +452,8 @@ export class App {
           <div class="menu-list">
             <button class="menu-item" data-act="library">${icon('notebook', 20)}My notebooks</button>
             <button class="menu-item" data-act="new">${icon('new', 20)}New notebook</button>
+            <button class="menu-item" data-act="open-pdf">${icon('pdf', 20)}Open PDF</button>
+            <button class="menu-item" data-act="open-pptx">${icon('slides', 20)}Open PowerPoint</button>
             <button class="menu-item" data-act="record">${icon('record', 20)}Record lesson (video)</button>
             <button class="menu-item" data-act="open">${icon('open', 20)}Open file</button>
             <button class="menu-item" data-act="save">${icon('save', 20)}Save file (to share)</button>
@@ -647,6 +652,20 @@ export class App {
           toast('New notebook — the old one is in My notebooks');
         });
         return;
+      case 'open-pdf':
+      case 'open-pptx': {
+        const pdf = act === 'open-pdf';
+        void pickFiles(pdf ? 'application/pdf,.pdf' : '.pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation').then(async (files) => {
+          const f = files[0];
+          if (!f) return;
+          // Open it as its own notebook; the current one stays in My notebooks.
+          await saveNotebook(store.doc);
+          store.loadDoc(await saveNotebook(blankNotebook(f.name.replace(/\.\w+$/, ''), store.page.bg)));
+          if (pdf) await this.withProgress('Opening PDF', (p) => importPdf(b, f, p));
+          else await this.openSlides(f);
+        });
+        return;
+      }
       case 'library':
         this.closePopover();
         if (this.pages.open) this.pages.toggle();

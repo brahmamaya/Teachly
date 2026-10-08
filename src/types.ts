@@ -119,7 +119,9 @@ export type ShapeKind =
   | 'cube'
   | 'cylinder'
   | 'cone'
-  | 'sphere';
+  | 'sphere'
+  | 'axes2'
+  | 'axes3';
 
 export type EraserMode = 'stroke' | 'point';
 
