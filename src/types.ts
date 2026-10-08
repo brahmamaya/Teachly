@@ -47,6 +47,8 @@ export interface TextEl extends BoxBase {
   color: string;
   fontSize: number;
   bold?: boolean;
+  /** Typeface: default (Inter), 'orbitron' (numbers, futuristic) or 'exo' (Exo 2). */
+  font?: 'orbitron' | 'exo';
   bg?: string | null;
 }
 

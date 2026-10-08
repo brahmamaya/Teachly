@@ -211,9 +211,17 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): st
   return out;
 }
 
-export function textFont(el: Pick<TextEl, 'fontSize' | 'bold'>): string {
-  return `${el.bold ? '700' : '500'} ${el.fontSize}px "Inter", "Noto Sans", "Noto Sans Devanagari", system-ui, sans-serif`;
+const FAMILY: Record<string, string> = {
+  orbitron: '"Orbitron", "Exo 2", system-ui, sans-serif',
+  exo: '"Exo 2", "Inter", system-ui, sans-serif',
+};
+
+export function textFont(el: Pick<TextEl, 'fontSize' | 'bold'> & { font?: TextEl['font'] }): string {
+  const fam = (el.font && FAMILY[el.font]) || '"Inter", "Noto Sans", "Noto Sans Devanagari", system-ui, sans-serif';
+  return `${el.bold ? '700' : '500'} ${el.fontSize}px ${fam}`;
 }
+
+let measureCtx: CanvasRenderingContext2D | null = null;
 
 function drawText(ctx: CanvasRenderingContext2D, el: TextEl): void {
   if (el.bg) {
@@ -235,9 +243,10 @@ function drawText(ctx: CanvasRenderingContext2D, el: TextEl): void {
 }
 
 /** Measure a text element's natural size (auto width up to maxW). */
-export function measureText(text: string, fontSize: number, bold: boolean, maxW: number, padded: boolean): { w: number; h: number } {
-  const c = document.createElement('canvas').getContext('2d')!;
-  c.font = textFont({ fontSize, bold });
+export function measureText(text: string, fontSize: number, bold: boolean, maxW: number, padded: boolean, font?: TextEl['font']): { w: number; h: number } {
+  // One shared canvas: measuring is called a lot (graph labels).
+  const c = (measureCtx ??= document.createElement('canvas').getContext('2d')!);
+  c.font = textFont({ fontSize, bold, font });
   const pad = padded ? fontSize * 0.5 : 0;
   let w = 0;
   for (const l of text.split('\n')) w = Math.max(w, c.measureText(l).width);
