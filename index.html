@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <!-- Installed on iPad / iPhone home screen: open full screen like an app. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Teachly" />
+    <meta name="description" content="Teachly — a smooth, feature-rich interactive whiteboard for smart boards and classrooms." />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>Teachly by Physica</title>
+    <script type="module" crossorigin src="./assets/index-4dUCm965.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BEB_JhAz.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- Opening screen in the Physica style: shown instantly, faded out by src/main.ts after ~2 s. -->
+    <div id="splash" aria-label="Teachly by Physica">
+      <style>#splash{z-index:99999;color:#fff;background:#000;place-items:center;font-family:"Exo 2",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;transition:opacity .5s,filter .5s;display:grid;position:fixed;inset:0}#splash.hide{opacity:0;filter:blur(6px);pointer-events:none}#splash .sp-in{flex-direction:column;align-items:center;gap:22px;display:flex}#splash .sp-in>*{animation:.9s cubic-bezier(.2,.8,.2,1) both sp-up}#splash .sp-in>:nth-child(2){animation-delay:.12s}#splash .sp-in>:nth-child(3){animation-delay:.3s}#splash .sp-atom{filter:drop-shadow(0 0 22px #ffffff59);width:clamp(84px,14vmin,150px);height:auto}#splash .sp-orbit{transform-origin:32px 32px;animation:6s linear infinite sp-spin}#splash .sp-name{letter-spacing:.08em;text-transform:uppercase;background:linear-gradient(90deg,#fff 0%,#9a9a9a 30%,#fff 50%,#9a9a9a 70%,#fff 100%) 0 0/250% 100%;color:#0000;filter:drop-shadow(0 0 18px #ffffff4d);-webkit-background-clip:text;background-clip:text;font-family:Orbitron,"Exo 2",sans-serif;font-size:clamp(38px,8vmin,92px);font-weight:900;line-height:1;animation:.9s cubic-bezier(.2,.8,.2,1) .12s both sp-up,4s linear infinite sp-shine}#splash .sp-by{letter-spacing:.2em;text-transform:uppercase;color:#bdbdbd;align-items:center;gap:10px;font-size:clamp(14px,2.2vmin,22px);font-weight:600;display:flex}#splash .sp-by b{letter-spacing:.06em;text-transform:none;color:#fff;font-family:Orbitron,"Exo 2",sans-serif;font-weight:800}@keyframes sp-up{0%{opacity:0;filter:blur(4px);transform:translateY(18px)}}@keyframes sp-spin{to{transform:rotate(360deg)}}@keyframes sp-shine{0%{background-position:0%}to{background-position:100%}}@media (prefers-reduced-motion:reduce){#splash .sp-in>*,#splash .sp-orbit,#splash .sp-name{animation:none}}</style>
+      <div class="sp-in">
+        <!-- Physica atom mark -->
+        <svg class="sp-atom" viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="3.4" aria-hidden="true">
+          <circle cx="32" cy="32" r="17" />
+          <g class="sp-orbit"><ellipse cx="32" cy="32" rx="25" ry="8.6" transform="rotate(-55 32 32)" /></g>
+          <circle cx="32" cy="32" r="3.8" fill="#fff" stroke="none" />
+        </svg>
+        <div class="sp-name">Teachly</div>
+        <div class="sp-by">by <b>physica.</b></div>
+      </div>
+    </div>
+  </body>
+</html>

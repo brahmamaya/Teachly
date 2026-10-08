@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Download Teachly by Physica — a free, smooth interactive whiteboard for classrooms. Works offline on iPad, Android, Windows, Mac and smart boards." />
+    <meta property="og:title" content="Teachly by Physica" />
+    <meta property="og:description" content="Free interactive whiteboard for teachers. Install it on iPad, Android, laptop or smart board." />
+    <meta property="og:image" content="icon-512.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Teachly" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <title>Download Teachly</title>
+    <style>
+      /* Physica style: pure black, white glass, Orbitron display type. One centred column. */
+      @font-face {
+        font-family: 'Orbitron';
+        src: url('fonts/orbitron.woff2') format('woff2');
+        font-weight: 400 900;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Exo 2';
+        src: url('fonts/exo2.woff2') format('woff2');
+        font-weight: 100 900;
+        font-display: swap;
+      }
+      :root {
+        --bg: #000000;
+        --panel: rgba(255, 255, 255, 0.05);
+        --panel-2: rgba(255, 255, 255, 0.08);
+        --line: rgba(255, 255, 255, 0.14);
+        --text: #f6f6f6;
+        --muted: #a3a3a3;
+        --accent: #ffffff;
+        --chalk: #ffffff;
+        --display: 'Orbitron', 'Exo 2', system-ui, sans-serif;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Exo 2', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.5;
+        -webkit-tap-highlight-color: transparent;
+      }
+      body {
+        padding: calc(28px + env(safe-area-inset-top, 0px)) 18px calc(40px + env(safe-area-inset-bottom, 0px));
+        background:
+          radial-gradient(900px 480px at 50% -160px, rgba(255, 255, 255, 0.1), transparent 70%),
+          var(--bg);
+        min-height: 100vh;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+      .hero {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding-top: 12px;
+      }
+      .mark {
+        width: 104px;
+        height: auto;
+        filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.35));
+      }
+      .mark .orbit {
+        transform-origin: 32px 32px;
+        animation: spin 6s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      h1 {
+        margin: 0;
+        font-family: var(--display);
+        font-weight: 900;
+        font-size: clamp(38px, 9vw, 66px);
+        line-height: 1;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, #fff 0%, #9a9a9a 30%, #fff 50%, #9a9a9a 70%, #fff 100%);
+        background-size: 250% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: shine 6s linear infinite;
+        filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.3));
+      }
+      @keyframes shine {
+        from {
+          background-position: 0% 50%;
+        }
+        to {
+          background-position: 100% 50%;
+        }
+      }
+      .by {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #bdbdbd;
+      }
+      .by b {
+        font-family: var(--display);
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: none;
+        color: #fff;
+      }
+      .tagline {
+        margin: 6px 0 0;
+        max-width: 34em;
+        color: var(--muted);
+        font-size: 17px;
+        text-wrap: balance;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+        font: inherit;
+        font-weight: 700;
+        font-size: 17px;
+        padding: 14px 24px;
+        border-radius: 14px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 0.12s ease, background 0.15s ease;
+      }
+      .btn:hover {
+        background: #263044;
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn.primary {
+        font-family: var(--display);
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 15px;
+        border-radius: 999px;
+        border-color: transparent;
+        color: #000;
+        background: linear-gradient(90deg, #fff, #bdbdbd, #fff, #bdbdbd, #fff);
+        background-size: 300% 100%;
+        animation: shine 5s linear infinite;
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+      }
+      .btn.primary:hover {
+        background: linear-gradient(90deg, #fff, #d4d4d4, #fff, #d4d4d4, #fff);
+        background-size: 300% 100%;
+        box-shadow: 0 0 46px rgba(255, 255, 255, 0.5);
+      }
+      .btn:focus-visible,
+      .tab:focus-visible {
+        outline: 3px solid #fff;
+        outline-offset: 2px;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 22px;
+      }
+      h2 {
+        margin: 0 0 14px;
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        background: var(--panel-2);
+        padding: 5px;
+        border-radius: 14px;
+        margin-bottom: 18px;
+        overflow-x: auto;
+      }
+      .tab {
+        flex: 1;
+        border: 0;
+        background: none;
+        color: var(--muted);
+        font: inherit;
+        font-weight: 700;
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .tab[aria-selected='true'] {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      }
+      ol {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: step;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      ol li {
+        counter-increment: step;
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+      ol li::before {
+        content: counter(step);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        font-family: var(--display);
+      }
+      h3 {
+        margin: 6px 0 10px;
+        font-family: var(--display);
+        font-size: 13px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #fff;
+      }
+      h3 + ol {
+        margin-bottom: 18px;
+      }
+      ol li span {
+        padding-top: 4px;
+        min-width: 0;
+      }
+      .hi {
+        display: block;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      kbd {
+        display: inline-grid;
+        place-items: center;
+        min-width: 28px;
+        height: 26px;
+        padding: 0 6px;
+        border-radius: 7px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: #fff;
+        font: 700 14px system-ui, sans-serif;
+        vertical-align: middle;
+      }
+      .share {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 22px;
+        align-items: center;
+      }
+      .share > div:not(.qr) {
+        min-width: 0;
+        width: 100%;
+      }
+      .qr {
+        background: #fff;
+        border-radius: 16px;
+        padding: 12px;
+        width: 180px;
+        max-width: 100%;
+        aspect-ratio: 1;
+      }
+      .qr img {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .link {
+        display: flex;
+        gap: 8px;
+        margin: 10px 0 12px;
+      }
+      .link input {
+        flex: 1;
+        min-width: 0;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font: inherit;
+        font-size: 15px;
+      }
+      .link .btn {
+        padding: 10px 16px;
+        font-size: 15px;
+      }
+      .features {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .features li {
+        background: var(--panel-2);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 15px;
+      }
+      .features b {
+        display: block;
+        color: var(--chalk);
+        font-size: 14px;
+      }
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        transform: translateX(-50%);
+        background: #f1f5f9;
+        color: #0f172a;
+        font-weight: 700;
+        padding: 10px 18px;
+        border-radius: 12px;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        pointer-events: none;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      @media (max-width: 560px) {
+        .features {
+          grid-template-columns: 1fr;
+        }
+        .share {
+          grid-template-columns: 1fr;
+          justify-items: center;
+          text-align: center;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .btn,
+        .toast {
+          transition: none;
+        }
+        h1,
+        .btn.primary,
+        .mark .orbit {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <svg class="mark" viewBox="0 0 64 64" fill="none" stroke="#fff" stroke-width="3.4" aria-hidden="true">
+          <circle cx="32" cy="32" r="17" />
+          <g class="orbit"><ellipse cx="32" cy="32" rx="25" ry="8.6" transform="rotate(-55 32 32)" /></g>
+          <circle cx="32" cy="32" r="3.8" fill="#fff" stroke="none" />
+        </svg>
+        <h1>Teachly</h1>
+        <div class="by">by <b>physica.</b></div>
+        <p class="tagline">A free, smooth interactive whiteboard for classrooms. Install it once — it works without internet on iPad, Android, laptops and smart boards.</p>
+        <div class="actions">
+          <a class="btn primary" href="./">Open Teachly</a>
+          <button class="btn" id="install" type="button" hidden>Install app</button>
+        </div>
+      </header>
+
+      <section aria-labelledby="how">
+        <h2 id="how">Install on your device</h2>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="t-ios" aria-controls="p-ios" aria-selected="true">iPad / iPhone</button>
+          <button class="tab" role="tab" id="t-android" aria-controls="p-android" aria-selected="false">Android</button>
+          <button class="tab" role="tab" id="t-pc" aria-controls="p-pc" aria-selected="false">Laptop / PC</button>
+          <button class="tab" role="tab" id="t-board" aria-controls="p-board" aria-selected="false">Digital board / APK</button>
+        </div>
+        <div role="tabpanel" id="p-ios" aria-labelledby="t-ios">
+          <ol>
+            <li><span>Open this page in <b>Safari</b>.<em class="hi">Is page ko Safari mein kholiye.</em></span></li>
+            <li><span>Tap <b>Open Teachly</b>, then the <b>Share</b> button <kbd>⬆︎</kbd>.<em class="hi">Open Teachly dabaiye, phir upar Share button.</em></span></li>
+            <li><span>Choose <b>Add to Home Screen</b> <kbd>＋</kbd> and tap <b>Add</b>.<em class="hi">"Add to Home Screen" chuniye aur Add dabaiye.</em></span></li>
+            <li><span>Open <b>Teachly</b> from the home screen. It runs full screen and works offline.<em class="hi">Home screen se Teachly kholiye — bina internet ke bhi chalega.</em></span></li>
+          </ol>
+        </div>
+        <div role="tabpanel" id="p-android" aria-labelledby="t-android" hidden>
+          <ol>
+            <li><span>Open this page in <b>Chrome</b>.<em class="hi">Is page ko Chrome mein kholiye.</em></span></li>
+            <li><span>Tap <b>Install app</b> above. If you don't see it, open the menu <kbd>⋮</kbd> and choose <b>Install app</b> / <b>Add to Home screen</b>.<em class="hi">Upar "Install app" dabaiye, ya menu ⋮ se Install chuniye.</em></span></li>
+            <li><span>Open <b>Teachly</b> from your home screen or app drawer.<em class="hi">Home screen se Teachly kholiye.</em></span></li>
+          </ol>
+        </div>
+        <div role="tabpanel" id="p-pc" aria-labelledby="t-pc" hidden>
+          <ol>
+            <li><span>Open this page in <b>Chrome</b> or <b>Edge</b> (Windows, Mac, Chromebook or an Android smart board).<em class="hi">Chrome ya Edge mein kholiye.</em></span></li>
+            <li><span>Click <b>Install app</b> above, or the install icon <kbd>⊕</kbd> at the right end of the address bar.<em class="hi">Upar "Install app" ya address bar ke install icon par click kijiye.</em></span></li>
+            <li><span>Teachly opens in its own window and gets a desktop / Start menu icon.<em class="hi">Teachly apni window mein khulega, desktop par icon bhi aa jayega.</em></span></li>
+          </ol>
+        </div>
+        <div role="tabpanel" id="p-board" aria-labelledby="t-board" hidden>
+          <p class="hi" style="margin: 0 0 14px">Works on Android smart panels and Windows (OPS) boards. Pick one way:</p>
+          <h3>★ Android board: install the app from a pen drive (best)</h3>
+          <ol>
+            <li><span>Download <b>Teachly.apk</b> (1.4 MB) on a laptop or phone and copy it to a <b>pen drive</b>.<em class="hi">Teachly.apk download karke pen drive mein copy kijiye.</em></span></li>
+            <li><span>Put the pen drive in the board, open <b>Files / File Manager</b> and tap <b>Teachly.apk</b>.<em class="hi">Board mein pen drive lagaiye, File Manager se Teachly.apk par tap kijiye.</em></span></li>
+            <li><span>If the board asks, allow <b>Install unknown apps</b> for the File Manager, then tap <b>Install</b>.<em class="hi">"Install unknown apps" allow kijiye, phir Install dabaiye.</em></span></li>
+            <li><span>Open <b>Teachly</b> from the app list. It runs full screen, needs no internet, and saves files in <b>Downloads/Teachly</b>.<em class="hi">App list se Teachly kholiye — bina internet ke chalega.</em></span></li>
+          </ol>
+          <p style="margin: 12px 0 18px"><a class="btn primary" href="./Teachly.apk" download="Teachly.apk">Download Teachly.apk (Android)</a></p>
+          <p class="hi" style="margin: 0 0 14px">Needs Android 7.0 or newer. To update later, install the new Teachly.apk over the old one — your notebooks stay.</p>
+          <h3>A. Board has internet (no install file)</h3>
+          <ol>
+            <li><span>Open this page in the board's <b>Chrome</b> or <b>Edge</b> browser.<em class="hi">Board ke Chrome ya Edge mein yeh page kholiye.</em></span></li>
+            <li><span>Tap <b>Install app</b> (top of this page or the browser menu <kbd>⋮</kbd>). Teachly gets its own icon on the board.<em class="hi">"Install app" dabaiye — board par Teachly ka icon aa jayega.</em></span></li>
+          </ol>
+          <h3>B. Just open a file (no install)</h3>
+          <ol>
+            <li><span>Download the single file <b>Teachly.html</b> (4 MB) — on the board itself, or on a laptop and copy it to a <b>pen drive</b>.<em class="hi">Teachly.html download kijiye, ya laptop se pen drive mein copy kijiye.</em></span></li>
+            <li><span>On the board, open the file from Files / File Manager — it opens in the browser. No internet or install needed.<em class="hi">Board par file kholiye — bina internet ke chalega.</em></span></li>
+            <li><span>Keep using the same file each time: your lessons are saved inside that board's browser.<em class="hi">Har baar wahi file kholiye, lesson save rehte hain.</em></span></li>
+          </ol>
+          <p style="margin: 16px 0 0"><a class="btn primary" href="./Teachly.html" download="Teachly.html">Download Teachly.html</a></p>
+        </div>
+      </section>
+
+      <section aria-labelledby="share">
+        <div class="share">
+          <div class="qr"><img src="./qr.svg" alt="QR code that opens Teachly" /></div>
+          <div>
+            <h2 id="share">Share with other teachers</h2>
+            <p class="hi" style="margin: 0">Scan the QR code with a phone or tablet camera, or send the link.</p>
+            <div class="link">
+              <input id="url" readonly value="https://brahmamaya.github.io/Teachly/download.html" aria-label="Teachly download link" />
+              <button class="btn" id="copy" type="button">Copy</button>
+            </div>
+            <button class="btn primary" id="sharebtn" type="button" hidden>Share link</button>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="what">
+        <h2 id="what">What's inside</h2>
+        <ul class="features">
+          <li><b>Smooth pen</b>Pressure pen, highlighter, shapes that snap perfectly</li>
+          <li><b>Maths tools</b>Ruler, protractor, compass</li>
+          <li><b>Lessons</b>Insert PDF, PowerPoint, pictures and tables</li>
+          <li><b>Classroom</b>Timer, spotlight, screen cover, many pages</li>
+        </ul>
+      </section>
+
+      <footer>Teachly by Physica · Free · Your lessons stay on your device · <a href="./Teachly.apk" download="Teachly.apk" style="color: inherit">Android app (Teachly.apk)</a> · <a href="./Teachly.html" download="Teachly.html" style="color: inherit">Offline file (Teachly.html)</a></footer>
+    </main>
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      (function () {
+        var toastEl = document.getElementById('toast');
+        function toast(msg) {
+          toastEl.textContent = msg;
+          toastEl.classList.add('show');
+          setTimeout(function () { toastEl.classList.remove('show'); }, 2200);
+        }
+
+        // Tabs: pick the visitor's device automatically.
+        var tabs = [].slice.call(document.querySelectorAll('.tab'));
+        function select(id) {
+          tabs.forEach(function (t) {
+            var on = t.id === id;
+            t.setAttribute('aria-selected', String(on));
+            document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+          });
+        }
+        tabs.forEach(function (t) { t.addEventListener('click', function () { select(t.id); }); });
+        var ua = navigator.userAgent;
+        var apple = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+        // Big touch screens that are not phones/tablets are most likely classroom boards.
+        var bigTouch = navigator.maxTouchPoints > 0 && Math.min(screen.width, screen.height) >= 1000;
+        select(apple ? 't-ios' : bigTouch ? 't-board' : /Android/.test(ua) ? 't-android' : 't-pc');
+
+        // One-tap install where the browser supports it (Chrome, Edge, Android).
+        var deferred = null;
+        var installBtn = document.getElementById('install');
+        window.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          deferred = e;
+          installBtn.hidden = false;
+        });
+        installBtn.addEventListener('click', function () {
+          if (!deferred) return;
+          deferred.prompt();
+          deferred = null;
+          installBtn.hidden = true;
+        });
+        window.addEventListener('appinstalled', function () { toast('Teachly installed'); });
+
+        // Share / copy the link.
+        var url = document.getElementById('url');
+        document.getElementById('copy').addEventListener('click', function () {
+          var done = function () { toast('Link copied'); };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url.value).then(done, function () { url.select(); document.execCommand('copy'); done(); });
+          } else {
+            url.select();
+            document.execCommand('copy');
+            done();
+          }
+        });
+        var shareBtn = document.getElementById('sharebtn');
+        if (navigator.share) {
+          shareBtn.hidden = false;
+          shareBtn.addEventListener('click', function () {
+            navigator.share({ title: 'Teachly by Physica', text: 'Free interactive whiteboard for teachers — install it on your device:', url: url.value }).catch(function () {});
+          });
+        }
+
+        // Same offline worker as the app, so "Install app" is offered here too.
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function () {});
+      })();
+    </script>
+  </body>
+</html>
