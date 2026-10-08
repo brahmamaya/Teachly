@@ -119,7 +119,13 @@ export class App {
     this.root = root;
     root.innerHTML = `
       <div class="board" id="board"></div>
-      <div class="clock" aria-live="off"><b data-time></b></div>
+      <div class="corner" aria-hidden="true">
+        <div class="clock"><b data-time></b></div>
+        <div class="brand">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4"><circle cx="32" cy="32" r="17"/><ellipse cx="32" cy="32" rx="25" ry="8.6" transform="rotate(-55 32 32)"/><circle cx="32" cy="32" r="4" fill="currentColor" stroke="none"/></svg>
+          <span><b>TEACHLY</b><small>by physica</small></span>
+        </div>
+      </div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav></div>
       <div class="props" hidden></div>
@@ -181,12 +187,14 @@ export class App {
     this.applyScale();
     window.addEventListener('resize', () => this.applyScale());
     // Only a new button size needs a re-layout (other settings keep the menu open).
-    let uiSize = store.settings.uiSize;
+    let layout = `${store.settings.uiSize}|${store.settings.tbPos}`;
     store.on('settings', () => {
-      if (store.settings.uiSize === uiSize) return;
-      uiSize = store.settings.uiSize;
+      const now = `${store.settings.uiSize}|${store.settings.tbPos}`;
+      if (now === layout) return;
+      layout = now;
       this.applyScale();
     });
+    this.bindGrip();
     void loadLastNotebook().then((doc) => doc && store.loadDoc(doc));
   }
 
@@ -201,6 +209,7 @@ export class App {
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
+      <button class="tb-grip" data-grip title="Drag to move the toolbar to any edge" aria-label="Move toolbar"><svg viewBox="0 0 12 20" width="10" height="18" fill="currentColor"><circle cx="3" cy="4" r="1.6"/><circle cx="9" cy="4" r="1.6"/><circle cx="3" cy="10" r="1.6"/><circle cx="9" cy="10" r="1.6"/><circle cx="3" cy="16" r="1.6"/><circle cx="9" cy="16" r="1.6"/></svg></button>
       ${tool('select', 'select', 'Select')}
       ${tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
       ${tool('eraser', 'eraser', 'Eraser')}
@@ -231,9 +240,9 @@ export class App {
   }
 
   /** Last place of the sliding highlight, so it can glide to the new tool. */
-  private indAt: { x: number; w: number } | null = null;
+  private indAt: { x: number; y: number; w: number; h: number } | null = null;
 
-  /** The white highlight slides smoothly from the old tool to the new one. */
+  /** The highlight slides smoothly from the old tool to the new one. */
   private moveIndicator(bar: HTMLElement): void {
     const ind = bar.querySelector('.tb-ind') as HTMLElement;
     const btn = bar.querySelector('.tb-btn.active') as HTMLElement | null;
@@ -241,15 +250,18 @@ export class App {
       ind.style.opacity = '0';
       return;
     }
-    const to = { x: btn.offsetLeft, w: btn.offsetWidth };
+    const to = { x: btn.offsetLeft, y: btn.offsetTop, w: btn.offsetWidth, h: btn.offsetHeight };
     const from = this.indAt ?? to;
+    const place = (r: typeof to) => {
+      ind.style.width = `${r.w}px`;
+      ind.style.height = `${r.h}px`;
+      ind.style.transform = `translate(${r.x}px, ${r.y}px)`;
+    };
     ind.style.transition = 'none';
-    ind.style.width = `${from.w}px`;
-    ind.style.transform = `translateX(${from.x}px)`;
+    place(from);
     void ind.offsetWidth;
     ind.style.transition = '';
-    ind.style.width = `${to.w}px`;
-    ind.style.transform = `translateX(${to.x}px)`;
+    place(to);
     this.indAt = to;
   }
 
@@ -306,9 +318,18 @@ export class App {
     const k = ui();
     const r = anchor.getBoundingClientRect();
     const pw = pop.offsetWidth * k, ph = pop.offsetHeight * k;
-    const left = Math.max(8, Math.min(window.innerWidth - pw - 8, r.left + r.width / 2 - pw / 2));
+    const W = window.innerWidth, H = window.innerHeight, gap = 12 * k;
+    const cx = Math.max(8, Math.min(W - pw - 8, r.left + r.width / 2 - pw / 2));
+    const cy = Math.max(8, Math.min(H - ph - 8, r.top + r.height / 2 - ph / 2));
+    // Open away from the edge the toolbar sits on.
+    const [left, top] = {
+      bottom: [cx, Math.max(8, r.top - ph - gap)],
+      top: [cx, Math.min(H - ph - 8, r.bottom + gap)],
+      left: [Math.min(W - pw - 8, r.right + gap), cy],
+      right: [Math.max(8, r.left - pw - gap), cy],
+    }[store.settings.tbPos];
     pop.style.left = `${left}px`;
-    pop.style.top = `${Math.max(8, r.top - ph - 12 * k)}px`;
+    pop.style.top = `${top}px`;
   }
 
   /** Colour buttons, the teacher's own recent colours, and a picker for any colour. */
@@ -440,6 +461,8 @@ export class App {
             ${isInstalled() ? '' : `<button class="menu-item" data-act="install">${icon('download', 20)}Install app</button>`}
             <button class="menu-item" data-act="share-app">${icon('share', 20)}Share Teachly</button>
           </div>
+          <div class="pop-title">Toolbar position</div>
+          <div class="seg">${(['bottom', 'top', 'left', 'right'] as const).map((z) => `<button class="${s.tbPos === z ? 'on' : ''}" data-tbpos="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
           <div class="pop-title">Button size</div>
           <div class="seg">${(['small', 'normal', 'large'] as UiSize[]).map((z) => `<button class="${s.uiSize === z ? 'on' : ''}" data-uisize="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers move the board)</label>
@@ -504,6 +527,10 @@ export class App {
       store.setTool({ tool: 'select' });
       store.select([tbl.id]);
       this.tableEditor.open(tbl, 0, 0);
+      return;
+    } else if (d.tbpos) {
+      this.closePopover();
+      this.setToolbarPos(d.tbpos as 'bottom');
       return;
     } else if (d.uisize) {
       store.setSettings({ uiSize: d.uisize as UiSize });
@@ -831,10 +858,14 @@ export class App {
     scaleFloating(bar);
     const k = ui();
     const bw = bar.offsetWidth * k, bh = bar.offsetHeight * k;
+    // Keep clear of the toolbar edge.
+    const pos = store.settings.tbPos;
+    const minT = pos === 'top' ? 100 * k : 12, maxB = pos === 'bottom' ? 100 * k : 12;
+    const minL = pos === 'left' ? 90 * k : 8, maxR = pos === 'right' ? 90 * k : 8;
     let top = y1 - bh - 56 * k;
-    if (top < 12) top = y2 + 24;
-    top = Math.max(12, Math.min(this.board.h - bh - 100 * k, top));
-    const left = Math.max(8, Math.min(this.board.w - bw - 8, (x1 + x2) / 2 - bw / 2));
+    if (top < minT) top = y2 + 24;
+    top = Math.max(minT, Math.min(this.board.h - bh - maxB, top));
+    const left = Math.max(minL, Math.min(this.board.w - bw - maxR, (x1 + x2) / 2 - bw / 2));
     bar.style.left = `${left}px`;
     bar.style.top = `${top}px`;
   }
@@ -863,20 +894,83 @@ export class App {
 
   /** Size the toolbar and panels for this screen (phone → 86" panel). */
   private applyScale(): void {
-    // Widths are unaffected by the CSS scale transform.
-    const L = (this.toolbar.querySelector('.tb-left') as HTMLElement).offsetWidth;
-    const R = (this.toolbar.querySelector('.tb-right') as HTMLElement).offsetWidth;
-    // One row when both halves fit at a comfortable size; on phones the
-    // action bar moves up into a second row above the drawing tools.
-    const oneRow = L + R + 40;
-    const stacked = window.innerWidth / oneRow < 0.85;
+    const pos = store.settings.tbPos;
+    this.root.dataset.tb = pos;
+    const vertical = pos === 'left' || pos === 'right';
+    const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
+    const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
+    // Sizes are unaffected by the CSS scale transform.
+    const L = vertical ? left.offsetHeight : left.offsetWidth;
+    const R = vertical ? right.offsetHeight : right.offsetWidth;
+    const avail = vertical ? window.innerHeight : window.innerWidth;
+    // One line when both halves fit at a comfortable size; otherwise the
+    // action bar moves into a second row (or column) beside the tools.
+    const one = L + R + 40;
+    const stacked = avail / one < 0.85;
     this.root.classList.toggle('tb-stacked', stacked);
-    computeUiScale(store.settings.uiSize, stacked ? Math.max(L, R) + 20 : oneRow);
+    computeUiScale(store.settings.uiSize, stacked ? Math.max(L, R) + 20 : one, avail);
     // The page fills the whole screen; the toolbars float on top of it.
     this.board.insets = { top: 0, right: 0, bottom: 0, left: 0 };
     this.board.resize();
     this.closePopover();
+    this.indAt = null;
+    this.moveIndicator(left);
     this.positionProps();
+  }
+
+  /** Put the toolbars on another edge (they glide in there). */
+  private setToolbarPos(pos: 'bottom' | 'top' | 'left' | 'right'): void {
+    if (pos === store.settings.tbPos) return;
+    store.setSettings({ tbPos: pos });
+    for (const bar of this.toolbar.querySelectorAll<HTMLElement>('.toolbar')) {
+      bar.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+    }
+  }
+
+  /** Drag the grip: the bars follow the finger and snap to the nearest edge. */
+  private bindGrip(): void {
+    let drag: { id: number; sx: number; sy: number; moved: boolean } | null = null;
+    const zones = document.createElement('div');
+    zones.className = 'tb-zones';
+    zones.innerHTML = '<i data-z="top"></i><i data-z="bottom"></i><i data-z="left"></i><i data-z="right"></i>';
+    this.root.appendChild(zones);
+    const nearest = (x: number, y: number) => {
+      const d = { top: y, bottom: window.innerHeight - y, left: x, right: window.innerWidth - x };
+      return (Object.keys(d) as (keyof typeof d)[]).reduce((a, b) => (d[b] < d[a] ? b : a));
+    };
+    this.toolbar.addEventListener('pointerdown', (e) => {
+      const g = (e.target as HTMLElement).closest('[data-grip]') as HTMLElement | null;
+      if (!g) return;
+      e.preventDefault();
+      g.setPointerCapture(e.pointerId);
+      drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
+    });
+    this.toolbar.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      if (!drag.moved) {
+        drag.moved = true;
+        this.closePopover();
+        this.root.classList.add('tb-dragging');
+      }
+      this.root.style.setProperty('--dx', `${dx}px`);
+      this.root.style.setProperty('--dy', `${dy}px`);
+      const z = nearest(e.clientX, e.clientY);
+      zones.querySelectorAll<HTMLElement>('[data-z]').forEach((el) => el.classList.toggle('on', el.dataset.z === z));
+    });
+    const end = (e: PointerEvent) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const moved = drag.moved;
+      drag = null;
+      this.root.classList.remove('tb-dragging');
+      this.root.style.removeProperty('--dx');
+      this.root.style.removeProperty('--dy');
+      if (moved) this.setToolbarPos(nearest(e.clientX, e.clientY));
+      else toast('Drag this handle to move the toolbar to the top, bottom, left or right', 3000);
+    };
+    this.toolbar.addEventListener('pointerup', end);
+    this.toolbar.addEventListener('pointercancel', end);
   }
 
   /** Logo and clock switch to light text on green / black boards. */

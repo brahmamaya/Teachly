@@ -21,7 +21,7 @@ function isTouchScreen(): boolean {
  * Work out the scale. `toolbarWidth` is the toolbar's natural (unscaled)
  * width, so phones can shrink it just enough to fit.
  */
-export function computeUiScale(size: UiSize, toolbarWidth: number): number {
+export function computeUiScale(size: UiSize, toolbarWidth: number, avail = window.innerWidth): number {
   const w = window.innerWidth;
   const h = window.innerHeight;
   let s: number;
@@ -36,7 +36,7 @@ export function computeUiScale(size: UiSize, toolbarWidth: number): number {
   }
   s *= PREF[size] ?? 1;
   // Never let the toolbar overflow the screen.
-  if (toolbarWidth > 0) s = Math.min(s, (w - 16) / toolbarWidth);
+  if (toolbarWidth > 0) s = Math.min(s, (avail - 16) / toolbarWidth);
   current = Math.max(0.6, Math.round(s * 100) / 100);
   document.documentElement.style.setProperty('--ui', String(current));
   return current;

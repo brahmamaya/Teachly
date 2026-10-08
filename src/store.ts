@@ -9,6 +9,8 @@ export interface Settings {
   multiWrite: boolean;
   /** Pinch / wheel zoom. Off = the page is locked in place. */
   allowZoom: boolean;
+  /** Where the toolbars sit. */
+  tbPos: 'bottom' | 'top' | 'left' | 'right';
 }
 
 export interface ToolState {
@@ -48,6 +50,7 @@ function loadSettings(): Settings {
     uiSize: 'normal',
     multiWrite: false,
     allowZoom: false,
+    tbPos: 'bottom',
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

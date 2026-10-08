@@ -2004,3 +2004,306 @@ button:focus-visible {
     transition: none;
   }
 }
+
+/* ---------- Toolbar position (bottom / top / left / right) & corner logo ---------- */
+
+.tb-grip {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 48px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  opacity: 0.55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 10px;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.tb-grip:hover {
+  opacity: 1;
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.tb-ind {
+  top: 0;
+  left: 0;
+}
+
+/* Top */
+#app[data-tb='top'] .toolbar {
+  bottom: auto;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+}
+#app[data-tb='top'] .tb-left {
+  transform-origin: 0 0;
+}
+#app[data-tb='top'] .tb-right {
+  transform-origin: 100% 0;
+}
+#app[data-tb='top'].tb-stacked .tb-right {
+  bottom: auto;
+  top: calc(22px + env(safe-area-inset-top, 0px) + 62px * var(--ui));
+}
+
+/* Left / right: the bars stand up as columns. */
+#app[data-tb='left'] .toolbar,
+#app[data-tb='right'] .toolbar {
+  flex-direction: column;
+}
+#app[data-tb='left'] .tb-left,
+#app[data-tb='right'] .tb-left {
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  bottom: auto;
+}
+#app[data-tb='left'] .tb-right,
+#app[data-tb='right'] .tb-right {
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  top: auto;
+}
+#app[data-tb='left'] .toolbar {
+  left: calc(14px + env(safe-area-inset-left, 0px));
+  right: auto;
+}
+#app[data-tb='right'] .toolbar {
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  left: auto;
+}
+#app[data-tb='left'] .tb-left {
+  transform-origin: 0 0;
+}
+#app[data-tb='left'] .tb-right {
+  transform-origin: 0 100%;
+}
+#app[data-tb='right'] .tb-left {
+  transform-origin: 100% 0;
+}
+#app[data-tb='right'] .tb-right {
+  transform-origin: 100% 100%;
+}
+/* Short screens: the action column moves beside the tools. */
+#app[data-tb='left'].tb-stacked .tb-right {
+  left: calc(22px + 62px * var(--ui));
+}
+#app[data-tb='right'].tb-stacked .tb-right {
+  right: calc(22px + 62px * var(--ui));
+}
+#app[data-tb='left'] .tb-sep,
+#app[data-tb='right'] .tb-sep {
+  width: 26px;
+  height: 1px;
+  margin: 5px 0;
+}
+#app[data-tb='left'] .tb-grip,
+#app[data-tb='right'] .tb-grip {
+  width: 48px;
+  height: 22px;
+  transform: rotate(90deg);
+}
+#app[data-tb='left'] .tb-pagenav,
+#app[data-tb='right'] .tb-pagenav {
+  flex-direction: column;
+  border: 0;
+  border-top: 1px solid var(--bar-border);
+  border-bottom: 1px solid var(--bar-border);
+  margin: 4px 0;
+  padding: 2px 0;
+}
+#app[data-tb='left'] .tb-pagenav .icon-btn,
+#app[data-tb='right'] .tb-pagenav .icon-btn {
+  width: 48px;
+  height: 34px;
+  transform: rotate(90deg);
+}
+#app[data-tb='left'] .tb-pagenav .page-label,
+#app[data-tb='right'] .tb-pagenav .page-label {
+  min-width: 0;
+  font-size: 13px;
+  padding: 2px 0;
+}
+#app[data-tb='left'].drawing .toolbar {
+  translate: -4px 0;
+}
+#app[data-tb='right'].drawing .toolbar {
+  translate: 4px 0;
+}
+#app[data-tb='top'].drawing .toolbar {
+  translate: 0 -4px;
+}
+
+/* Page sorter keeps clear of the toolbars. */
+#app[data-tb='top'] .pages-panel {
+  top: calc(26px + env(safe-area-inset-top, 0px) + 64px * var(--ui));
+  bottom: 14px;
+}
+#app[data-tb='left'] .pages-panel {
+  top: 12px;
+  bottom: 12px;
+}
+#app[data-tb='right'] .pages-panel {
+  top: 12px;
+  bottom: 12px;
+  right: auto;
+  left: 12px;
+}
+
+/* Dragging the grip: the bars follow the finger; the target edge lights up. */
+#app.tb-dragging .toolbar {
+  translate: var(--dx, 0) var(--dy, 0);
+  transition: none;
+  opacity: 0.85;
+}
+.tb-zones {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3990;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#app.tb-dragging .tb-zones {
+  opacity: 1;
+}
+.tb-zones i {
+  position: absolute;
+  border-radius: 20px;
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  transition: background 0.2s, border-color 0.2s;
+}
+#app:not([data-board='dark']) .tb-zones i {
+  border-color: rgba(15, 23, 42, 0.25);
+}
+.tb-zones i.on {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+#app:not([data-board='dark']) .tb-zones i.on {
+  background: rgba(15, 23, 42, 0.08);
+  border-color: rgba(15, 23, 42, 0.7);
+}
+.tb-zones [data-z='top'] {
+  top: 8px;
+  left: 25%;
+  right: 25%;
+  height: 72px;
+}
+.tb-zones [data-z='bottom'] {
+  bottom: 8px;
+  left: 25%;
+  right: 25%;
+  height: 72px;
+}
+.tb-zones [data-z='left'] {
+  left: 8px;
+  top: 25%;
+  bottom: 25%;
+  width: 72px;
+}
+.tb-zones [data-z='right'] {
+  right: 8px;
+  top: 25%;
+  bottom: 25%;
+  width: 72px;
+}
+
+/* Clock + "Teachly by physica" in the corner away from the toolbar. */
+.corner {
+  position: absolute;
+  z-index: 3999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  transform: scale(var(--ui));
+  color: var(--text);
+  transition: opacity 0.3s var(--ease);
+  /* bottom toolbar (default) → top right */
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 18px;
+  align-items: flex-end;
+  transform-origin: 100% 0;
+}
+#app[data-board='dark'] .corner {
+  color: #fff;
+}
+.corner .clock {
+  position: static;
+  transform: none;
+}
+#app[data-tb='top'] .corner {
+  top: auto;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  flex-direction: column-reverse;
+  transform-origin: 100% 100%;
+}
+#app[data-tb='right'] .corner {
+  right: auto;
+  left: 18px;
+  align-items: flex-start;
+  transform-origin: 0 0;
+}
+#app.drawing .corner {
+  opacity: 0.5;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  opacity: 0.42;
+}
+.brand svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.brand span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.brand b {
+  font-family: var(--display, system-ui), sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+}
+.brand small {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  margin-top: 3px;
+  opacity: 0.85;
+}
+
+/* Colour dot → a small colour bar under the icon (never covers it). */
+#app .tb-btn .swatch-dot {
+  top: auto;
+  right: auto;
+  left: 50%;
+  bottom: 5px;
+  width: 14px;
+  height: 3px;
+  margin-left: -7px;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(127, 127, 127, 0.35);
+}
+#app:not([data-board='dark']) .tb-btn .swatch-dot {
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+#app .tb-btn.active .swatch-dot {
+  transform: scaleX(1.2);
+}
+.brand {
+  opacity: 0.5;
+}
+.brand b {
+  font-family: 'Exo 2', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 12.5px;
+  letter-spacing: 0.2em;
+}
