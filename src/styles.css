@@ -122,7 +122,6 @@ button:focus-visible {
 /* ---------- Bottom toolbar ---------- */
 
 .toolbar,
-.pagebar,
 .popover,
 .props,
 .panel {
@@ -213,30 +212,6 @@ button:focus-visible {
 
 /* ---------- Page bar & zoom ---------- */
 
-.pagebar {
-  position: absolute;
-  left: 50%;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  display: flex;
-  align-items: center;
-  padding: 6px;
-  z-index: 3999;
-  transform: translateX(-50%) scale(var(--ui));
-  transform-origin: 50% 100%;
-}
-
-/* When the toolbar is too wide, the page arrows sit just above it. */
-#app.pagebar-up .pagebar {
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px) + 78px * var(--ui));
-}
-
-.page-label {
-  font-weight: 700;
-  min-width: 56px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
 .icon-btn {
   display: grid;
   place-items: center;
@@ -262,7 +237,7 @@ button:focus-visible {
 .zoom-pill {
   position: absolute;
   top: calc(14px + env(safe-area-inset-top, 0px));
-  right: 14px;
+  left: 14px;
   z-index: 3999;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -272,7 +247,7 @@ button:focus-visible {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transform: scale(var(--ui));
-  transform-origin: 100% 0;
+  transform-origin: 0 0;
 }
 
 @media (max-width: 640px) {
@@ -914,8 +889,9 @@ button:focus-visible {
 .brand {
   /* Sits lightly on the board: no card, just soft text. */
   position: absolute;
-  top: calc(14px + env(safe-area-inset-top, 0px));
-  left: 16px;
+  /* Bottom-right corner, centred on the toolbar row. */
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px) + 18px * var(--ui));
+  right: 16px;
   z-index: 3999;
   display: flex;
   align-items: center;
@@ -923,7 +899,7 @@ button:focus-visible {
   opacity: 0.55;
   pointer-events: none;
   transform: scale(var(--ui));
-  transform-origin: 0 0;
+  transform-origin: 100% 100%;
 }
 
 .brand-mark {
@@ -1001,9 +977,9 @@ button:focus-visible {
 .clock {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top, 0px));
-  left: 50%;
-  transform: translateX(-50%) scale(var(--ui));
-  transform-origin: 50% 0;
+  right: 18px;
+  transform: scale(var(--ui));
+  transform-origin: 100% 0;
   z-index: 3999;
   display: flex;
   align-items: baseline;
@@ -1035,4 +1011,170 @@ button:focus-visible {
   .brand-text {
     display: none;
   }
+}
+
+/* ---------- Page navigation in the toolbar ---------- */
+
+.tb-pagenav {
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.tb-pagenav .icon-btn {
+  width: 40px;
+  height: 64px;
+}
+
+.page-label {
+  font-weight: 700;
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Pages panel (all pages at once) ---------- */
+
+.pages-panel {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px) + 78px * var(--ui));
+  width: calc(290px * var(--ui));
+  max-width: calc(100vw - 24px);
+  z-index: 4500;
+  font-size: calc(15px * var(--ui));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  padding: 0.8em;
+  animation: slide-in 0.18s ease-out;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pages-panel {
+    animation: none;
+  }
+}
+
+.pages-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: 1.1em;
+}
+
+.pages-head span {
+  color: var(--muted);
+  font-weight: 600;
+  flex: 1;
+}
+
+.pages-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;
+  padding: 0.2em;
+}
+
+.page-thumb {
+  position: relative;
+  border: 3px solid var(--border);
+  border-radius: 0.8em;
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+  flex: none;
+}
+
+.page-thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.page-thumb span {
+  position: absolute;
+  left: 0.4em;
+  top: 0.4em;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 0.8em;
+  font-weight: 700;
+  padding: 0.1em 0.5em;
+  border-radius: 0.4em;
+}
+
+.page-thumb.on {
+  border-color: var(--accent);
+}
+
+.pages-actions {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.2em;
+}
+
+.pages-actions button {
+  border: 0;
+  background: none;
+  border-radius: 0.7em;
+  padding: 0.5em 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pages-actions button .icon {
+  width: 1.6em;
+  height: 1.6em;
+}
+
+.pages-actions button:hover {
+  background: var(--surface-2);
+}
+
+.pages-actions button:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.pages-actions button.danger {
+  color: var(--danger);
+}
+
+.pages-panel .btn {
+  font-size: 1em;
+}
+
+/* Phones: action bar above the drawing tools, both against the edges. */
+#app.tb-stacked .tb-right {
+  right: 8px;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px) + 62px * var(--ui));
+}
+
+#app.tb-stacked .tb-left {
+  left: 8px;
+}
+
+#app.tb-stacked .pages-panel {
+  bottom: calc(34px + env(safe-area-inset-bottom, 0px) + 124px * var(--ui));
 }

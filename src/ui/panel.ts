@@ -105,6 +105,8 @@ export function toast(msg: string, ms = 2200): void {
     host.className = 'toasts';
     document.body.appendChild(host);
   }
+  // Only the newest message is shown, so they never pile up.
+  host.replaceChildren();
   const t = document.createElement('div');
   t.className = 'toast';
   t.textContent = msg;

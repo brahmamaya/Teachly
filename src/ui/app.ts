@@ -24,6 +24,7 @@ import type { BgPattern, El, PathEl, ShapeKind, ToolId } from '../types';
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openTimer } from '../widgets/timer';
 import { icon } from './icons';
+import { PagesPanel } from './pages';
 import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui, type UiSize } from './scale';
 
@@ -75,6 +76,7 @@ export class App {
   private popFor = '';
   private propSection: PropSection = null;
   private selectTool: SelectTool;
+  private pages: PagesPanel;
   private newArmed = 0;
 
   constructor(root: HTMLElement) {
@@ -88,11 +90,6 @@ export class App {
       <div class="clock" aria-live="off"><b data-time></b></div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav></div>
-      <div class="pagebar">
-        <button class="icon-btn" data-act="prev" title="Previous page">${icon('prev')}</button>
-        <span class="page-label"></span>
-        <button class="icon-btn" data-act="next" title="Next page">${icon('next')}</button>
-      </div>
       <div class="props" hidden></div>
       <div class="drop-hint" hidden>Drop images or a PDF here</div>`;
 
@@ -111,6 +108,7 @@ export class App {
     this.board.updateCursor();
 
     this.toolbar = root.querySelector('.toolbars') as HTMLElement;
+    this.pages = new PagesPanel(root, () => this.renderToolbar());
     this.props = root.querySelector('.props') as HTMLElement;
     this.renderToolbar();
     this.bindChrome();
@@ -168,6 +166,12 @@ export class App {
       <button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 26)}<span class="tb-label">Redo</span></button>
       <button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 26)}<span class="tb-label">Insert</span></button>
       <button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 26)}<span class="tb-label">Tools</span></button>
+      <div class="tb-pagenav">
+        <button class="icon-btn" data-act="prev" title="Previous page" aria-label="Previous page">${icon('prev')}</button>
+        <span class="page-label">${store.index + 1} / ${store.doc.pages.length}</span>
+        <button class="icon-btn" data-act="next" title="Next page" aria-label="Next page">${icon('next')}</button>
+      </div>
+      <button class="tb-btn ${this.pages.open ? 'open' : ''}" data-act="pages" title="All pages">${icon('pages', 26)}<span class="tb-label">Pages</span></button>
       <button class="tb-btn ${this.popFor === 'menu' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 26)}<span class="tb-label">Menu</span></button>`;
     this.updateUndo();
     if (this.popover) {
@@ -378,6 +382,10 @@ export class App {
         return store.undo();
       case 'redo':
         return store.redo();
+      case 'pages':
+        this.closePopover();
+        this.pages.toggle();
+        return;
       case 'zoom-reset':
         return b.zoomTo(1);
       case 'prev':
@@ -607,16 +615,13 @@ export class App {
       const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
       if (b) this.onToolbarClick(b);
     });
-    this.root.querySelector('.pagebar')!.addEventListener('click', (e) => {
-      const b = (e.target as HTMLElement).closest('[data-act]') as HTMLElement | null;
-      if (b) this.action(b.dataset.act!);
-    });
     this.root.querySelector('.zoom-pill')!.addEventListener('click', () => this.action('zoom-reset'));
     this.board.el.addEventListener('pointerdown', () => this.closePopover(), true);
   }
 
   private updatePageLabel(): void {
-    (this.root.querySelector('.page-label') as HTMLElement).textContent = `${store.index + 1} / ${store.doc.pages.length}`;
+    const label = this.root.querySelector('.page-label') as HTMLElement | null;
+    if (label) label.textContent = `${store.index + 1} / ${store.doc.pages.length}`;
   }
 
   /** Size the toolbar and panels for this screen (phone → 86" panel). */
@@ -624,13 +629,18 @@ export class App {
     // Widths are unaffected by the CSS scale transform.
     const L = (this.toolbar.querySelector('.tb-left') as HTMLElement).offsetWidth;
     const R = (this.toolbar.querySelector('.tb-right') as HTMLElement).offsetWidth;
-    const pb = this.root.querySelector('.pagebar') as HTMLElement;
-    // Both halves must fit side by side with a small gap between them.
-    computeUiScale(store.settings.uiSize, L + R + 24);
-    // Page arrows sit in the middle, or just above when there is no room.
+    const brand = this.root.querySelector('.brand') as HTMLElement;
+    const B = brand.offsetWidth;
+    const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
+    // One row when everything fits at a comfortable size; on phones the
+    // action bar moves up into a second row above the drawing tools.
+    const oneRow = L + R + B + 40;
+    const stacked = window.innerWidth / oneRow < 0.85;
+    this.root.classList.toggle('tb-stacked', stacked);
+    computeUiScale(store.settings.uiSize, stacked ? Math.max(L + B + 40, R + 12) : oneRow);
     const k = ui();
-    const free = window.innerWidth - 28 - (L + R) * k;
-    this.root.classList.toggle('pagebar-up', free < pb.offsetWidth * k + 24);
+    // The logo owns the bottom-right corner; the action bar sits just left of it.
+    right.style.right = stacked ? '' : `${14 + B * k + 14}px`;
     this.closePopover();
     this.positionProps();
   }
