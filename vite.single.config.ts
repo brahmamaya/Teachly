@@ -44,7 +44,8 @@ export default defineConfig({
   plugins: [inlineEverything()],
   build: {
     outDir: 'dist-single',
-    target: 'es2022',
+    // Older Android boards run older browsers: translate newer syntax.
+    target: ['es2019', 'chrome80'],
     assetsInlineLimit: 100_000_000,
     chunkSizeWarningLimit: 20_000,
     cssCodeSplit: false,

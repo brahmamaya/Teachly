@@ -1,3 +1,4 @@
+import './polyfills';
 import './styles.css';
 import { App } from './ui/app';
 import './ui/install';
@@ -16,7 +17,8 @@ if (splash) {
 (window as unknown as { teachly: App }).teachly = app;
 
 // No service worker for the single-file version opened from a pen drive (file://).
-if ('serviceWorker' in navigator && import.meta.env.PROD && location.protocol.startsWith('http')) {
+// (Nor inside the Android app, which carries its own files.)
+if ('serviceWorker' in navigator && import.meta.env.PROD && location.protocol.startsWith('http') && !('TeachlyAndroid' in window)) {
   window.addEventListener('load', () => {
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker

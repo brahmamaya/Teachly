@@ -28,7 +28,23 @@ export function readAsDataURL(blob: Blob): Promise<string> {
   });
 }
 
+/** The Teachly Android app (APK) passes files to the device through this bridge. */
+interface AndroidBridge {
+  saveFile(base64: string, name: string, mime: string): void;
+}
+export function androidApp(): AndroidBridge | null {
+  return (window as unknown as { TeachlyAndroid?: AndroidBridge }).TeachlyAndroid ?? null;
+}
+
 export function download(blob: Blob, name: string): void {
+  const app = androidApp();
+  if (app) {
+    // In the Android app: save straight into Downloads/Teachly.
+    const r = new FileReader();
+    r.onload = () => app.saveFile(String(r.result).split(',')[1] ?? '', name, blob.type || 'application/octet-stream');
+    r.readAsDataURL(blob);
+    return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -197,7 +213,7 @@ export async function exportPdf(board: Board): Promise<void> {
     else pdf.addPage([w, h], orient);
     pdf.addImage(c.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
   }
-  pdf?.save(`${safeName(store.doc.title)}.pdf`);
+  if (pdf) download(pdf.output('blob'), `${safeName(store.doc.title)}.pdf`);
 }
 
 /** Paste handler: images from clipboard, or internal element clipboard. */

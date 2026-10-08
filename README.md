@@ -90,3 +90,19 @@ src/
 ## License
 
 MIT
+
+## 📱 Android app (APK) for digital boards
+
+`android/` wraps the offline single-file build in a tiny full-screen Android
+app (Android 7.0+): no internet needed, files open through the board's file
+manager (PDF, PowerPoint, pictures), saves go to **Downloads/Teachly**, and
+the microphone works for lesson recording.
+
+```bash
+KEY=teachly-release.p12 KEY_PASS='…' TOOLS=/path/to/android-tools ./android/build.sh   # → android/build/Teachly.apk
+```
+
+`TOOLS` holds jars from Maven Central (apktool-lib — which carries `aapt2` and
+the Android framework — dalvik-dx, Robolectric `android-all`, apksig). The
+signing key is kept by the owner, outside this repository; always sign with
+the same key so new versions install over old ones without losing notebooks.

@@ -22,6 +22,7 @@ window.addEventListener('appinstalled', () => {
 
 /** Already running as an installed app? */
 export function isInstalled(): boolean {
+  if ((window as unknown as { TeachlyAndroid?: unknown }).TeachlyAndroid) return true;
   return matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
 }
 

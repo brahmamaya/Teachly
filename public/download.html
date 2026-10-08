@@ -421,7 +421,7 @@
           <button class="tab" role="tab" id="t-ios" aria-controls="p-ios" aria-selected="true">iPad / iPhone</button>
           <button class="tab" role="tab" id="t-android" aria-controls="p-android" aria-selected="false">Android</button>
           <button class="tab" role="tab" id="t-pc" aria-controls="p-pc" aria-selected="false">Laptop / PC</button>
-          <button class="tab" role="tab" id="t-board" aria-controls="p-board" aria-selected="false">Digital board</button>
+          <button class="tab" role="tab" id="t-board" aria-controls="p-board" aria-selected="false">Digital board / APK</button>
         </div>
         <div role="tabpanel" id="p-ios" aria-labelledby="t-ios">
           <ol>
@@ -447,12 +447,21 @@
         </div>
         <div role="tabpanel" id="p-board" aria-labelledby="t-board" hidden>
           <p class="hi" style="margin: 0 0 14px">Works on Android smart panels and Windows (OPS) boards. Pick one way:</p>
-          <h3>A. Board has internet</h3>
+          <h3>★ Android board: install the app from a pen drive (best)</h3>
+          <ol>
+            <li><span>Download <b>Teachly.apk</b> (1.4 MB) on a laptop or phone and copy it to a <b>pen drive</b>.<em class="hi">Teachly.apk download karke pen drive mein copy kijiye.</em></span></li>
+            <li><span>Put the pen drive in the board, open <b>Files / File Manager</b> and tap <b>Teachly.apk</b>.<em class="hi">Board mein pen drive lagaiye, File Manager se Teachly.apk par tap kijiye.</em></span></li>
+            <li><span>If the board asks, allow <b>Install unknown apps</b> for the File Manager, then tap <b>Install</b>.<em class="hi">"Install unknown apps" allow kijiye, phir Install dabaiye.</em></span></li>
+            <li><span>Open <b>Teachly</b> from the app list. It runs full screen, needs no internet, and saves files in <b>Downloads/Teachly</b>.<em class="hi">App list se Teachly kholiye — bina internet ke chalega.</em></span></li>
+          </ol>
+          <p style="margin: 12px 0 18px"><a class="btn primary" href="./Teachly.apk" download="Teachly.apk">Download Teachly.apk (Android)</a></p>
+          <p class="hi" style="margin: 0 0 14px">Needs Android 7.0 or newer. To update later, install the new Teachly.apk over the old one — your notebooks stay.</p>
+          <h3>A. Board has internet (no install file)</h3>
           <ol>
             <li><span>Open this page in the board's <b>Chrome</b> or <b>Edge</b> browser.<em class="hi">Board ke Chrome ya Edge mein yeh page kholiye.</em></span></li>
             <li><span>Tap <b>Install app</b> (top of this page or the browser menu <kbd>⋮</kbd>). Teachly gets its own icon on the board.<em class="hi">"Install app" dabaiye — board par Teachly ka icon aa jayega.</em></span></li>
           </ol>
-          <h3>B. No internet, or the browser can't install apps</h3>
+          <h3>B. Just open a file (no install)</h3>
           <ol>
             <li><span>Download the single file <b>Teachly.html</b> (4 MB) — on the board itself, or on a laptop and copy it to a <b>pen drive</b>.<em class="hi">Teachly.html download kijiye, ya laptop se pen drive mein copy kijiye.</em></span></li>
             <li><span>On the board, open the file from Files / File Manager — it opens in the browser. No internet or install needed.<em class="hi">Board par file kholiye — bina internet ke chalega.</em></span></li>
@@ -487,7 +496,7 @@
         </ul>
       </section>
 
-      <footer>Teachly by Physica · Free · Your lessons stay on your device · <a href="./Teachly.html" download="Teachly.html" style="color: inherit">Offline file (Teachly.html)</a></footer>
+      <footer>Teachly by Physica · Free · Your lessons stay on your device · <a href="./Teachly.apk" download="Teachly.apk" style="color: inherit">Android app (Teachly.apk)</a> · <a href="./Teachly.html" download="Teachly.html" style="color: inherit">Offline file (Teachly.html)</a></footer>
     </main>
     <div class="toast" id="toast" role="status"></div>
 

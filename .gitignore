@@ -3,3 +3,7 @@ dist
 *.log
 .DS_Store
 dist-single
+android/build/
+*.p12
+*.jks
+*.keystore
