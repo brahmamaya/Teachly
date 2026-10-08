@@ -3,6 +3,15 @@ import { App } from './ui/app';
 
 const root = document.getElementById('app')!;
 const app = new App(root);
+
+// Keep the opening screen up for about two seconds from page start, then fade it out.
+const splash = document.getElementById('splash');
+if (splash) {
+  window.setTimeout(() => {
+    splash.classList.add('hide');
+    window.setTimeout(() => splash.remove(), 600);
+  }, Math.max(0, 2000 - performance.now()));
+}
 (window as unknown as { teachly: App }).teachly = app;
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

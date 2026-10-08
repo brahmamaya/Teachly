@@ -12,6 +12,73 @@
   </head>
   <body>
     <div id="app"></div>
+    <!-- Opening screen: shown instantly (inline styles), faded out by src/main.ts after ~2 s. -->
+    <div id="splash" aria-label="Teachly by Physica">
+      <style>
+        #splash {
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          display: grid;
+          place-items: center;
+          background: radial-gradient(circle at 50% 40%, #1b2230 0%, #111418 60%);
+          color: #f1f5f9;
+          font-family: 'Noto Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+          transition: opacity 0.5s ease;
+        }
+        #splash.hide {
+          opacity: 0;
+          pointer-events: none;
+        }
+        #splash .sp-in {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 18px;
+          animation: sp-rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+        #splash .sp-mark {
+          width: clamp(72px, 12vmin, 140px);
+          aspect-ratio: 1;
+          border-radius: 28%;
+          display: grid;
+          place-items: center;
+          font-weight: 800;
+          font-size: clamp(40px, 7vmin, 80px);
+          color: #fff;
+          background: linear-gradient(135deg, #2563eb, #0ea5e9);
+          box-shadow: 0 18px 50px rgba(37, 99, 235, 0.45);
+        }
+        #splash .sp-name {
+          font-size: clamp(40px, 8vmin, 96px);
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          line-height: 1;
+        }
+        #splash .sp-by {
+          font-size: clamp(15px, 2.4vmin, 28px);
+          font-weight: 600;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: #93c5fd;
+          animation: sp-fade 0.8s 0.4s ease both;
+        }
+        @keyframes sp-rise {
+          from { opacity: 0; transform: translateY(16px) scale(0.96); }
+        }
+        @keyframes sp-fade {
+          from { opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          #splash .sp-in, #splash .sp-by { animation: none; }
+        }
+      </style>
+      <div class="sp-in">
+        <div class="sp-mark">T</div>
+        <div class="sp-name">Teachly</div>
+        <div class="sp-by">by Physica</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
