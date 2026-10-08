@@ -65,10 +65,18 @@ export interface TableEl extends BoxBase {
   fontSize: number;
 }
 
-export type BoxEl = TextEl | ImageEl | TableEl;
+/** Tape strip that hides part of the page; tap it to reveal (and hide again). */
+export interface TapeEl extends BoxBase {
+  type: 'tape';
+  color: string;
+  /** Revealed: only a faint outline is drawn. */
+  open?: boolean;
+}
+
+export type BoxEl = TextEl | ImageEl | TableEl | TapeEl;
 export type El = PathEl | BoxEl;
 
-export type BgPattern = 'none' | 'grid' | 'lines' | 'fourline';
+export type BgPattern = 'none' | 'grid' | 'lines' | 'fourline' | 'dots' | 'graph' | 'music' | 'cornell';
 
 export interface Page {
   id: string;
@@ -79,6 +87,8 @@ export interface Page {
 
 export interface Doc {
   version: 1;
+  /** Notebook id in the on-device library. */
+  id?: string;
   title: string;
   pages: Page[];
 }
@@ -89,7 +99,7 @@ export interface Camera {
   z: number;
 }
 
-export type ToolId = 'select' | 'pen' | 'eraser' | 'shape' | 'fill' | 'text' | 'compass';
+export type ToolId = 'select' | 'pen' | 'eraser' | 'shape' | 'fill' | 'text' | 'compass' | 'laser' | 'tape';
 
 export type ShapeKind =
   | 'line'

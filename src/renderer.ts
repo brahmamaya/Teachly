@@ -1,6 +1,6 @@
 import { getStroke } from 'perfect-freehand';
 import { bbox, rectsIntersect } from './geometry';
-import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TableEl, TextEl } from './types';
+import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TableEl, TapeEl, TextEl } from './types';
 
 // ---------------------------------------------------------------------------
 // Stroke geometry
@@ -298,6 +298,42 @@ function drawTable(ctx: CanvasRenderingContext2D, el: TableEl): void {
   ctx.textAlign = 'left';
 }
 
+function drawTape(ctx: CanvasRenderingContext2D, el: TapeEl): void {
+  const r = Math.min(10, el.h / 4);
+  ctx.beginPath();
+  // (Hand-built rounded rectangle: works on older iPads too.)
+  ctx.moveTo(r, 0);
+  ctx.arcTo(el.w, 0, el.w, el.h, r);
+  ctx.arcTo(el.w, el.h, 0, el.h, r);
+  ctx.arcTo(0, el.h, 0, 0, r);
+  ctx.arcTo(0, 0, el.w, 0, r);
+  ctx.closePath();
+  if (el.open) {
+    ctx.strokeStyle = el.color;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    return;
+  }
+  ctx.fillStyle = el.color;
+  ctx.fill();
+  // Soft diagonal stripes so it reads as tape.
+  ctx.save();
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  for (let x = -el.h; x < el.w + el.h; x += 22) {
+    ctx.moveTo(x, el.h);
+    ctx.lineTo(x + el.h, 0);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
   ctx.save();
   ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
@@ -309,6 +345,9 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
       break;
     case 'table':
       drawTable(ctx, el);
+      break;
+    case 'tape':
+      drawTape(ctx, el);
       break;
     case 'image': {
       const img = getImage(el.src);
@@ -448,6 +487,54 @@ function drawSurface(ctx: CanvasRenderingContext2D, bg: string, pattern: BgPatte
         }
       }
       ctx.setLineDash([]);
+      break;
+    }
+    case 'dots': {
+      const step = 40;
+      if (step * z < 8) return;
+      ctx.fillStyle = dark ? 'rgba(255,255,255,0.32)' : 'rgba(15,23,42,0.28)';
+      const r = Math.max(1, Math.min(2.2, 1.6 * z));
+      for (let y = Math.floor(wy0 / step) * step; y <= wy1; y += step) {
+        const sy = toSy(y);
+        for (let x = Math.floor(wx0 / step) * step; x <= wx1; x += step) ctx.fillRect(toSx(x) - r / 2, sy - r / 2, r, r);
+      }
+      break;
+    }
+    case 'graph':
+      // Maths graph paper: fine squares with a stronger line every 5.
+      hLines(20, dark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)');
+      vLines(20, dark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)');
+      hLines(100, dark ? 'rgba(147,197,253,0.30)' : 'rgba(37,99,235,0.25)');
+      vLines(100, dark ? 'rgba(147,197,253,0.30)' : 'rgba(37,99,235,0.25)');
+      break;
+    case 'music': {
+      // Music staves: 5 lines, then a gap.
+      const gap = 14, row = gap * 4 + 70;
+      if (gap * z < 3) return;
+      ctx.strokeStyle = dark ? 'rgba(255,255,255,0.32)' : 'rgba(15,23,42,0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let y = Math.floor(wy0 / row) * row + 50; y <= wy1; y += row) {
+        for (let k = 0; k < 5; k++) {
+          const sy = Math.round(toSy(y + k * gap)) + 0.5;
+          ctx.moveTo(0, sy);
+          ctx.lineTo(w, sy);
+        }
+      }
+      ctx.stroke();
+      break;
+    }
+    case 'cornell': {
+      // Cornell notes: cue column on the left, summary box at the bottom.
+      hLines(44, minor);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(toSx(420), toSy(0));
+      ctx.lineTo(toSx(420), toSy(700));
+      ctx.moveTo(toSx(0), toSy(700));
+      ctx.lineTo(toSx(1600), toSy(700));
+      ctx.stroke();
       break;
     }
   }

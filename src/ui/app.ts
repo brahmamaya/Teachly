@@ -6,19 +6,20 @@ import {
   importPdf,
   insertImages,
   insertImageSrc,
-  loadLocal,
   openFile,
   pasteElements,
   pickFiles,
   readAsDataURL,
   saveFile,
-  saveLocal,
 } from '../io/files';
 import { freehandPath, isDarkColor, measureText } from '../renderer';
-import { newPage, store, type ToolState } from '../store';
+import { store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
+import { blankNotebook, loadLastNotebook, saveNotebook } from '../io/library';
 import { EraserTool } from '../tools/eraser';
 import { FillTool } from '../tools/fill';
+import { LaserTool } from '../tools/laser';
+import { TapeTool } from '../tools/tape';
 import { makeTable, resizeTable, TableEditor } from '../tools/table';
 import { CompassTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
@@ -27,8 +28,10 @@ import { TextEditor, TextTool } from '../tools/text';
 import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types';
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openTimer } from '../widgets/timer';
+import { toggleRecording } from '../widgets/recorder';
 import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
+import { Library } from './library';
 import { PagesPanel } from './pages';
 import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui, type UiSize } from './scale';
@@ -50,6 +53,10 @@ const PATTERNS: [BgPattern, string][] = [
   ['grid', 'Grid'],
   ['lines', 'Lines'],
   ['fourline', '4-line'],
+  ['dots', 'Dots'],
+  ['graph', 'Graph'],
+  ['music', 'Music'],
+  ['cornell', 'Cornell'],
 ];
 
 const SHAPES: [ShapeKind, string, string][] = [
@@ -75,6 +82,22 @@ const SHAPES: [ShapeKind, string, string][] = [
 
 type PropSection = 'color' | 'width' | 'fill' | null;
 
+const RECENT_KEY = 'teachly.recentColors';
+function recentColors(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as string[];
+  } catch {
+    return [];
+  }
+}
+function addRecentColor(c: string): void {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify([c, ...recentColors().filter((x) => x !== c)].slice(0, 6)));
+  } catch {
+    /* ignore */
+  }
+}
+
 export class App {
   board: Board;
   editor: TextEditor;
@@ -86,8 +109,8 @@ export class App {
   private propSection: PropSection = null;
   private selectTool: SelectTool;
   private pages: PagesPanel;
+  private library: Library;
   private tableEditor: TableEditor;
-  private newArmed = 0;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -112,12 +135,15 @@ export class App {
       ['fill', new FillTool(this.board)],
       ['text', new TextTool(this.board, this.editor)],
       ['compass', new CompassTool(this.board)],
+      ['laser', new LaserTool(this.board)],
+      ['tape', new TapeTool(this.board)],
     ];
     for (const [id, t] of tools) this.board.tools.set(id, t);
     this.board.updateCursor();
 
     this.toolbar = root.querySelector('.toolbars') as HTMLElement;
     this.pages = new PagesPanel(root, () => this.renderToolbar());
+    this.library = new Library(root);
     this.props = root.querySelector('.props') as HTMLElement;
     this.renderToolbar();
     this.bindChrome();
@@ -152,7 +178,7 @@ export class App {
     this.applyScale();
     window.addEventListener('resize', () => this.applyScale());
     store.on('settings', () => this.applyScale());
-    void loadLocal().then((doc) => doc && store.loadDoc(doc));
+    void loadLastNotebook().then((doc) => doc && store.loadDoc(doc));
   }
 
   // ---------------------------------------------------------------------------
@@ -171,7 +197,9 @@ export class App {
       ${tool('eraser', 'eraser', 'Eraser')}
       ${tool('shape', 'shapes', 'Shapes')}
       ${tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`)}
-      ${tool('text', 'text', 'Text')}`;
+      ${tool('text', 'text', 'Text')}
+      ${tool('tape', 'tape', 'Tape — hide answers, tap to show', `<span class="swatch-dot" style="background:${t.tapeColor}"></span>`)}
+      ${tool('laser', 'laser', 'Laser pointer')}`;
     right.innerHTML = `
       <button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 22)}</button>
       <button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 22)}</button>
@@ -199,7 +227,7 @@ export class App {
   private onToolbarClick(b: HTMLElement): void {
     if (b.dataset.tool) {
       const id = b.dataset.tool as ToolId;
-      const hasOptions = id === 'pen' || id === 'eraser' || id === 'shape' || id === 'fill';
+      const hasOptions = id === 'pen' || id === 'eraser' || id === 'shape' || id === 'fill' || id === 'tape' || id === 'laser';
       if (store.tool.tool === id && hasOptions) this.togglePopover(id, b);
       else {
         this.closePopover();
@@ -233,6 +261,7 @@ export class App {
     anchor.classList.add('open');
     pop.addEventListener('click', (e) => this.onPopoverClick(e));
     pop.addEventListener('input', (e) => this.onPopoverInput(e));
+    pop.addEventListener('change', (e) => this.onCustomColor(e));
     this.fillPopover();
     this.positionPopover(anchor);
   }
@@ -248,8 +277,25 @@ export class App {
     pop.style.top = `${Math.max(8, r.top - ph - 12 * k)}px`;
   }
 
-  private swatches(colors: string[], current: string | null, attr: string): string {
-    return `<div class="swatches">${colors.map((c) => `<button class="swatch ${c === current ? 'on' : ''}" style="background:${c}" data-${attr}="${c}" aria-label="${c}"></button>`).join('')}</div>`;
+  /** Colour buttons, the teacher's own recent colours, and a picker for any colour. */
+  private swatches(colors: string[], current: string | null, attr: string, pre = ''): string {
+    const all = [...colors, ...recentColors().filter((c) => !colors.includes(c))];
+    const pick = current && /^#[0-9a-f]{6}$/i.test(current) ? current : '#ff6699';
+    return `<div class="swatches">${pre}${all.map((c) => `<button class="swatch ${c === current ? 'on' : ''}" style="background:${c}" data-${attr}="${c}" aria-label="${c}"></button>`).join('')}<label class="swatch custom" title="Any colour"><input type="color" value="${pick}" data-custom="${attr}" aria-label="Pick any colour"></label></div>`;
+  }
+
+  /** A colour from the picker acts exactly like tapping a colour button. */
+  private onCustomColor(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const attr = el.dataset.custom;
+    if (!attr) return;
+    addRecentColor(el.value);
+    const b = document.createElement('button');
+    b.hidden = true;
+    b.dataset[attr] = el.value;
+    el.closest('.swatches')!.appendChild(b);
+    b.click();
+    b.remove();
   }
 
   private fillPopover(): void {
@@ -274,8 +320,18 @@ export class App {
       }
       case 'fill':
         pop.innerHTML = `<div class="pop-title">Fill colour</div>
-          <div class="swatches"><button class="swatch none ${t.fillColor === 'none' ? 'on' : ''}" data-fillc="none" aria-label="Remove fill"></button>${[...FILLS, '#3b82f6', '#eab308', '#a855f7', '#ffffff'].filter((c, i, a) => a.indexOf(c) === i).map((c) => `<button class="swatch ${t.fillColor === c ? 'on' : ''}" style="background:${c}" data-fillc="${c}" aria-label="${c}"></button>`).join('')}</div>
+          ${this.swatches([...FILLS, '#3b82f6', '#eab308', '#a855f7', '#ffffff'].filter((c, i, a) => a.indexOf(c) === i), t.fillColor, 'fillc', `<button class="swatch none ${t.fillColor === 'none' ? 'on' : ''}" data-fillc="none" aria-label="Remove fill"></button>`)}
           <div class="muted small center">Tap inside any shape or drawing to colour it.</div>`;
+        break;
+      case 'tape':
+        pop.innerHTML = `<div class="pop-title">Tape</div>
+          ${this.swatches(['#f59e0b', '#ef4444', '#22c55e', '#3b82f6', '#a855f7', '#64748b'], t.tapeColor, 'tapec')}
+          <div class="muted small center">Drag over an answer to hide it.<br>Tap the tape to show it, tap again to hide.</div>`;
+        break;
+      case 'laser':
+        pop.innerHTML = `<div class="pop-title">Laser pointer</div>
+          ${this.swatches(['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899'], t.laserColor, 'laserc')}
+          <div class="muted small center">Point and draw — it fades away by itself.</div>`;
         break;
       case 'eraser':
         pop.innerHTML = `
@@ -330,12 +386,14 @@ export class App {
           <div class="pop-title">Board</div>
           <div class="board-palette">${BOARDS.map((c) => `<button class="swatch ${p.bg === c ? 'on' : ''}" style="background:${c}" data-bg="${c}" aria-label="Board colour ${c}"></button>`).join('')}
             <label class="swatch custom" title="Any colour"><input type="color" id="board-color" value="${p.bg}" data-bgpick aria-label="Pick any board colour"></label></div>
-          <div class="seg">${PATTERNS.map(([k, n]) => `<button class="${p.pattern === k ? 'on' : ''}" data-pattern="${k}">${n}</button>`).join('')}</div>
-          <div class="pop-title">Lesson</div>
+          <div class="seg seg-wrap">${PATTERNS.map(([k, n]) => `<button class="${p.pattern === k ? 'on' : ''}" data-pattern="${k}">${n}</button>`).join('')}</div>
+          <div class="pop-title">Notebook</div>
           <div class="menu-list">
-            <button class="menu-item" data-act="new">${icon('new', 20)}New lesson</button>
-            <button class="menu-item" data-act="open">${icon('open', 20)}Open lesson</button>
-            <button class="menu-item" data-act="save">${icon('save', 20)}Save lesson</button>
+            <button class="menu-item" data-act="library">${icon('notebook', 20)}My notebooks</button>
+            <button class="menu-item" data-act="new">${icon('new', 20)}New notebook</button>
+            <button class="menu-item" data-act="record">${icon('record', 20)}Record lesson (video)</button>
+            <button class="menu-item" data-act="open">${icon('open', 20)}Open file</button>
+            <button class="menu-item" data-act="save">${icon('save', 20)}Save file (to share)</button>
             <button class="menu-item" data-act="export">${icon('download', 20)}Save as PDF</button>
             <button class="menu-item" data-act="delete-page">${icon('trash', 20)}Delete this page</button>
             <button class="menu-item" data-act="fullscreen">${icon('fullscreen', 20)}Full screen</button>
@@ -391,6 +449,8 @@ export class App {
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
     else if (d.emode) store.setTool({ eraserMode: d.emode as 'point' });
     else if (d.fillc) store.setTool({ fillColor: d.fillc });
+    else if (d.tapec) store.setTool({ tapeColor: d.tapec });
+    else if (d.laserc) store.setTool({ laserColor: d.laserc });
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();
@@ -504,14 +564,20 @@ export class App {
       case 'curtain':
         return toggleCurtain(this.root.querySelector('#board') as HTMLElement);
       case 'new':
-        // Ask for a second tap instead of a blocking dialog.
-        if (Date.now() - this.newArmed > 4000) {
-          this.newArmed = Date.now();
-          return toast('Tap “New lesson” again to clear the board and start fresh (save first if needed)', 4000);
-        }
-        this.newArmed = 0;
-        store.loadDoc({ version: 1, title: 'Lesson', pages: [newPage()] });
-        return toast('New lesson started');
+        // The current notebook stays in My notebooks, so nothing is lost.
+        void saveNotebook(store.doc).then(async () => {
+          store.loadDoc(await saveNotebook(blankNotebook('Notebook', store.page.bg)));
+          toast('New notebook — the old one is in My notebooks');
+        });
+        return;
+      case 'library':
+        this.closePopover();
+        if (this.pages.open) this.pages.toggle();
+        void this.library.show();
+        return;
+      case 'record':
+        void toggleRecording(this.board, this.root);
+        return;
       case 'open':
         void openFile();
         return;
@@ -572,11 +638,12 @@ export class App {
     const texts = els.filter((e) => e.type === 'text');
     const tables = els.filter((e): e is TableEl => e.type === 'table');
     const table = els.length === 1 ? tables[0] : undefined;
-    const colorable = paths.length + texts.length + tables.length > 0;
+    const tapes = els.filter((e) => e.type === 'tape');
+    const colorable = paths.length + texts.length + tables.length + tapes.length > 0;
     // Shapes, tables and any hand-drawn line (its loop is filled) can be filled.
     const canFill = (p: PathEl) => p.closed || (p.style !== 'shape' && p.style !== 'highlighter' && p.pts.length >= 9);
     const fillable = paths.some(canFill) || tables.length > 0;
-    const first = (paths[0] ?? texts[0] ?? tables[0]) as { color: string } | undefined;
+    const first = (paths[0] ?? texts[0] ?? tables[0] ?? tapes[0]) as { color: string } | undefined;
     const color = first?.color ?? null;
     // Thickness is shown in the same units as the pen slider.
     const width = (paths[0]?.size ?? 0) / inkScale();
@@ -589,7 +656,7 @@ export class App {
       panel = `<div class="width-row"><input type="range" id="prop-width" min="1" max="30" value="${Math.round(width)}" data-pwidth><span class="width-val">${Math.round(width)}</span></div>
         <div class="sizes">${[2, 4, 8, 14].map((s) => `<button class="size ${Math.round(width) === s ? 'on' : ''}" data-pw="${s}"><span style="width:${s + 3}px;height:${s + 3}px;background:var(--text)"></span></button>`).join('')}</div>`;
     if (sec === 'fill')
-      panel = `<div class="swatches"><button class="swatch none ${!fill ? 'on' : ''}" data-pfill="none" aria-label="No fill"></button>${FILLS.map((c) => `<button class="swatch ${fill === c ? 'on' : ''}" style="background:${c}" data-pfill="${c}" aria-label="${c}"></button>`).join('')}</div>`;
+      panel = this.swatches(FILLS, fill, 'pfill', `<button class="swatch none ${!fill ? 'on' : ''}" data-pfill="none" aria-label="No fill"></button>`);
 
     const btn = (s: PropSection, label: string, preview: string) =>
       `<button class="prop-btn ${sec === s ? 'on' : ''}" data-sec="${s}">${preview}<span>${label}</span></button>`;
@@ -618,6 +685,7 @@ export class App {
     };
     bar.onchange = (e) => {
       const el = e.target as HTMLInputElement;
+      if (el.dataset.custom) return this.onCustomColor(e);
       if (el.dataset.pwidth !== undefined) this.setWidth(Number(el.value) * inkScale(), true);
     };
     this.positionProps();
@@ -632,7 +700,7 @@ export class App {
       this.renderProps();
     } else if (d.pcolor) {
       const c = d.pcolor;
-      store.mapEls(store.selection, (el) => (el.type === 'path' || el.type === 'text' || el.type === 'table' ? ({ ...el, color: c } as El) : el));
+      store.mapEls(store.selection, (el) => (el.type === 'path' || el.type === 'text' || el.type === 'table' || el.type === 'tape' ? ({ ...el, color: c } as El) : el));
       if (store.selectedEls().some((x) => x.type === 'path' && x.style === 'shape')) store.setTool({ shapeColor: c });
     } else if (d.pw) this.setWidth(Number(d.pw) * inkScale(), true);
     else if (d.pfill) {
@@ -877,7 +945,12 @@ export class App {
 }
 
 function saveLocalSafe(): void {
-  saveLocal(store.doc).catch(() => {
-    /* storage full or unavailable */
-  });
+  const run = () =>
+    saveNotebook(store.doc).catch(() => {
+      /* storage full or unavailable */
+    });
+  // Save when the device is idle so it never interrupts writing.
+  const ric = (window as unknown as { requestIdleCallback?: (f: () => void, o: { timeout: number }) => void }).requestIdleCallback;
+  if (ric) ric(run, { timeout: 2000 });
+  else run();
 }

@@ -6,47 +6,6 @@ import { newPage, store } from '../store';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
 
 // ---------------------------------------------------------------------------
-// Autosave (IndexedDB)
-
-const DB = 'teachly';
-const STORE = 'docs';
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-export async function saveLocal(doc: Doc): Promise<void> {
-  const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(doc, 'current');
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-  db.close();
-}
-
-export async function loadLocal(): Promise<Doc | null> {
-  try {
-    const db = await openDb();
-    const doc = await new Promise<Doc | null>((resolve, reject) => {
-      const req = db.transaction(STORE).objectStore(STORE).get('current');
-      req.onsuccess = () => resolve((req.result as Doc) ?? null);
-      req.onerror = () => reject(req.error);
-    });
-    db.close();
-    return doc && Array.isArray(doc.pages) && doc.pages.length ? doc : null;
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 
 export function pickFiles(accept: string, multiple = false): Promise<File[]> {

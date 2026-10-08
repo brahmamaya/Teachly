@@ -75,6 +75,8 @@ const P: Record<string, string> = {
   play: '<path d="M6 4l14 8-14 8z"/>',
   pause: '<path d="M7 4h3v16H7zM14 4h3v16h-3z"/>',
   fill: '<path d="M19 11l-8-8-8.5 8.5a2 2 0 0 0 0 3l5 5a2 2 0 0 0 3 0z"/><path d="M5 2l5 5M2 13h15M22 20a2 2 0 1 1-4 0c0-1.6 2-4 2-4s2 2.4 2 4z"/>',
+  tape: '<path d="M3 15.5L15.5 3l5.5 5.5L8.5 21z"/><path d="M7 12l5 5M10.5 8.5l5 5"/>',
+  notebook: '<path d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6z"/><path d="M6 2v20M3 6h3M3 10h3M3 14h3M3 18h3M10 7h6"/>',
   hide: '<path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/>',
 };
 

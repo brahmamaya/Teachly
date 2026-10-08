@@ -5,6 +5,7 @@ import { freehandPath } from '../renderer';
 import { recognize } from '../shapes';
 import { store } from '../store';
 import { inkScale } from '../ui/scale';
+import { tapeAt, toggleTape } from './tape';
 import type { PathEl, PathStyle } from '../types';
 
 interface Live {
@@ -20,6 +21,7 @@ interface Live {
   lastX: number;
   lastY: number;
   predicted: number[];
+  t0: number;
 }
 
 // Hold still this long at the end of a drawing to snap it into a shape.
@@ -50,6 +52,7 @@ export class PenTool implements Tool {
       lastX: x,
       lastY: y,
       predicted: [],
+      t0: performance.now(),
     };
     this.live.set(p.id, l);
     this.armHold(p.id, l);
@@ -70,6 +73,13 @@ export class PenTool implements Tool {
         this.board.invalidate('overlay');
       }
     }, HOLD_MS);
+  }
+
+  private tiny(l: Live): boolean {
+    for (let i = 3; i < l.pts.length; i += 3) {
+      if (dist(l.pts[i], l.pts[i + 1], l.pts[0], l.pts[1]) > 8 * this.board.px) return false;
+    }
+    return true;
   }
 
   private bigEnough(l: Live): boolean {
@@ -123,6 +133,15 @@ export class PenTool implements Tool {
     if (!l) return;
     this.live.delete(p.id);
     clearTimeout(l.holdTimer);
+    // A quick tap on a tape strip reveals / hides it instead of making a dot.
+    if (!l.snapped && !l.snapper && performance.now() - l.t0 < 350 && this.tiny(l)) {
+      const t = tapeAt(store.page.els, l.pts[0], l.pts[1], 2 * this.board.px);
+      if (t) {
+        toggleTape(t);
+        this.board.invalidate('overlay');
+        return;
+      }
+    }
     let el: PathEl | null = l.snapped;
     if (!el) {
       el = {

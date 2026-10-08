@@ -2,6 +2,7 @@ import type { Board, Ptr, Tool } from '../board';
 import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, resizeEl, similarity, transformEl } from '../geometry';
 import { drawEl, isDarkColor } from '../renderer';
 import { ui } from '../ui/scale';
+import { toggleTape } from './tape';
 import { store } from '../store';
 import type { El, Rect, TextEl } from '../types';
 import { drawGuides, type Guide, guideTargets, snapToGuides } from '../guides';
@@ -196,7 +197,10 @@ export class SelectTool implements Tool {
         const now = performance.now();
         const dbl = this.lastTap.id === el.id && now - this.lastTap.t < 400;
         this.lastTap = { t: now, id: el.id };
-        if (dbl && el.type === 'text') {
+        if (el.type === 'tape') {
+          toggleTape(el);
+          store.clearSelection();
+        } else if (dbl && el.type === 'text') {
           store.clearSelection();
           this.editor.open(el as TextEl, false);
         } else if (dbl && el.type === 'table' && !el.rot && this.tableEditor) {

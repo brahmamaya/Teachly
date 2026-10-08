@@ -3,7 +3,7 @@ import { Instruments } from './instruments';
 import { PAGE } from './page';
 import { drawBackground, drawEls, setAssetLoadCallback } from './renderer';
 import { store } from './store';
-import type { Camera, Rect, ToolId } from './types';
+import type { Camera, El, Rect, ToolId } from './types';
 
 export interface Ptr {
   id: number;
@@ -97,7 +97,10 @@ export class Board {
 
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
-    setAssetLoadCallback(() => this.invalidate('ink'));
+    setAssetLoadCallback(() => {
+      this.inkState = null;
+      this.invalidate('ink');
+    });
     this.bindEvents();
 
     store.on('doc', () => this.invalidate('bg', 'ink', 'overlay'));
@@ -228,6 +231,9 @@ export class Board {
       c.style.width = `${r.width}px`;
       c.style.height = `${r.height}px`;
     }
+    // Resizing a canvas wipes it: draw every layer from scratch.
+    this.inkState = null;
+    this.bgKey = '';
     // New screen size: every page goes back to its fitted view.
     store.cameras.clear();
     if (this.w && this.h) this.ensureCam();
@@ -259,29 +265,58 @@ export class Board {
     ctx.setTransform(d * c.z, 0, 0, d * c.z, -c.x * c.z * d, -c.y * c.z * d);
   }
 
+  private bgKey = '';
+  /** What the ink layer currently shows, so new strokes can be added on top. */
+  private inkState: { els: El[]; cam: Camera; w: number; h: number; dpr: number } | null = null;
+
   private renderBg(): void {
+    const p = store.page, c = this.cam;
+    // The background only changes with colour, pattern, view or size:
+    // skip the redraw (and its shadow blur) after every stroke.
+    const key = `${p.bg}|${p.pattern}|${c.x}|${c.y}|${c.z}|${this.w}|${this.h}|${this.dpr}`;
+    if (key === this.bgKey) return;
+    this.bgKey = key;
     const ctx = this.bgCtx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    const p = store.page;
-    drawBackground(ctx, p.bg, p.pattern, this.cam, this.w, this.h, PAGE);
+    drawBackground(ctx, p.bg, p.pattern, c, this.w, this.h, PAGE);
   }
 
   renderInk(): void {
     const ctx = this.inkCtx;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.ink.width, this.ink.height);
-    this.worldTransform(ctx);
     const tool = this.tool;
     const hidden = tool.hidden?.() ?? null;
     const skip = this.hiddenIds.size ? new Set([...(hidden ?? []), ...this.hiddenIds]) : hidden ?? undefined;
+    const els = store.page.els;
+    const cam = this.cam;
+    // Fast path: when strokes were only added (the usual case while writing),
+    // draw just the new ones on top instead of the whole page again.
+    const prev = this.inkState;
+    let from = 0;
+    if (!skip && prev && prev.cam === cam && prev.w === this.ink.width && prev.h === this.ink.height && prev.dpr === this.dpr && els.length >= prev.els.length) {
+      from = prev.els.length;
+      for (let i = 0; i < from; i++) {
+        if (els[i] !== prev.els[i]) {
+          from = 0;
+          break;
+        }
+      }
+      if (from === 0 && prev.els.length) from = -1;
+    } else from = -1;
+    if (from <= 0) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.ink.width, this.ink.height);
+      from = 0;
+    }
+    this.worldTransform(ctx);
     // Everything lives on the page: clip to its rectangle.
     ctx.save();
     ctx.beginPath();
     ctx.rect(PAGE.x, PAGE.y, PAGE.w, PAGE.h);
     ctx.clip();
-    drawEls(ctx, store.page.els, this.viewRect(), skip);
+    drawEls(ctx, from ? els.slice(from) : els, this.viewRect(), skip);
     tool.drawInk?.(ctx);
     ctx.restore();
+    this.inkState = skip ? null : { els, cam, w: this.ink.width, h: this.ink.height, dpr: this.dpr };
   }
 
   private renderOverlay(): void {

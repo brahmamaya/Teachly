@@ -24,6 +24,8 @@ export interface ToolState {
   fontSize: number;
   /** Paint bucket colour ('none' clears a fill). */
   fillColor: string;
+  laserColor: string;
+  tapeColor: string;
 }
 
 type Listener = () => void;
@@ -55,7 +57,7 @@ export function newPage(bg = '#000000', pattern: BgPattern = 'none'): Page {
 }
 
 export class Store {
-  doc: Doc = { version: 1, title: 'Untitled lesson', pages: [newPage()] };
+  doc: Doc = { version: 1, id: uid(), title: 'My notebook', pages: [newPage()] };
   index = 0;
   cameras = new Map<string, Camera>();
   selection = new Set<string>();
@@ -75,6 +77,8 @@ export class Store {
     eraserSize: 30,
     fontSize: 32,
     fillColor: '#3b82f6',
+    laserColor: '#ef4444',
+    tapeColor: '#f59e0b',
   };
 
   private undoStack: Snapshot[] = [];
@@ -232,7 +236,7 @@ export class Store {
   }
 
   loadDoc(doc: Doc): void {
-    this.doc = doc;
+    this.doc = doc.id ? doc : { ...doc, id: uid() };
     this.index = 0;
     this.undoStack = [];
     this.redoStack = [];

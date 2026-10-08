@@ -52,20 +52,23 @@ Teachly is deliberately simple: one toolbar at the bottom, big buttons, and opti
 | Toolbar | What it does |
 |---|---|
 | **Select** | Tap anything to move, resize or rotate it |
-| **Pen** | Pen or highlighter, 8 colours, 4 sizes. Hold the pen still at the end of a drawing to turn it into a perfect shape |
+| **Pen** | Pen, brush, calligraphy or highlighter; any colour (picker + your recent colours). Hold the pen still at the end of a drawing to turn it into a perfect shape |
 | **Eraser** | Erase part of a line or the whole line; rub with your palm; clear the page |
 | **Shapes** | 18 shapes including 3D (cube, cylinder, cone, sphere). A new shape stays selected so you can change it straight away |
+| **Fill** | Tap inside any shape or hand-drawn loop to colour it |
 | **Text** | Tap and type |
+| **Tape** | Drag over an answer to hide it; tap the tape to reveal, tap again to hide |
+| **Laser** | Glowing pointer trail that fades by itself |
 | **Undo / Redo** | Every step, including clearing a page |
 | **Insert** | Picture, PDF / book pages, PowerPoint (.pptx) slides, table, new page |
 | **Tools** | Ruler and protractor (the pen snaps to their edges), compass, timer, spotlight, screen cover |
-| **Menu** | Board colour (white / green / black) and lines, new / open / save lesson, save as PDF, full screen |
+| **Menu** | Board colour, 8 templates (plain, grid, lines, 4-line, dots, graph, music, Cornell), My notebooks, record lesson as video (board + voice), open / save file, save as PDF, full screen |
 
 **Change a shape:** tap it, and a bar appears with **Colour**, **Thickness**, **Fill**, **Size − / +**, **Copy** and **Delete**.
 
 **Tables:** pick rows × columns from the grid, type straight away (Tab / Enter moves to the next cell), double-tap any cell later to edit. The bar adds **Rows ± / Columns ±**, **Header** on/off, line colour and cell fill; drag the edges to stretch.
 
-Pinch with two fingers to zoom and move the board. Pages are switched with the arrows at the bottom right. Everything is saved automatically in the browser.
+Pinch with two fingers to zoom and move the board. Pages are switched with the arrows at the bottom right. Everything is saved automatically on the device in **My notebooks** — unlimited notebooks, all free. Shapes show cyan dotted guides and snap into line with each other while you move them.
 
 ## 🏗️ Architecture
 
