@@ -142,3 +142,19 @@ describe('maths expressions', () => {
     expect(() => compile('2+')).toThrow();
   });
 });
+
+import { arcThrough } from '../src/shapes';
+describe('arc through three points', () => {
+  it('starts and ends at the ends and passes near the middle point', () => {
+    const pts = arcThrough(0, 0, 200, 0, 100, -100);
+    expect(pts[0]).toEqual([0, 0]);
+    expect(pts[pts.length - 1]).toEqual([200, 0]);
+    const mid = pts[Math.floor(pts.length / 2)];
+    expect(Math.hypot(mid[0] - 100, mid[1] + 100)).toBeLessThan(5);
+    // Bending the other way flips it.
+    const down = arcThrough(0, 0, 200, 0, 100, 40);
+    expect(down[Math.floor(down.length / 2)][1]).toBeGreaterThan(0);
+    // Flat → straight.
+    expect(arcThrough(0, 0, 200, 0, 100, 0)).toHaveLength(3);
+  });
+});

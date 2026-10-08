@@ -1,10 +1,11 @@
 import type { Board, Ptr, Tool } from '../board';
-import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, resizeEl, similarity, transformEl } from '../geometry';
+import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, pathFromPoints, resizeEl, similarity, transformEl } from '../geometry';
 import { drawEl, isDarkColor } from '../renderer';
 import { ui } from '../ui/scale';
 import { toggleTape } from './tape';
 import { store } from '../store';
-import type { El, Rect, TextEl } from '../types';
+import type { El, PathEl, Rect, TextEl } from '../types';
+import { arcThrough } from '../shapes';
 import { drawGuides, type Guide, guideTargets, snapToGuides } from '../guides';
 import { cellAt, type TableEditor } from './table';
 import type { TextEditor } from './text';
@@ -14,7 +15,9 @@ type Mode =
   /** hx / hy: which side is dragged (-1 left/top, 1 right/bottom, 0 untouched). */
   | { k: 'resize'; r: Rect; hx: number; hy: number; keep: boolean }
   | { k: 'rotate'; cx: number; cy: number; a0: number }
-  | { k: 'lasso'; pts: number[]; add: boolean };
+  | { k: 'lasso'; pts: number[]; add: boolean }
+  /** Bending an arc by its middle handle. */
+  | { k: 'bend'; el: PathEl; preview: PathEl | null };
 
 const HANDLE = 10;
 
@@ -71,6 +74,26 @@ export class SelectTool implements Tool {
     return best;
   }
 
+  /** The one selected arc (its bend handle is shown). */
+  private selectedArc(): PathEl | null {
+    const els = store.selectedEls();
+    const e = els.length === 1 ? els[0] : null;
+    return e && e.type === 'path' && e.arc && !e.locked && e.pts.length >= 9 ? e : null;
+  }
+
+  private arcHandle(e: PathEl): [number, number] {
+    const n = e.pts.length / 3;
+    const i = Math.floor(n / 2) * 3;
+    return [e.pts[i], e.pts[i + 1]];
+  }
+
+  private hitsArcHandle(p: Ptr): PathEl | null {
+    const e = this.selectedArc();
+    if (!e) return null;
+    const [x, y] = this.arcHandle(e);
+    return Math.hypot(p.x - x, p.y - y) < this.hitRadius(p) * 1.2 ? e : null;
+  }
+
   private hitRadius(p: Ptr): number {
     return HANDLE * 2 * this.board.px * ui() * (p.type === 'touch' ? 1.6 : 1);
   }
@@ -88,6 +111,7 @@ export class SelectTool implements Tool {
   hitsSelection(p: Ptr): boolean {
     const r = this.bounds();
     if (!r) return false;
+    if (this.hitsArcHandle(p)) return true;
     const h = this.handles(r);
     if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < this.hitRadius(p)) return true;
     if (this.gripAt(p, r)) return true;
@@ -102,6 +126,11 @@ export class SelectTool implements Tool {
     if (this.mode) return;
     this.pid = p.id;
     this.mat = IDENTITY;
+    const arc = this.hitsArcHandle(p);
+    if (arc) {
+      this.mode = { k: 'bend', el: arc, preview: null };
+      return;
+    }
     const r = this.bounds();
     if (r) {
       const h = this.handles(r);
@@ -178,6 +207,11 @@ export class SelectTool implements Tool {
       case 'lasso':
         for (const [x, y] of p.samples) m.pts.push(x, y);
         break;
+      case 'bend': {
+        const q = m.el.pts, n = q.length;
+        m.preview = { ...m.el, pts: pathFromPoints(arcThrough(q[0], q[1], q[n - 3], q[n - 2], p.x, p.y), false) };
+        break;
+      }
     }
     this.board.invalidate('ink', 'overlay');
   }
@@ -186,7 +220,10 @@ export class SelectTool implements Tool {
     const m = this.mode;
     if (!m || p.id !== this.pid) return;
     this.mode = null;
-    if (m.k === 'lasso') {
+    if (m.k === 'bend') {
+      const pv = m.preview;
+      if (pv) store.mapEls(new Set([m.el.id]), () => pv);
+    } else if (m.k === 'lasso') {
       if (m.pts.length > 6) {
         const ids = store.page.els.filter((e) => !e.locked && insideLasso(e, m.pts)).map((e) => e.id);
         store.select(m.add ? [...store.selection, ...ids] : ids);
@@ -230,10 +267,12 @@ export class SelectTool implements Tool {
   }
 
   hidden(): Set<string> | null {
+    if (this.mode?.k === 'bend' && this.mode.preview) return store.selection;
     return this.mat !== IDENTITY ? store.selection : null;
   }
 
   drawInk(ctx: CanvasRenderingContext2D): void {
+    if (this.mode?.k === 'bend' && this.mode.preview) return drawEl(ctx, this.mode.preview);
     if (this.mat === IDENTITY) return;
     if (this.resizeArgs) {
       const [ax, ay, sx, sy] = this.resizeArgs;
@@ -254,7 +293,8 @@ export class SelectTool implements Tool {
     if (r) {
       const h = this.handles(r);
       const g = this.gripAt(p, r);
-      if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < this.hitRadius(p)) cursor = 'grab';
+      if (this.hitsArcHandle(p)) cursor = 'pointer';
+      else if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < this.hitRadius(p)) cursor = 'grab';
       else if (g) cursor = !g.hx ? 'ns-resize' : !g.hy ? 'ew-resize' : g.hx === g.hy ? 'nwse-resize' : 'nesw-resize';
       else if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) cursor = 'move';
     }
@@ -342,6 +382,19 @@ export class SelectTool implements Tool {
       }
     }
     handle(rx, ry2, true);
+    // Arc: a coloured bend handle at its middle.
+    const arc = this.selectedArc();
+    if (arc && mat === IDENTITY) {
+      const m2 = this.mode;
+      const [ax, ay] = m2?.k === 'bend' && m2.preview ? this.arcHandle(m2.preview) : this.arcHandle(arc);
+      ctx.beginPath();
+      ctx.arc(ax, ay, HANDLE * 1.15 * hp, 0, Math.PI * 2);
+      ctx.fillStyle = '#facc15';
+      ctx.fill();
+      ctx.lineWidth = 2.5 * px;
+      ctx.strokeStyle = isDarkColor(store.page.bg) ? '#000' : '#fff';
+      ctx.stroke();
+    }
     ctx.fillStyle = ink;
     ctx.font = `700 ${12 * hp}px system-ui`;
     ctx.textAlign = 'center';

@@ -145,12 +145,50 @@ export function buildShape(kind: ShapeKind, x1: number, y1: number, x2: number, 
         mk(ellipsePts(cx, cy, rr, rr * 0.3, Math.PI, Math.PI * 2), false, s2, { dash: true }),
       ];
     }
+    case 'arc': {
+      // A half circle over the dragged line; bend it later with its handle.
+      const dx = x2 - x1, dy = y2 - y1;
+      const mx = (x1 + x2) / 2 + dy / 2, my = (y1 + y2) / 2 - dx / 2;
+      return [mk(arcThrough(x1, y1, x2, y2, mx, my), false, { ...st, fill: null }, { arc: true })];
+    }
     case 'axes2':
       return axes2(l, t, r, b, st);
     case 'axes3':
       return axes3(l, t, r, b, st);
   }
   return [];
+}
+
+/**
+ * Points of the circular arc that starts at A, ends at B and passes
+ * through M. (Nearly straight → a straight line with a middle point.)
+ */
+export function arcThrough(ax: number, ay: number, bx: number, by: number, mx: number, my: number): P[] {
+  const d = 2 * (ax * (by - my) + bx * (my - ay) + mx * (ay - by));
+  const chord = Math.hypot(bx - ax, by - ay) || 1;
+  if (Math.abs(d) < 1e-6 * chord * chord) return [[ax, ay], [(ax + bx) / 2, (ay + by) / 2], [bx, by]];
+  const a2 = ax * ax + ay * ay, b2 = bx * bx + by * by, m2 = mx * mx + my * my;
+  const ux = (a2 * (by - my) + b2 * (my - ay) + m2 * (ay - by)) / d;
+  const uy = (a2 * (mx - bx) + b2 * (ax - mx) + m2 * (bx - ax)) / d;
+  const r = Math.hypot(ax - ux, ay - uy);
+  // Almost flat (huge circle): draw it straight.
+  if (r > chord * 60) return [[ax, ay], [(ax + bx) / 2, (ay + by) / 2], [bx, by]];
+  const TAU = Math.PI * 2;
+  const norm = (a: number) => ((a % TAU) + TAU) % TAU;
+  const a0 = Math.atan2(ay - uy, ax - ux);
+  const a1 = Math.atan2(by - uy, bx - ux);
+  const am = Math.atan2(my - uy, mx - ux);
+  const ccw = norm(a1 - a0);
+  const sweep = norm(am - a0) < ccw ? ccw : ccw - TAU;
+  const n = Math.max(16, Math.min(240, Math.round((Math.abs(sweep) * r) / 5)));
+  const out: P[] = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (sweep * i) / n;
+    out.push([ux + Math.cos(a) * r, uy + Math.sin(a) * r]);
+  }
+  out[0] = [ax, ay];
+  out[n] = [bx, by];
+  return out;
 }
 
 // ---------------------------------------------------------------------------

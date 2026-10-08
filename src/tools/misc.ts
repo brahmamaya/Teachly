@@ -73,7 +73,7 @@ export class ShapeTool implements Tool {
       // Tap: drop a default-sized shape.
       const axes = store.tool.shape === 'axes2' || store.tool.shape === 'axes3';
       const d = (axes ? 420 : 160) * inkScale(), dh = axes ? d * 0.8 : d;
-      const line = ['line', 'arrow', 'dashed'].includes(store.tool.shape);
+      const line = ['line', 'arrow', 'dashed', 'arc'].includes(store.tool.shape);
       els = buildShape(store.tool.shape, s.x - d / 2, s.y - (line ? 0 : dh / 2), s.x + d / 2, s.y + (line ? 0 : dh / 2), this.style(), false);
     }
     this.preview = [];

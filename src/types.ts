@@ -19,6 +19,8 @@ export interface PathEl {
   dash?: boolean;
   /** 0 = none, 1 = end, 2 = both ends */
   arrow?: 0 | 1 | 2;
+  /** An arc shape: its bend can be changed with the handle at its middle. */
+  arc?: boolean;
   /** Pressure was simulated (mouse / touch). */
   sim?: boolean;
   locked?: boolean;
@@ -121,7 +123,8 @@ export type ShapeKind =
   | 'cone'
   | 'sphere'
   | 'axes2'
-  | 'axes3';
+  | 'axes3'
+  | 'arc';
 
 export type EraserMode = 'stroke' | 'point';
 

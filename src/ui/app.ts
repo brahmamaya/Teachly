@@ -69,6 +69,7 @@ const SHAPES: [ShapeKind, string, string][] = [
   ['rect', 'Rectangle', '<rect x="3" y="6" width="18" height="12"/>'],
   ['square', 'Square', '<rect x="4" y="4" width="16" height="16"/>'],
   ['circle', 'Circle', '<circle cx="12" cy="12" r="9"/>'],
+  ['arc', 'Arc (drag the dot to bend it)', '<path d="M3 18a9 9 0 0 1 18 0"/>'],
   ['ellipse', 'Oval', '<ellipse cx="12" cy="12" rx="10" ry="6.5"/>'],
   ['triangle', 'Triangle', '<path d="M12 3l9 18H3z"/>'],
   ['rtriangle', 'Right triangle', '<path d="M4 3v18h16z"/>'],
