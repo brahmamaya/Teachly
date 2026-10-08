@@ -1,5 +1,6 @@
 import { getStroke } from 'perfect-freehand';
 import { bbox, rectsIntersect } from './geometry';
+import { PAGE } from './page';
 import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TableEl, TapeEl, TextEl } from './types';
 
 // ---------------------------------------------------------------------------
@@ -399,23 +400,12 @@ export function drawBackground(ctx: CanvasRenderingContext2D, bg: string, patter
   ctx.fillRect(0, 0, w, h);
   const px = (page.x - cam.x) * cam.z, py = (page.y - cam.y) * cam.z;
   const pw = page.w * cam.z, ph = page.h * cam.z;
-  // Soft lift so the page reads as a sheet on the desk.
-  ctx.save();
-  ctx.shadowColor = dark ? 'rgba(0,0,0,0.85)' : 'rgba(15,23,42,0.28)';
-  ctx.shadowBlur = 28;
-  ctx.shadowOffsetY = 6;
-  ctx.fillStyle = bg;
-  ctx.fillRect(px, py, pw, ph);
-  ctx.restore();
   ctx.save();
   ctx.beginPath();
   ctx.rect(px, py, pw, ph);
   ctx.clip();
   drawSurface(ctx, bg, pattern, cam, w, h);
   ctx.restore();
-  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.22)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(Math.round(px) + 0.5, Math.round(py) + 0.5, Math.round(pw) - 1, Math.round(ph) - 1);
 }
 
 function drawSurface(ctx: CanvasRenderingContext2D, bg: string, pattern: BgPattern, cam: Camera, w: number, h: number): void {
@@ -530,10 +520,11 @@ function drawSurface(ctx: CanvasRenderingContext2D, bg: string, pattern: BgPatte
       ctx.strokeStyle = accent;
       ctx.lineWidth = 2;
       ctx.beginPath();
+      const sumY = PAGE.h * 0.8;
       ctx.moveTo(toSx(420), toSy(0));
-      ctx.lineTo(toSx(420), toSy(700));
-      ctx.moveTo(toSx(0), toSy(700));
-      ctx.lineTo(toSx(1600), toSy(700));
+      ctx.lineTo(toSx(420), toSy(sumY));
+      ctx.moveTo(toSx(0), toSy(sumY));
+      ctx.lineTo(toSx(PAGE.w), toSy(sumY));
       ctx.stroke();
       break;
     }

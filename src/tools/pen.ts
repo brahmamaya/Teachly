@@ -196,7 +196,10 @@ export class PenTool implements Tool {
         ctx.globalAlpha = 1;
         continue;
       }
-      const pts = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
+      // Same smoothing as the finished stroke, so the line does not jump
+      // when the pen is lifted.
+      const raw = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
+      const pts = l.snapper ? raw : smoothPts(raw);
       ctx.globalAlpha = l.style === 'highlighter' ? 0.38 : 1;
       ctx.fillStyle = l.color;
       ctx.fill(freehandPath(pts, { style: l.snapper ? 'highlighter' : l.style, size: l.size, sim: l.sim }, false));

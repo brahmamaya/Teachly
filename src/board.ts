@@ -1,6 +1,6 @@
 import { bbox } from './geometry';
 import { Instruments } from './instruments';
-import { PAGE } from './page';
+import { PAGE, setPageSize } from './page';
 import { drawBackground, drawEls, setAssetLoadCallback } from './renderer';
 import { store } from './store';
 import type { Camera, El, Rect, ToolId } from './types';
@@ -151,7 +151,7 @@ export class Board {
   // ---- camera ----------------------------------------------------------------
 
   /** Screen space kept free around the page (toolbars, clock). Set by the app. */
-  insets = { top: 12, right: 12, bottom: 12, left: 12 };
+  insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
   /** Zoom at which the whole page just fits on screen. */
   get fitZ(): number {
@@ -236,6 +236,7 @@ export class Board {
       c.style.width = `${r.width}px`;
       c.style.height = `${r.height}px`;
     }
+    setPageSize(this.w, this.h);
     // Resizing a canvas wipes it: draw every layer from scratch.
     this.inkState = null;
     this.bgKey = '';

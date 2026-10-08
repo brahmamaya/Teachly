@@ -180,7 +180,13 @@ export class App {
     this.startClock();
     this.applyScale();
     window.addEventListener('resize', () => this.applyScale());
-    store.on('settings', () => this.applyScale());
+    // Only a new button size needs a re-layout (other settings keep the menu open).
+    let uiSize = store.settings.uiSize;
+    store.on('settings', () => {
+      if (store.settings.uiSize === uiSize) return;
+      uiSize = store.settings.uiSize;
+      this.applyScale();
+    });
     void loadLastNotebook().then((doc) => doc && store.loadDoc(doc));
   }
 
@@ -334,7 +340,7 @@ export class App {
       case 'laser':
         pop.innerHTML = `<div class="pop-title">Laser pointer</div>
           ${this.swatches(['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899'], t.laserColor, 'laserc')}
-          <div class="muted small center">Point and draw — it fades away by itself.</div>`;
+          <div class="muted small center">Draw to point things out — it disappears 3 seconds after you stop.</div>`;
         break;
       case 'eraser':
         pop.innerHTML = `
@@ -841,10 +847,8 @@ export class App {
     const stacked = window.innerWidth / oneRow < 0.85;
     this.root.classList.toggle('tb-stacked', stacked);
     computeUiScale(store.settings.uiSize, stacked ? Math.max(L, R) + 20 : oneRow);
-    // Keep the page clear of the clock (top) and the toolbars (bottom).
-    const k = ui();
-    const bar = 64 * k;
-    this.board.insets = { top: 14 + 30 * k, right: 12, bottom: 22 + (stacked ? bar * 2 + 10 : bar), left: 12 };
+    // The page fills the whole screen; the toolbars float on top of it.
+    this.board.insets = { top: 0, right: 0, bottom: 0, left: 0 };
     this.board.resize();
     this.closePopover();
     this.positionProps();
