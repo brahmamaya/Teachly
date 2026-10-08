@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { bbox, hitTest, insideLasso, pathFromPoints, similarity, transformEl } from '../src/geometry';
-import { compile, evaluate, formatNumber } from '../src/mathexpr';
 import { buildShape, recognize } from '../src/shapes';
 import { splitPath } from '../src/tools/eraser';
 import type { PathEl } from '../src/types';
-import { ELEMENTS } from '../src/widgets/elements-data';
 
 const path = (pts: [number, number][], extra: Partial<PathEl> = {}): PathEl => ({
   id: 'p',
@@ -15,33 +13,6 @@ const path = (pts: [number, number][], extra: Partial<PathEl> = {}): PathEl => (
   size: 4,
   opacity: 1,
   ...extra,
-});
-
-describe('math expressions', () => {
-  it('evaluates arithmetic with precedence', () => {
-    expect(evaluate('2+3*4')).toBe(14);
-    expect(evaluate('2^3^2')).toBe(512);
-    expect(evaluate('-2^2')).toBe(-4);
-    expect(evaluate('(1+2)(3+4)')).toBe(21);
-    expect(evaluate('5!')).toBe(120);
-  });
-  it('supports functions, constants and implicit multiplication', () => {
-    expect(evaluate('sin(pi/2)')).toBeCloseTo(1);
-    expect(evaluate('2pi')).toBeCloseTo(Math.PI * 2);
-    expect(evaluate('sqrt 16')).toBe(4);
-    expect(compile('2x+1')({ x: 3 })).toBe(7);
-    expect(compile('y = x^2')({ x: -3 })).toBe(9);
-    expect(compile('x sin x')({ x: Math.PI / 2 })).toBeCloseTo(Math.PI / 2);
-  });
-  it('rejects invalid input', () => {
-    expect(() => compile('2+')).toThrow();
-    // Unknown names are treated as variables, never executed.
-    expect(() => compile('alert(1)')({ x: 1 })).toThrow(/Unknown variable/);
-  });
-  it('formats numbers', () => {
-    expect(formatNumber(0.1 + 0.2)).toBe('0.3');
-    expect(formatNumber(1 / 0)).toBe('∞');
-  });
 });
 
 describe('shape recognition', () => {
@@ -73,7 +44,7 @@ describe('shape recognition', () => {
     expect(r.pts.length).toBe(3);
   });
   it('builds every shape kind', () => {
-    for (const kind of ['line', 'rect', 'circle', 'star', 'cube', 'cylinder', 'cone', 'sphere', 'axes'] as const) {
+    for (const kind of ['line', 'rect', 'circle', 'star', 'cube', 'cylinder', 'cone', 'sphere'] as const) {
       expect(buildShape(kind, 0, 0, 200, 150, { color: '#000', size: 3, fill: null }).length).toBeGreaterThan(0);
     }
   });
@@ -115,15 +86,5 @@ describe('partial eraser', () => {
   });
   it('returns null when nothing is erased', () => {
     expect(splitPath(path([[0, 0], [200, 0]]), 100, 100, 100, 200, 10)).toBeNull();
-  });
-});
-
-describe('periodic table data', () => {
-  it('has 118 unique positioned elements', () => {
-    expect(ELEMENTS).toHaveLength(118);
-    expect(ELEMENTS[25].sym).toBe('Fe');
-    const pos = new Set(ELEMENTS.map((e) => `${e.col},${e.row}`));
-    expect(pos.size).toBe(118);
-    expect(ELEMENTS.every((e) => e.col >= 1 && e.col <= 18)).toBe(true);
   });
 });

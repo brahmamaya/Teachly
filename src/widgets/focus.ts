@@ -1,7 +1,6 @@
-import type { Board } from '../board';
 import { icon } from '../ui/icons';
 
-// Presentation focus tools: spotlight, screen cover (curtain) and magnifier.
+// Presentation focus tools: spotlight and screen cover (curtain).
 
 let spotlight: HTMLElement | null = null;
 
@@ -161,66 +160,4 @@ export function toggleCurtain(host: HTMLElement): void {
     grip.addEventListener('pointermove', move);
     grip.addEventListener('pointerup', up);
   });
-}
-
-let magnifier: { el: HTMLElement; stop: () => void } | null = null;
-
-/** A draggable lens that shows a live zoomed view of the board under it. */
-export function toggleMagnifier(host: HTMLElement, board: Board): void {
-  if (magnifier) {
-    magnifier.stop();
-    magnifier.el.remove();
-    magnifier = null;
-    return;
-  }
-  const el = document.createElement('div');
-  el.className = 'magnifier';
-  el.innerHTML = `<canvas></canvas><div class="mag-bar"><button class="icon-btn small" data-z="-">−</button><span data-zl>2×</span><button class="icon-btn small" data-z="+">+</button><button class="icon-btn small" data-a="close">${icon('close', 16)}</button></div>`;
-  host.appendChild(el);
-  const size = 260;
-  el.style.left = `${window.innerWidth / 2 - size / 2}px`;
-  el.style.top = `${window.innerHeight / 2 - size / 2}px`;
-  const c = el.querySelector('canvas')!;
-  const dpr = window.devicePixelRatio || 1;
-  c.width = size * dpr;
-  c.height = size * dpr;
-  const ctx = c.getContext('2d')!;
-  let zoom = 2;
-  let raf = 0;
-  const draw = () => {
-    const br = board.el.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    const cx = (r.left + r.width / 2 - br.left) * board.dpr;
-    const cy = (r.top + r.width / 2 - br.top) * board.dpr;
-    const half = (size / 2 / zoom) * board.dpr;
-    ctx.clearRect(0, 0, c.width, c.height);
-    for (const layer of [board.bg, board.ink]) ctx.drawImage(layer, cx - half, cy - half, half * 2, half * 2, 0, 0, c.width, c.height);
-    raf = requestAnimationFrame(draw);
-  };
-  draw();
-  el.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest('button');
-    if (!b) return;
-    if (b.dataset.a === 'close') toggleMagnifier(host, board);
-    if (b.dataset.z) {
-      zoom = Math.max(1.5, Math.min(6, zoom + (b.dataset.z === '+' ? 0.5 : -0.5)));
-      (el.querySelector('[data-zl]') as HTMLElement).textContent = `${zoom}×`;
-    }
-  });
-  c.style.touchAction = 'none';
-  c.addEventListener('pointerdown', (e) => {
-    c.setPointerCapture(e.pointerId);
-    const ox = e.clientX - el.offsetLeft, oy = e.clientY - el.offsetTop;
-    const move = (ev: PointerEvent) => {
-      el.style.left = `${ev.clientX - ox}px`;
-      el.style.top = `${ev.clientY - oy}px`;
-    };
-    const up = () => {
-      c.removeEventListener('pointermove', move);
-      c.removeEventListener('pointerup', up);
-    };
-    c.addEventListener('pointermove', move);
-    c.addEventListener('pointerup', up);
-  });
-  magnifier = { el, stop: () => cancelAnimationFrame(raf) };
 }

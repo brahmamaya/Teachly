@@ -1,8 +1,6 @@
 import { getStroke } from 'perfect-freehand';
 import { bbox, rectsIntersect } from './geometry';
-import { compile } from './mathexpr';
-import type { BgPattern, BoxEl, Camera, ChemEl, El, GraphEl, PathEl, Rect, TextEl } from './types';
-import { CATEGORY_COLORS, ELEMENTS } from './widgets/elements-data';
+import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TextEl } from './types';
 
 // ---------------------------------------------------------------------------
 // Stroke geometry
@@ -11,8 +9,6 @@ export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last
   switch (el.style) {
     case 'highlighter':
       return { size: el.size, thinning: 0, smoothing: 0.6, streamline: 0.55, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
-    case 'brush':
-      return { size: el.size * 1.8, thinning: 0.85, smoothing: 0.6, streamline: 0.45, simulatePressure: !!el.sim, last, start: { taper: el.size * 2, cap: true }, end: { taper: el.size * 3, cap: true } };
     default:
       return { size: el.size, thinning: el.sim ? 0.45 : 0.6, smoothing: 0.55, streamline: 0.42, simulatePressure: !!el.sim, last, start: { cap: true }, end: { cap: true } };
   }
@@ -59,7 +55,7 @@ function getPath(el: PathEl): Path2D {
 }
 
 // ---------------------------------------------------------------------------
-// Images & videos
+// Images
 
 const images = new Map<string, HTMLImageElement>();
 let onAssetLoad: () => void = () => {};
@@ -80,31 +76,6 @@ export function getImage(src: string): HTMLImageElement {
   return img;
 }
 
-const videos = new Map<string, HTMLVideoElement>();
-
-export function getVideo(id: string, src: string): HTMLVideoElement {
-  let v = videos.get(id);
-  if (!v) {
-    v = document.createElement('video');
-    v.src = src;
-    v.playsInline = true;
-    v.preload = 'auto';
-    v.crossOrigin = 'anonymous';
-    v.addEventListener('loadeddata', () => onAssetLoad());
-    v.addEventListener('pause', () => onAssetLoad());
-    videos.set(id, v);
-  }
-  return v;
-}
-
-export function anyVideoPlaying(): boolean {
-  for (const v of videos.values()) if (!v.paused && !v.ended) return true;
-  return false;
-}
-
-export function pauseAllVideos(): void {
-  for (const v of videos.values()) v.pause();
-}
 
 // ---------------------------------------------------------------------------
 // Element drawing (ctx is already in world coordinates)
@@ -208,132 +179,6 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.roundRect(x, y, w, h, r);
 }
 
-function niceStep(range: number): number {
-  const raw = range / 10;
-  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-  const n = raw / mag;
-  return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * mag;
-}
-
-const GRAPH_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#9333ea', '#ea580c', '#0891b2'];
-
-const compiledCache = new Map<string, ((v: Record<string, number>) => number) | null>();
-function compiled(expr: string) {
-  if (!compiledCache.has(expr)) {
-    try {
-      compiledCache.set(expr, compile(expr));
-    } catch {
-      compiledCache.set(expr, null);
-    }
-  }
-  return compiledCache.get(expr)!;
-}
-
-function drawGraph(ctx: CanvasRenderingContext2D, el: GraphEl): void {
-  const { w, h, xmin, xmax, ymin, ymax } = el;
-  const sx = (x: number) => ((x - xmin) / (xmax - xmin)) * w;
-  const sy = (y: number) => h - ((y - ymin) / (ymax - ymin)) * h;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, w, h);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, w, h);
-  ctx.clip();
-  const fs = Math.max(10, Math.min(w, h) / 32);
-  ctx.font = `${fs}px system-ui, sans-serif`;
-  const stepX = niceStep(xmax - xmin), stepY = niceStep(ymax - ymin);
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = '#e2e8f0';
-  ctx.fillStyle = '#64748b';
-  for (let x = Math.ceil(xmin / stepX) * stepX; x <= xmax; x += stepX) {
-    ctx.beginPath();
-    ctx.moveTo(sx(x), 0);
-    ctx.lineTo(sx(x), h);
-    ctx.stroke();
-    if (Math.abs(x) > stepX / 2) ctx.fillText(String(+x.toFixed(6)), sx(x) + 3, Math.min(h - fs - 2, Math.max(2, sy(0) + 3)));
-  }
-  for (let y = Math.ceil(ymin / stepY) * stepY; y <= ymax; y += stepY) {
-    ctx.beginPath();
-    ctx.moveTo(0, sy(y));
-    ctx.lineTo(w, sy(y));
-    ctx.stroke();
-    if (Math.abs(y) > stepY / 2) ctx.fillText(String(+y.toFixed(6)), Math.min(w - fs * 3, Math.max(2, sx(0) + 4)), sy(y) + 2);
-  }
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(sx(0), 0);
-  ctx.lineTo(sx(0), h);
-  ctx.moveTo(0, sy(0));
-  ctx.lineTo(w, sy(0));
-  ctx.stroke();
-  el.exprs.forEach((expr, i) => {
-    const f = compiled(expr);
-    if (!f) return;
-    ctx.strokeStyle = GRAPH_COLORS[i % GRAPH_COLORS.length];
-    ctx.lineWidth = Math.max(2.5, Math.min(w, h) / 160);
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    let pen = false;
-    let prevY = 0;
-    const steps = Math.max(200, Math.round(w * 1.5));
-    for (let k = 0; k <= steps; k++) {
-      const x = xmin + ((xmax - xmin) * k) / steps;
-      let y: number;
-      try {
-        y = f({ x });
-      } catch {
-        y = NaN;
-      }
-      const py = sy(y);
-      if (!Number.isFinite(y) || (pen && Math.abs(py - prevY) > h * 2)) {
-        pen = false;
-        continue;
-      }
-      if (pen) ctx.lineTo(sx(x), py);
-      else ctx.moveTo(sx(x), py);
-      pen = true;
-      prevY = py;
-    }
-    ctx.stroke();
-  });
-  ctx.restore();
-  // Legend
-  ctx.font = `600 ${fs * 1.15}px system-ui, sans-serif`;
-  el.exprs.forEach((expr, i) => {
-    ctx.fillStyle = GRAPH_COLORS[i % GRAPH_COLORS.length];
-    ctx.fillText(`y = ${expr}`, 8, 8 + i * fs * 1.5 + fs);
-  });
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(0, 0, w, h);
-}
-
-function drawChem(ctx: CanvasRenderingContext2D, el: ChemEl): void {
-  const e = ELEMENTS[el.z - 1];
-  if (!e) return;
-  const { w, h } = el;
-  ctx.fillStyle = CATEGORY_COLORS[e.cat];
-  roundRect(ctx, 0, 0, w, h, w * 0.06);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-  ctx.lineWidth = Math.max(1, w / 80);
-  ctx.stroke();
-  ctx.fillStyle = '#0f172a';
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'left';
-  ctx.font = `600 ${w * 0.13}px system-ui, sans-serif`;
-  ctx.fillText(String(e.z), w * 0.08, w * 0.07);
-  ctx.textAlign = 'center';
-  ctx.font = `800 ${w * 0.38}px system-ui, sans-serif`;
-  ctx.fillText(e.sym, w / 2, h * 0.24);
-  ctx.font = `500 ${w * 0.11}px system-ui, sans-serif`;
-  ctx.fillText(e.name, w / 2, h * 0.66, w * 0.9);
-  ctx.font = `400 ${w * 0.1}px system-ui, sans-serif`;
-  ctx.fillText(e.mass, w / 2, h * 0.81);
-  ctx.textAlign = 'left';
-}
-
 function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
   ctx.save();
   ctx.translate(el.x + el.w / 2, el.y + el.h / 2);
@@ -352,33 +197,6 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
       }
       break;
     }
-    case 'video': {
-      const v = getVideo(el.id, el.src);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, el.w, el.h);
-      if (v.readyState >= 2) ctx.drawImage(v, 0, 0, el.w, el.h);
-      if (v.paused) {
-        const r = Math.min(el.w, el.h) * 0.12;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.beginPath();
-        ctx.arc(el.w / 2, el.h / 2, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.moveTo(el.w / 2 - r * 0.35, el.h / 2 - r * 0.5);
-        ctx.lineTo(el.w / 2 + r * 0.55, el.h / 2);
-        ctx.lineTo(el.w / 2 - r * 0.35, el.h / 2 + r * 0.5);
-        ctx.closePath();
-        ctx.fill();
-      }
-      break;
-    }
-    case 'graph':
-      drawGraph(ctx, el);
-      break;
-    case 'chem':
-      drawChem(ctx, el);
-      break;
   }
   ctx.restore();
 }
@@ -414,7 +232,6 @@ export function drawBackground(ctx: CanvasRenderingContext2D, bg: string, patter
   if (pattern === 'none') return;
   const dark = isDarkColor(bg);
   const minor = dark ? 'rgba(255,255,255,0.10)' : 'rgba(15,23,42,0.08)';
-  const major = dark ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.18)';
   const accent = dark ? 'rgba(248,113,113,0.55)' : 'rgba(220,38,38,0.45)';
   const blue = dark ? 'rgba(147,197,253,0.45)' : 'rgba(37,99,235,0.35)';
   const z = cam.z;
@@ -452,21 +269,6 @@ export function drawBackground(ctx: CanvasRenderingContext2D, bg: string, patter
       hLines(40, minor);
       vLines(40, minor);
       break;
-    case 'graph':
-      hLines(10, minor);
-      vLines(10, minor);
-      hLines(50, major);
-      vLines(50, major);
-      break;
-    case 'dots': {
-      const step = 32;
-      if (step * z < 6) return;
-      ctx.fillStyle = major;
-      const r = Math.max(1, 1.6 * Math.min(z, 2));
-      for (let x = Math.floor(wx0 / step) * step; x <= wx1; x += step)
-        for (let y = Math.floor(wy0 / step) * step; y <= wy1; y += step) ctx.fillRect(toSx(x) - r / 2, toSy(y) - r / 2, r, r);
-      break;
-    }
     case 'lines':
       hLines(44, blue);
       ctx.strokeStyle = accent;
@@ -493,41 +295,6 @@ export function drawBackground(ctx: CanvasRenderingContext2D, bg: string, patter
         }
       }
       ctx.setLineDash([]);
-      break;
-    }
-    case 'music': {
-      const gap = 12, row = gap * 4 + 70;
-      if (gap * z < 3) return;
-      ctx.strokeStyle = dark ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let y = Math.floor(wy0 / row) * row; y <= wy1; y += row) {
-        for (let k = 0; k < 5; k++) {
-          const sy = Math.round(toSy(y + k * gap)) + 0.5;
-          ctx.moveTo(0, sy);
-          ctx.lineTo(w, sy);
-        }
-      }
-      ctx.stroke();
-      break;
-    }
-    case 'isometric': {
-      const step = 40;
-      if (step * z < 6) return;
-      hLines(step * Math.sin(Math.PI / 3), minor);
-      ctx.strokeStyle = minor;
-      ctx.lineWidth = 1;
-      const t = Math.tan(Math.PI / 3);
-      const dx = step;
-      ctx.beginPath();
-      const H = (wy1 - wy0) / t;
-      for (let x = Math.floor((wx0 - H) / dx) * dx; x <= wx1 + H; x += dx) {
-        ctx.moveTo(toSx(x), toSy(wy0));
-        ctx.lineTo(toSx(x + (wy1 - wy0) / t), toSy(wy1));
-        ctx.moveTo(toSx(x), toSy(wy0));
-        ctx.lineTo(toSx(x - (wy1 - wy0) / t), toSy(wy1));
-      }
-      ctx.stroke();
       break;
     }
   }

@@ -1,6 +1,6 @@
 import type { Board, Ptr, Tool } from '../board';
 import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, matMul, similarity, transformEl } from '../geometry';
-import { drawEl, getVideo } from '../renderer';
+import { drawEl } from '../renderer';
 import { store } from '../store';
 import type { El, Rect, TextEl } from '../types';
 import type { TextEditor } from './text';
@@ -46,6 +46,21 @@ export class SelectTool implements Tool {
       if (!els[i].locked && hitTest(els[i], x, y, tol)) return els[i];
     }
     return null;
+  }
+
+  /** Does the pointer land on the current selection or one of its handles? */
+  hitsSelection(p: Ptr): boolean {
+    const r = this.bounds();
+    if (!r) return false;
+    const hr = HANDLE * 1.8 * this.board.px * (p.type === 'touch' ? 1.6 : 1);
+    const h = this.handles(r);
+    if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < hr) return true;
+    if (h.corners.some(([x, y]) => Math.hypot(p.x - x, p.y - y) < hr)) return true;
+    return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  }
+
+  get busy(): boolean {
+    return !!this.mode;
   }
 
   down(p: Ptr): void {
@@ -135,12 +150,7 @@ export class SelectTool implements Tool {
         const now = performance.now();
         const dbl = this.lastTap.id === el.id && now - this.lastTap.t < 400;
         this.lastTap = { t: now, id: el.id };
-        if (el.type === 'video') {
-          const v = getVideo(el.id, el.src);
-          if (v.paused) void v.play();
-          else v.pause();
-          this.board.invalidate('ink');
-        } else if (dbl && el.type === 'text') {
+        if (dbl && el.type === 'text') {
           store.clearSelection();
           this.editor.open(el as TextEl, false);
         }
@@ -172,7 +182,7 @@ export class SelectTool implements Tool {
   }
 
   hover(p: Ptr | null): void {
-    if (store.tool.tool !== 'select') return;
+    if (store.tool.tool !== 'select' && !(store.tool.tool === 'shape' && store.selection.size)) return;
     if (!p) return;
     const r = this.bounds();
     let cursor = 'default';
@@ -189,7 +199,7 @@ export class SelectTool implements Tool {
   }
 
   drawOverlay(ctx: CanvasRenderingContext2D): void {
-    if (store.tool.tool !== 'select') return;
+    if (store.tool.tool !== 'select' && store.tool.tool !== 'shape') return;
     const px = this.board.px;
     const m = this.mode;
     if (m?.k === 'lasso' && m.pts.length > 2) {

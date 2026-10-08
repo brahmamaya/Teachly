@@ -2,7 +2,7 @@
 // object, which lets history snapshots share structure and lets render
 // caches be keyed by object identity.
 
-export type PathStyle = 'pen' | 'highlighter' | 'brush' | 'shape';
+export type PathStyle = 'pen' | 'highlighter' | 'shape';
 
 export interface PathEl {
   id: string;
@@ -48,37 +48,10 @@ export interface ImageEl extends BoxBase {
   src: string;
 }
 
-export interface VideoEl extends BoxBase {
-  type: 'video';
-  src: string;
-}
-
-export interface GraphEl extends BoxBase {
-  type: 'graph';
-  exprs: string[];
-  xmin: number;
-  xmax: number;
-  ymin: number;
-  ymax: number;
-}
-
-export interface ChemEl extends BoxBase {
-  type: 'chem';
-  z: number;
-}
-
-export type BoxEl = TextEl | ImageEl | VideoEl | GraphEl | ChemEl;
+export type BoxEl = TextEl | ImageEl;
 export type El = PathEl | BoxEl;
 
-export type BgPattern =
-  | 'none'
-  | 'grid'
-  | 'dots'
-  | 'lines'
-  | 'fourline'
-  | 'music'
-  | 'graph'
-  | 'isometric';
+export type BgPattern = 'none' | 'grid' | 'lines' | 'fourline';
 
 export interface Page {
   id: string;
@@ -99,40 +72,29 @@ export interface Camera {
   z: number;
 }
 
-export type ToolId =
-  | 'select'
-  | 'pen'
-  | 'eraser'
-  | 'shape'
-  | 'text'
-  | 'laser'
-  | 'pan'
-  | 'compass';
+export type ToolId = 'select' | 'pen' | 'eraser' | 'shape' | 'text' | 'compass';
 
 export type ShapeKind =
   | 'line'
   | 'arrow'
-  | 'darrow'
   | 'dashed'
   | 'rect'
   | 'square'
-  | 'ellipse'
   | 'circle'
+  | 'ellipse'
   | 'triangle'
   | 'rtriangle'
   | 'diamond'
+  | 'parallelogram'
   | 'pentagon'
   | 'hexagon'
   | 'star'
-  | 'parallelogram'
-  | 'trapezoid'
   | 'cube'
   | 'cylinder'
   | 'cone'
-  | 'sphere'
-  | 'axes';
+  | 'sphere';
 
-export type EraserMode = 'stroke' | 'point' | 'area';
+export type EraserMode = 'stroke' | 'point';
 
 export interface Rect {
   x: number;

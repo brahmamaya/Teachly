@@ -50,7 +50,7 @@ function mk(pts: P[], closed: boolean, st: ShapeStyle, extra: Partial<PathEl> = 
 export function buildShape(kind: ShapeKind, x1: number, y1: number, x2: number, y2: number, st: ShapeStyle, constrain = false): PathEl[] {
   if (kind === 'square' || kind === 'circle') constrain = true;
   let w = x2 - x1, h = y2 - y1;
-  const isLine = kind === 'line' || kind === 'arrow' || kind === 'darrow' || kind === 'dashed';
+  const isLine = kind === 'line' || kind === 'arrow' || kind === 'dashed';
   if (constrain) {
     if (isLine) {
       const a = Math.round(Math.atan2(h, w) / (Math.PI / 4)) * (Math.PI / 4);
@@ -74,8 +74,6 @@ export function buildShape(kind: ShapeKind, x1: number, y1: number, x2: number, 
       return [mk([[x1, y1], [x2, y2]], false, st, { dash: true })];
     case 'arrow':
       return [mk([[x1, y1], [x2, y2]], false, st, { arrow: 1 })];
-    case 'darrow':
-      return [mk([[x1, y1], [x2, y2]], false, st, { arrow: 2 })];
     case 'rect':
     case 'square':
       return [mk([[l, t], [r, t], [r, b], [l, b]], true, st)];
@@ -104,10 +102,6 @@ export function buildShape(kind: ShapeKind, x1: number, y1: number, x2: number, 
     case 'parallelogram': {
       const o = (r - l) * 0.25;
       return [mk([[l + o, t], [r, t], [r - o, b], [l, b]], true, st)];
-    }
-    case 'trapezoid': {
-      const o = (r - l) * 0.22;
-      return [mk([[l + o, t], [r - o, t], [r, b], [l, b]], true, st)];
     }
     case 'cube': {
       const d = Math.min(r - l, b - t) * 0.3;
@@ -150,17 +144,6 @@ export function buildShape(kind: ShapeKind, x1: number, y1: number, x2: number, 
         mk(ellipsePts(cx, cy, rr, rr * 0.3, 0, Math.PI), false, s2),
         mk(ellipsePts(cx, cy, rr, rr * 0.3, Math.PI, Math.PI * 2), false, s2, { dash: true }),
       ];
-    }
-    case 'axes': {
-      const s2 = { ...st, fill: null };
-      const out = [mk([[l, cy], [r, cy]], false, s2, { arrow: 2 }), mk([[cx, b], [cx, t]], false, s2, { arrow: 2 })];
-      const step = Math.max(20, Math.round(Math.min(rx, ry) / 5));
-      const tick = Math.max(4, st.size * 2);
-      for (let x = cx + step; x < r - step / 2; x += step) out.push(mk([[x, cy - tick], [x, cy + tick]], false, s2));
-      for (let x = cx - step; x > l + step / 2; x -= step) out.push(mk([[x, cy - tick], [x, cy + tick]], false, s2));
-      for (let y = cy + step; y < b - step / 2; y += step) out.push(mk([[cx - tick, y], [cx + tick, y]], false, s2));
-      for (let y = cy - step; y > t + step / 2; y -= step) out.push(mk([[cx - tick, y], [cx + tick, y]], false, s2));
-      return out;
     }
   }
   return [];

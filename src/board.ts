@@ -1,6 +1,6 @@
 import { bbox } from './geometry';
 import { Instruments } from './instruments';
-import { anyVideoPlaying, contentBounds, drawBackground, drawEls, setAssetLoadCallback } from './renderer';
+import { contentBounds, drawBackground, drawEls, setAssetLoadCallback } from './renderer';
 import { store } from './store';
 import type { Camera, Rect, ToolId } from './types';
 
@@ -213,7 +213,6 @@ export class Board {
     if (this.dirty.has('ink')) this.renderInk();
     if (this.dirty.has('overlay') || this.animating) this.renderOverlay();
     this.dirty.clear();
-    if (anyVideoPlaying()) this.invalidate('ink');
     if (this.animating) this.invalidate('overlay');
   }
 
@@ -292,7 +291,7 @@ export class Board {
   }
 
   private pressure(e: PointerEvent): number {
-    if (e.pointerType === 'pen' && store.settings.pressure) return e.pressure || 0.5;
+    if (e.pointerType === 'pen') return e.pressure || 0.5;
     return 0.5;
   }
 
@@ -343,7 +342,7 @@ export class Board {
     this.pointers.set(p.id, p);
 
     // Two-finger gesture (pinch / pan / rotate-free zoom).
-    if (p.type === 'touch' && this.touchCount() === 2 && !(store.settings.multiWrite && store.tool.tool === 'pen')) {
+    if (p.type === 'touch' && this.touchCount() === 2) {
       const ids = [...this.pointers.values()].filter((q) => q.type === 'touch').map((q) => q.id) as [number, number];
       for (const id of ids) {
         const r = this.routed.get(id);
@@ -359,7 +358,7 @@ export class Board {
     }
 
     // Middle button, space+drag, or finger when pen-only → pan.
-    if (p.button === 1 || this.spaceDown || store.tool.tool === 'pan' || (store.settings.penOnly && p.type === 'touch')) {
+    if (p.button === 1 || this.spaceDown || (store.settings.penOnly && p.type === 'touch')) {
       this.routed.set(p.id, 'pan');
       this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
       this.el.classList.add('panning');
@@ -493,7 +492,7 @@ export class Board {
   updateCursor(): void {
     const t = store.tool.tool;
     this.el.dataset.activeTool = t;
-    this.overlay.style.cursor = this.spaceDown || t === 'pan' ? 'grab' : this.tool.cursor ?? 'crosshair';
+    this.overlay.style.cursor = this.spaceDown ? 'grab' : this.tool.cursor ?? 'crosshair';
   }
 
   get hoverPtr(): Ptr | null {

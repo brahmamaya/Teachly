@@ -2,7 +2,7 @@ import type { Board } from '../board';
 import { uid } from '../geometry';
 import { contentBounds, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
-import type { Doc, El, ImageEl, Page, Rect, VideoEl } from '../types';
+import type { Doc, El, ImageEl, Page, Rect } from '../types';
 
 // ---------------------------------------------------------------------------
 // Autosave (IndexedDB)
@@ -142,29 +142,6 @@ export async function insertImages(board: Board, files?: File[]): Promise<void> 
     store.setTool({ tool: 'select' });
     store.select(ids);
   }
-}
-
-export async function insertVideo(board: Board, files?: File[]): Promise<void> {
-  files ??= await pickFiles('video/*');
-  const f = files[0];
-  if (!f) return;
-  if (f.size > 60 * 1024 * 1024) {
-    alert('Video is larger than 60 MB. Please use a shorter/compressed clip.');
-    return;
-  }
-  const src = await readAsDataURL(f);
-  const meta = await new Promise<{ w: number; h: number }>((resolve) => {
-    const v = document.createElement('video');
-    v.onloadedmetadata = () => resolve({ w: v.videoWidth || 640, h: v.videoHeight || 360 });
-    v.onerror = () => resolve({ w: 640, h: 360 });
-    v.src = src;
-  });
-  const r = board.viewRect();
-  const k = Math.min((r.w * 0.6) / meta.w, (r.h * 0.6) / meta.h);
-  const el: VideoEl = { id: uid(), type: 'video', src, w: meta.w * k, h: meta.h * k, x: r.x + r.w / 2 - (meta.w * k) / 2, y: r.y + r.h / 2 - (meta.h * k) / 2, rot: 0 };
-  store.addEls([el]);
-  store.setTool({ tool: 'select' });
-  store.select([el.id]);
 }
 
 /** Import every PDF page as a new board page with the page locked as background. */

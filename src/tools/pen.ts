@@ -9,7 +9,6 @@ import type { PathEl, PathStyle } from '../types';
 interface Live {
   pts: number[];
   style: PathStyle;
-  magic: boolean;
   color: string;
   size: number;
   sim: boolean;
@@ -22,36 +21,27 @@ interface Live {
   predicted: number[];
 }
 
-interface Fading {
-  path: Path2D;
-  color: string;
-  born: number;
-}
-
 const HOLD_MS = 550;
-const MAGIC_LIFE = 2600;
 
 export class PenTool implements Tool {
   cursor = 'crosshair';
   private live = new Map<number, Live>();
-  private fading: Fading[] = [];
 
   constructor(private board: Board) {}
 
   down(p: Ptr): void {
-    if (this.live.size && !store.settings.multiWrite) return;
+    if (this.live.size && p.type !== 'pen') return;
     const t = store.tool;
-    const style: PathStyle = t.penStyle === 'magic' ? 'pen' : t.penStyle;
+    const style: PathStyle = t.penStyle;
     const hl = style === 'highlighter';
     const snapper = this.board.instruments.snapAt(p.x, p.y);
     const [x, y] = snapper ? snapper.project(p.x, p.y) : [p.x, p.y];
     const l: Live = {
       pts: [x, y, p.p],
       style,
-      magic: t.penStyle === 'magic',
       color: hl ? t.hlColor : t.color,
       size: hl ? t.hlSize : t.size,
-      sim: p.type !== 'pen' || !store.settings.pressure,
+      sim: p.type !== 'pen',
       snapper,
       snapped: null,
       holdTimer: 0,
@@ -66,7 +56,7 @@ export class PenTool implements Tool {
 
   private armHold(id: number, l: Live): void {
     clearTimeout(l.holdTimer);
-    if (l.snapper || l.magic) return;
+    if (l.snapper) return;
     l.holdTimer = window.setTimeout(() => {
       if (this.live.get(id) !== l || l.snapped) return;
       const shape = this.toShape(l);
@@ -118,13 +108,7 @@ export class PenTool implements Tool {
     if (!l) return;
     this.live.delete(p.id);
     clearTimeout(l.holdTimer);
-    if (l.magic) {
-      this.fading.push({ path: freehandPath(l.pts, { style: 'pen', size: l.size, sim: l.sim }, true), color: l.color, born: performance.now() });
-      this.board.invalidate('overlay');
-      return;
-    }
     let el: PathEl | null = l.snapped;
-    if (!el && store.settings.autoShape && l.style === 'pen' && !l.snapper) el = this.toShape(l);
     if (!el) {
       el = {
         id: uid(),
@@ -161,7 +145,7 @@ export class PenTool implements Tool {
     this.board.invalidate('overlay');
   }
 
-  drawOverlay(ctx: CanvasRenderingContext2D): boolean {
+  drawOverlay(ctx: CanvasRenderingContext2D): void {
     for (const l of this.live.values()) {
       if (l.snapped) {
         ctx.globalAlpha = l.snapped.opacity;
@@ -181,27 +165,8 @@ export class PenTool implements Tool {
       const pts = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
       ctx.globalAlpha = l.style === 'highlighter' ? 0.38 : 1;
       ctx.fillStyle = l.color;
-      if (l.magic) {
-        ctx.shadowColor = l.color;
-        ctx.shadowBlur = 12;
-      }
       ctx.fill(freehandPath(pts, { style: l.snapper ? 'highlighter' : l.style, size: l.size, sim: l.sim }, false));
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     }
-    // Magic (disappearing) ink
-    const now = performance.now();
-    this.fading = this.fading.filter((f) => now - f.born < MAGIC_LIFE);
-    for (const f of this.fading) {
-      const age = (now - f.born) / MAGIC_LIFE;
-      ctx.globalAlpha = age < 0.6 ? 1 : Math.max(0, 1 - (age - 0.6) / 0.4);
-      ctx.fillStyle = f.color;
-      ctx.shadowColor = f.color;
-      ctx.shadowBlur = 14;
-      ctx.fill(f.path);
-    }
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-    return this.fading.length > 0;
   }
 }

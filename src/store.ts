@@ -3,24 +3,21 @@ import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } 
 
 export interface Settings {
   penOnly: boolean;
-  multiWrite: boolean;
-  autoShape: boolean;
   palmErase: boolean;
-  minimap: boolean;
-  toolbarPos: 'center' | 'left' | 'right';
-  uiTheme: 'light' | 'dark';
-  pressure: boolean;
 }
 
 export interface ToolState {
   tool: ToolId;
-  penStyle: 'pen' | 'highlighter' | 'brush' | 'magic';
+  penStyle: 'pen' | 'highlighter';
   color: string;
   size: number;
   hlColor: string;
   hlSize: number;
   shape: ShapeKind;
-  shapeFill: boolean;
+  /** Style used for new shapes (remembered from the last edit). */
+  shapeColor: string;
+  shapeSize: number;
+  shapeFill: string | null;
   eraserMode: EraserMode;
   eraserSize: number;
   fontSize: number;
@@ -38,13 +35,7 @@ const SETTINGS_KEY = 'teachly.settings';
 function loadSettings(): Settings {
   const defaults: Settings = {
     penOnly: false,
-    multiWrite: false,
-    autoShape: false,
     palmErase: true,
-    minimap: true,
-    toolbarPos: 'center',
-    uiTheme: 'light',
-    pressure: true,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -73,8 +64,10 @@ export class Store {
     hlColor: '#facc15',
     hlSize: 22,
     shape: 'rect',
-    shapeFill: false,
-    eraserMode: 'stroke',
+    shapeColor: '#2563eb',
+    shapeSize: 4,
+    shapeFill: null,
+    eraserMode: 'point',
     eraserSize: 30,
     fontSize: 32,
   };

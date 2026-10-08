@@ -1,6 +1,6 @@
 # Teachly ✏️ — Interactive Whiteboard for Smart Classrooms
 
-**Teachly** ek smooth, feature-rich interactive whiteboard hai jo smart boards / interactive flat panels (IFP), laptops, tablets aur phones — sab par chalta hai. Yeh **Note 3** (Prestigio / EasiNote family) jaise whiteboard software ke saare core features deta hai, aur unse aage kuch extra cheezein bhi.
+**Teachly** ek smooth, feature-rich interactive whiteboard hai jo smart boards / interactive flat panels (IFP), laptops, tablets aur phones — sab par chalta hai. Yeh **Note 3** (Prestigio / EasiNote family) se inspired hai — wahi zaroori features, lekin bahut simple aur aasan.
 
 > A fast, offline-first, installable (PWA) whiteboard for teachers. No installation, no licence keys — open it in any modern browser (Chrome / Edge on Windows, Android, ChromeOS, Linux, macOS).
 
@@ -44,73 +44,39 @@ Sources: [Prestigio Solutions — Note3](https://prestigio-solutions.com/product
 
 ---
 
-## ✅ Feature comparison
+## ✅ What Teachly has
 
-| | Note 3 | **Teachly** |
-|---|:-:|:-:|
-| Smooth pressure-sensitive ink | ✅ | ✅ coalesced + **predicted** pointer events, low-latency canvas, Bezier-smoothed strokes |
-| Pen / brush / highlighter | ✅ | ✅ + **Magic ink** (disappears automatically) |
-| Laser pointer | ➖ | ✅ glowing fading trail |
-| Multi-touch writing | ✅ | ✅ (toggle) |
-| Stylus-only mode (finger pans, pen writes) | ➖ | ✅ |
-| Eraser: stroke / partial / area | ✅ | ✅ stroke, **partial (splits strokes)**, lasso-area, clear page |
-| Palm eraser | ✅ | ✅ auto-detects large touch contact; pen eraser-end supported |
-| Shape recognition | ✅ | ✅ **hold-to-snap** (hold pen still) + optional auto mode |
-| Shapes incl. 3D | ✅ | ✅ 21 shapes: polygons, arrows, cube, cylinder, cone, sphere, XY axes |
-| Infinite canvas + navigation map | ✅ | ✅ pinch-zoom, pan, wheel, minimap |
-| Multiple pages + thumbnails | ✅ | ✅ add / duplicate / reorder / delete |
-| Backgrounds | ✅ | ✅ 7 colours + custom, grid, dots, ruled, **English 4-line**, graph, music staff, isometric |
-| Import images / PDF / video | ✅ | ✅ drag-and-drop, paste, PDF → one page each (locked background) |
-| Ruler, set squares, protractor | ✅ | ✅ **pen snaps to edges**, rotate with 15° snapping, protractor needle reading |
-| Compass | ✅ | ✅ real two-step compass with radius reuse for constructions |
-| Function grapher | ➖ | ✅ multiple functions, editable after insertion |
-| Scientific calculator | ➖ | ✅ deg/rad, Ans, factorial |
-| Periodic table | ✅ | ✅ all 118 elements, insert element cards |
-| Subject library | ✅ | ✅ Physics circuit symbols, Chemistry lab apparatus, Biology, Maths |
-| Spotlight / screen cover / magnifier | ✅ | ✅ circle/rect spotlight, 4-direction curtain, live magnifier |
-| Timer, stopwatch, clock | ✅ | ✅ big-screen mode, alarm, laps |
-| Random name picker, dice, coin | ➖ | ✅ no-repeat mode |
-| Scoreboard | ➖ | ✅ up to 6 teams |
-| Screen + mic recording | ✅ | ✅ |
-| Document camera / screenshot to board | ➖ | ✅ annotate a live camera capture or any window |
-| Select, move, scale, rotate, recolour, lock | ✅ | ✅ lasso select, context bar, z-order, lock |
-| Undo / redo | ✅ | ✅ 300 steps, including page operations |
-| Autosave | ➖ | ✅ IndexedDB, survives refresh / power cut |
-| Export | ✅ | ✅ PDF (all pages), PNG, `.teachly` lesson file |
-| Platform | Windows only | **Any browser** — Windows, Android panels, ChromeOS, Linux, Mac, tablets; installable & offline |
-| Price | Paid licence | Free / open source (MIT) |
+Teachly is deliberately simple: one toolbar at the bottom, big buttons, and options only where you need them.
 
----
-
-## ⌨️ Shortcuts
-
-| Keys | Action |
+| Toolbar | What it does |
 |---|---|
-| `V` `P` `E` `S` `T` `L` `H` `C` | Select, Pen, Eraser, Shapes, Text, Laser, Pan, Compass |
-| `Space` + drag / middle mouse / two fingers | Move the board |
-| `Ctrl` + wheel, pinch, `+` `-` `0` | Zoom |
-| `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
-| `Ctrl+C` `Ctrl+V` `Ctrl+D` `Del` | Copy, paste, duplicate, delete |
-| `PageUp` / `PageDown` | Previous / next page |
-| `Ctrl+S` / `Ctrl+O` | Save / open lesson |
-| `F` | Full screen |
+| **Select** | Tap anything to move, resize or rotate it |
+| **Pen** | Pen or highlighter, 8 colours, 4 sizes. Hold the pen still at the end of a drawing to turn it into a perfect shape |
+| **Eraser** | Erase part of a line or the whole line; rub with your palm; clear the page |
+| **Shapes** | 18 shapes including 3D (cube, cylinder, cone, sphere). A new shape stays selected so you can change it straight away |
+| **Text** | Tap and type |
+| **Undo / Redo** | Every step, including clearing a page |
+| **Insert** | Picture, PDF / book pages, new page |
+| **Tools** | Ruler and protractor (the pen snaps to their edges), compass, timer, spotlight, screen cover |
+| **Menu** | Board colour (white / green / black) and lines, new / open / save lesson, save as PDF, full screen |
 
----
+**Change a shape:** tap it, and a bar appears with **Colour**, **Thickness**, **Fill**, **Size − / +**, **Copy** and **Delete**.
+
+Pinch with two fingers to zoom and move the board. Pages are switched with the arrows at the bottom right. Everything is saved automatically in the browser.
 
 ## 🏗️ Architecture
 
 ```
 src/
   board.ts          Canvas layers (background / ink / live overlay), camera, pointer + gesture routing
-  renderer.ts       Stroke outlines (perfect-freehand), shapes, text, images, video, graphs, backgrounds
+  renderer.ts       Stroke outlines (perfect-freehand), shapes, text, images, backgrounds
   store.ts          Immutable document model, structural-sharing undo/redo, settings
-  instruments.ts    Ruler, set squares, protractor with edge snapping
+  instruments.ts    Ruler and protractor with edge snapping
   shapes.ts         Shape builder + hand-drawn shape recogniser
-  mathexpr.ts       Safe expression parser (no eval) for grapher & calculator
-  tools/            pen, eraser, select, text, shape, laser, compass, pan
-  widgets/          timer, clock, picker, scoreboard, calculator, grapher, periodic table, subject library, spotlight, curtain, magnifier
-  io/               autosave, import (image/PDF/video), export (PDF/PNG), lesson files, recording, camera
-  ui/               toolbar, popovers, menu, pages panel, minimap, selection bar
+  tools/            pen, eraser, select, text, shape, compass
+  widgets/          timer, spotlight, screen cover
+  io/               autosave, import (image/PDF), export (PDF), lesson files
+  ui/               toolbar, popovers, properties bar
 ```
 
 **Why it's smooth:** wet ink is drawn on a separate low-latency (`desynchronized`) canvas using every coalesced pointer sample plus predicted points; committed ink lives on its own layer that only re-renders when the document or camera changes, with viewport culling and cached `Path2D` geometry.

@@ -4,21 +4,34 @@ import { drawPathEl } from '../renderer';
 import { buildShape } from '../shapes';
 import { store } from '../store';
 import type { PathEl } from '../types';
+import type { SelectTool } from './select';
 
+/**
+ * Shape tool. A newly drawn shape stays selected so its colour, thickness,
+ * fill and size can be changed straight away; dragging the selected shape
+ * moves / resizes it, dragging anywhere else draws the next shape.
+ */
 export class ShapeTool implements Tool {
   cursor = 'crosshair';
   private start: { id: number; x: number; y: number } | null = null;
   private preview: PathEl[] = [];
+  private delegating = false;
 
-  constructor(private board: Board) {}
+  constructor(private board: Board, private select: SelectTool) {}
 
   private style() {
     const t = store.tool;
-    return { color: t.color, size: Math.max(2, t.size), fill: t.shapeFill ? hexAlpha(t.color, 0.22) : null };
+    return { color: t.shapeColor, size: t.shapeSize, fill: t.shapeFill };
   }
 
   down(p: Ptr): void {
-    if (this.start) return;
+    if (this.start || this.delegating) return;
+    if (store.selection.size && this.select.hitsSelection(p)) {
+      this.delegating = true;
+      this.select.down(p);
+      return;
+    }
+    store.clearSelection();
     const snap = this.board.instruments.snapAt(p.x, p.y);
     const [x, y] = snap ? snap.project(p.x, p.y) : [p.x, p.y];
     this.start = { id: p.id, x, y };
@@ -26,6 +39,7 @@ export class ShapeTool implements Tool {
   }
 
   move(p: Ptr): void {
+    if (this.delegating) return this.select.move(p);
     const s = this.start;
     if (!s || s.id !== p.id) return;
     this.preview = buildShape(store.tool.shape, s.x, s.y, p.x, p.y, this.style(), p.shift);
@@ -33,119 +47,49 @@ export class ShapeTool implements Tool {
   }
 
   up(p: Ptr): void {
+    if (this.delegating) {
+      this.delegating = false;
+      return this.select.up(p);
+    }
     const s = this.start;
     if (!s || s.id !== p.id) return;
     this.start = null;
     let els = this.preview;
     if (Math.hypot(p.x - s.x, p.y - s.y) < 6 * this.board.px) {
       // Tap: drop a default-sized shape.
-      const d = 140;
-      const line = ['line', 'arrow', 'darrow', 'dashed'].includes(store.tool.shape);
+      const d = 160;
+      const line = ['line', 'arrow', 'dashed'].includes(store.tool.shape);
       els = buildShape(store.tool.shape, s.x - d / 2, s.y - (line ? 0 : d / 2), s.x + d / 2, s.y + (line ? 0 : d / 2), this.style(), false);
     }
     this.preview = [];
     store.addEls(els);
+    store.select(els.map((e) => e.id));
   }
 
   cancel(): void {
+    if (this.delegating) this.select.cancel();
+    this.delegating = false;
     this.start = null;
     this.preview = [];
     this.board.invalidate('overlay');
   }
 
+  hover(p: Ptr | null): void {
+    if (p && store.selection.size && this.select.hitsSelection(p)) this.select.hover(p);
+    else this.board.overlay.style.cursor = 'crosshair';
+  }
+
+  hidden(): Set<string> | null {
+    return this.select.hidden();
+  }
+
+  drawInk(ctx: CanvasRenderingContext2D): void {
+    this.select.drawInk(ctx);
+  }
+
   drawOverlay(ctx: CanvasRenderingContext2D): void {
     for (const el of this.preview) drawPathEl(ctx, el);
   }
-}
-
-export function hexAlpha(hex: string, a: number): string {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
-}
-
-/** Laser pointer: glowing trail that fades away — never saved. */
-export class LaserTool implements Tool {
-  cursor = 'none';
-  private trails = new Map<number, { x: number; y: number; t: number }[]>();
-  private done: { x: number; y: number; t: number }[][] = [];
-  private pos: { x: number; y: number } | null = null;
-
-  constructor(private board: Board) {}
-
-  down(p: Ptr): void {
-    this.trails.set(p.id, [{ x: p.x, y: p.y, t: performance.now() }]);
-    this.pos = { x: p.x, y: p.y };
-    this.board.invalidate('overlay');
-  }
-
-  move(p: Ptr): void {
-    const tr = this.trails.get(p.id);
-    this.pos = { x: p.x, y: p.y };
-    if (tr) for (const [x, y] of p.samples) tr.push({ x, y, t: performance.now() });
-    this.board.invalidate('overlay');
-  }
-
-  up(p: Ptr): void {
-    const tr = this.trails.get(p.id);
-    if (tr) this.done.push(tr);
-    this.trails.delete(p.id);
-  }
-
-  cancel(): void {
-    this.trails.clear();
-  }
-
-  hover(p: Ptr | null): void {
-    this.pos = p ? { x: p.x, y: p.y } : null;
-  }
-
-  drawOverlay(ctx: CanvasRenderingContext2D): boolean {
-    const now = performance.now();
-    const life = 900;
-    const px = this.board.px;
-    const all = [...this.done, ...this.trails.values()];
-    this.done = this.done.filter((tr) => tr.length && now - tr[tr.length - 1].t < life);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    let alive = false;
-    for (const tr of all) {
-      for (let i = 1; i < tr.length; i++) {
-        const age = (now - tr[i].t) / life;
-        if (age >= 1) continue;
-        alive = true;
-        const a = 1 - age;
-        ctx.strokeStyle = `rgba(239,68,68,${a})`;
-        ctx.shadowColor = 'rgba(239,68,68,0.9)';
-        ctx.shadowBlur = 14;
-        ctx.lineWidth = (3 + 5 * a) * px;
-        ctx.beginPath();
-        ctx.moveTo(tr[i - 1].x, tr[i - 1].y);
-        ctx.lineTo(tr[i].x, tr[i].y);
-        ctx.stroke();
-      }
-    }
-    ctx.shadowBlur = 0;
-    if (this.pos && store.tool.tool === 'laser') {
-      ctx.beginPath();
-      ctx.arc(this.pos.x, this.pos.y, 7 * px, 0, Math.PI * 2);
-      ctx.fillStyle = '#ef4444';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 18;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-    return alive || this.trails.size > 0;
-  }
-}
-
-export class PanTool implements Tool {
-  cursor = 'grab';
-  down(): void {}
-  move(): void {}
-  up(): void {}
-  cancel(): void {}
 }
 
 /**
@@ -229,8 +173,8 @@ export class CompassTool implements Tool {
           type: 'path',
           style: 'shape',
           pts: this.arc,
-          color: store.tool.color,
-          size: Math.max(2, store.tool.size),
+          color: store.tool.shapeColor,
+          size: store.tool.shapeSize,
           opacity: 1,
           closed: full,
           fill: null,
@@ -303,8 +247,8 @@ export class CompassTool implements Tool {
     ctx.font = `600 ${13 * px}px system-ui`;
     ctx.fillText(`r = ${(this.r / 40).toFixed(1)} cm`, mx + 8 * px, my - 8 * px);
     if (this.arc.length) {
-      ctx.strokeStyle = store.tool.color;
-      ctx.lineWidth = Math.max(2, store.tool.size);
+      ctx.strokeStyle = store.tool.shapeColor;
+      ctx.lineWidth = store.tool.shapeSize;
       ctx.beginPath();
       ctx.moveTo(this.arc[0], this.arc[1]);
       for (let i = 3; i < this.arc.length; i += 3) ctx.lineTo(this.arc[i], this.arc[i + 1]);

@@ -1,5 +1,5 @@
 import type { Board, Ptr, Tool } from '../board';
-import { bbox, distToSegment, insideLasso, uid } from '../geometry';
+import { bbox, distToSegment, uid } from '../geometry';
 import { drawEl } from '../renderer';
 import { store } from '../store';
 import type { El, PathEl } from '../types';
@@ -49,8 +49,6 @@ export class EraserTool implements Tool {
   private active: { id: number; lx: number; ly: number; r: number } | null = null;
   /** id → replacement pieces ([] = deleted) */
   private changes = new Map<string, El[]>();
-  /** Current working version of split paths, keyed by piece id. */
-  private lasso: number[] | null = null;
   private pos: { x: number; y: number; r: number } | null = null;
 
   constructor(private board: Board) {}
@@ -70,8 +68,7 @@ export class EraserTool implements Tool {
     const r = this.radius(p);
     this.active = { id: p.id, lx: p.x, ly: p.y, r };
     this.pos = { x: p.x, y: p.y, r };
-    if (this.mode() === 'area') this.lasso = [p.x, p.y];
-    else this.eraseSegment(p.x, p.y, p.x, p.y, r);
+    this.eraseSegment(p.x, p.y, p.x, p.y, r);
     this.board.invalidate('ink', 'overlay');
   }
 
@@ -80,11 +77,6 @@ export class EraserTool implements Tool {
     if (!a || a.id !== p.id) return;
     if (this.palm) a.r = Math.max(a.r, this.radius(p));
     this.pos = { x: p.x, y: p.y, r: a.r };
-    if (this.lasso) {
-      for (const [x, y] of p.samples) this.lasso.push(x, y);
-      this.board.invalidate('overlay');
-      return;
-    }
     for (const [x, y] of p.samples) {
       this.eraseSegment(a.lx, a.ly, x, y, a.r);
       a.lx = x;
@@ -159,11 +151,7 @@ export class EraserTool implements Tool {
 
   up(p: Ptr): void {
     if (!this.active || this.active.id !== p.id) return;
-    if (this.lasso) {
-      const lasso = this.lasso;
-      const keep = store.page.els.filter((e) => e.locked || !insideLasso(e, lasso));
-      if (keep.length !== store.page.els.length) store.setEls(keep);
-    } else if (this.changes.size) {
+    if (this.changes.size) {
       store.setEls(this.working());
     }
     this.reset();
@@ -175,7 +163,6 @@ export class EraserTool implements Tool {
 
   private reset(): void {
     this.active = null;
-    this.lasso = null;
     this.changes.clear();
     if (this.palm) this.pos = null;
     this.board.invalidate('ink', 'overlay');
@@ -195,21 +182,8 @@ export class EraserTool implements Tool {
 
   drawOverlay(ctx: CanvasRenderingContext2D): void {
     const px = this.board.px;
-    if (this.lasso && this.lasso.length > 2) {
-      ctx.beginPath();
-      ctx.moveTo(this.lasso[0], this.lasso[1]);
-      for (let i = 2; i < this.lasso.length; i += 2) ctx.lineTo(this.lasso[i], this.lasso[i + 1]);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(239,68,68,0.08)';
-      ctx.fill();
-      ctx.setLineDash([6 * px, 5 * px]);
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 1.5 * px;
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
     const active = store.tool.tool === 'eraser' || this.palm;
-    if (this.pos && active && (this.mode() !== 'area' || !this.lasso)) {
+    if (this.pos && active) {
       ctx.beginPath();
       ctx.arc(this.pos.x, this.pos.y, this.pos.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
