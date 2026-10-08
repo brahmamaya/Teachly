@@ -177,26 +177,21 @@ export class Board {
    * The board never drifts: you cannot zoom out past the page, and when
    * zoomed in you can only move around inside it.
    */
-  /** The view was moved in slide mode: keep it until "Back to page". */
-  private navFree = false;
   private lastHandTap = { t: 0, x: 0, y: 0 };
 
-  /** May the view move / zoom right now? (Hand tool, or zoom allowed in the menu.) */
+  /** May the view move / zoom right now? Only in slide mode (✋). */
   private get free(): boolean {
-    return store.settings.allowZoom || store.tool.slide || this.navFree;
+    return store.tool.slide;
   }
 
   setCam(c: Camera): void {
     const fit = this.fitCam();
-    // Locked page (the default): it never moves or zooms when touched.
-    if (!this.free) {
-      if (!this.isFit || store.camera.x !== fit.x || store.camera.y !== fit.y) store.setCamera(fit);
-      return;
-    }
+    // Slide mode off: the board is completely fixed. Nothing a finger, pen,
+    // pinch or wheel does moves it (it stays wherever it was left).
+    if (!this.free) return;
     // Free board: slide anywhere (the board goes on beyond the page),
     // zoom from a wide overview up to 6× the page.
     const z = Math.max(fit.z * 0.3, Math.min(fit.z * 6, c.z));
-    if (store.tool.slide) this.navFree = true;
     store.setCamera({ x: c.x, y: c.y, z });
   }
 
@@ -208,7 +203,7 @@ export class Board {
 
   /** Give a page that has never been shown the fitted view. */
   ensureCam(): void {
-    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3 || (!this.free && !this.isHome)) store.setCamera(this.fitCam());
+    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ * 0.3 - 1e-3) store.setCamera(this.fitCam());
   }
 
   panBy(dsx: number, dsy: number): void {
@@ -225,7 +220,6 @@ export class Board {
 
   /** Back to the whole page. */
   fitPage(): void {
-    this.navFree = false;
     store.setCamera(this.fitCam());
   }
 
