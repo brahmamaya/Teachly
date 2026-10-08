@@ -204,20 +204,23 @@ export class App {
   private renderToolbar(): void {
     const t = store.tool;
     const dot = t.penStyle === 'highlighter' ? t.hlColor : t.color;
-    const tool = (id: ToolId, ic: string, label: string, extra = '') =>
-      `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 22)}${extra}</button>`;
+    // Pen, fill and tape buttons are painted in their current colour.
+    const tool = (id: ToolId, ic: string, label: string, color?: string) => {
+      const paint = color && color !== 'none' ? ` colored ${isDarkColor(color) ? 'ink-light' : 'ink-dark'}" style="--c:${color}` : '';
+      return `<button class="tb-btn ${t.tool === id ? 'active' : ''}${paint}" data-tool="${id}" title="${label}">${icon(ic, 22)}</button>`;
+    };
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       <button class="tb-grip" data-grip title="Drag to move the toolbar to any edge" aria-label="Move toolbar"><svg viewBox="0 0 12 20" width="10" height="18" fill="currentColor"><circle cx="3" cy="4" r="1.6"/><circle cx="9" cy="4" r="1.6"/><circle cx="3" cy="10" r="1.6"/><circle cx="9" cy="10" r="1.6"/><circle cx="3" cy="16" r="1.6"/><circle cx="9" cy="16" r="1.6"/></svg></button>
       ${tool('select', 'select', 'Select')}
-      ${tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
+      ${tool('pen', t.penStyle, 'Pen', dot)}
       ${tool('eraser', 'eraser', 'Eraser')}
       ${tool('shape', 'shapes', 'Shapes')}
-      ${tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`)}
+      ${tool('fill', 'bucket', 'Fill colour', t.fillColor)}
       ${tool('text', 'text', 'Text')}
       <i class="tb-sep" aria-hidden="true"></i>
-      ${tool('tape', 'tape', 'Tape — hide answers, tap to show', `<span class="swatch-dot" style="background:${t.tapeColor}"></span>`)}
+      ${tool('tape', 'tape', 'Tape — hide answers, tap to show', t.tapeColor)}
       ${tool('laser', 'laser', 'Laser pointer')}`;
     right.innerHTML = `
       <button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 22)}</button>
