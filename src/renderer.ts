@@ -8,9 +8,13 @@ import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TextEl } from './types
 export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last: boolean) {
   switch (el.style) {
     case 'highlighter':
-      return { size: el.size, thinning: 0, smoothing: 0.6, streamline: 0.55, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
+      return { size: el.size, thinning: 0, smoothing: 0.7, streamline: 0.6, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
     default:
-      return { size: el.size, thinning: el.sim ? 0.45 : 0.6, smoothing: 0.55, streamline: 0.42, simulatePressure: !!el.sim, last, start: { cap: true }, end: { cap: true } };
+      // Stylus: follows pressure closely. Finger / mouse / board touch: steadier,
+      // nearly even width and more streamlining to hide touchscreen jitter.
+      return el.sim
+        ? { size: el.size, thinning: 0.18, smoothing: 0.68, streamline: 0.58, simulatePressure: true, last, start: { cap: true }, end: { cap: true } }
+        : { size: el.size, thinning: 0.5, smoothing: 0.62, streamline: 0.4, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
   }
 }
 

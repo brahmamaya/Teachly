@@ -77,6 +77,7 @@ export class Board {
   private gesture: { ids: [number, number]; startDist: number; startAngle: number; cam: Camera; wx: number; wy: number } | null = null;
   private panStart: { sx: number; sy: number; cam: Camera } | null = null;
   spaceDown = false;
+  private sawPen = false;
   private lastHover: Ptr | null = null;
 
   constructor(container: HTMLElement) {
@@ -306,7 +307,18 @@ export class Board {
     const el = this.overlay;
     el.style.touchAction = 'none';
     el.addEventListener('pointerdown', (e) => this.onDown(e));
-    el.addEventListener('pointermove', (e) => this.onMove(e));
+    // pointerrawupdate delivers pen samples as soon as they arrive instead of
+    // once per frame, which takes a few milliseconds off the ink latency.
+    const raw = 'onpointerrawupdate' in window;
+    el.addEventListener('pointermove', (e) => {
+      if (raw && this.routed.has(e.pointerId)) return;
+      this.onMove(e);
+    });
+    if (raw) {
+      el.addEventListener('pointerrawupdate' as 'pointermove', (e) => {
+        if (this.routed.has(e.pointerId)) this.onMove(e);
+      });
+    }
     el.addEventListener('pointerup', (e) => this.onUp(e, false));
     el.addEventListener('pointercancel', (e) => this.onUp(e, true));
     el.addEventListener('pointerleave', () => {
@@ -361,7 +373,10 @@ export class Board {
     }
 
     // Middle button, space+drag, or finger when pen-only → pan.
-    if (p.button === 1 || this.spaceDown || (store.settings.penOnly && p.type === 'touch')) {
+    // Once a stylus has been used, fingers and palms only move the board
+    // (palm rejection, like a real tablet).
+    if (p.type === 'pen') this.sawPen = true;
+    if (p.button === 1 || this.spaceDown || ((store.settings.penOnly || this.sawPen) && p.type === 'touch')) {
       this.routed.set(p.id, 'pan');
       this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
       this.el.classList.add('panning');

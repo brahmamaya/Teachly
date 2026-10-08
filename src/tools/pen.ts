@@ -22,7 +22,8 @@ interface Live {
   predicted: number[];
 }
 
-const HOLD_MS = 550;
+// Hold still this long at the end of a drawing to snap it into a shape.
+const HOLD_MS = 800;
 
 export class PenTool implements Tool {
   cursor = 'crosshair';
@@ -60,6 +61,8 @@ export class PenTool implements Tool {
     if (l.snapper) return;
     l.holdTimer = window.setTimeout(() => {
       if (this.live.get(id) !== l || l.snapped) return;
+      // Ignore small marks (letters, dots) so handwriting is never turned into shapes.
+      if (!this.bigEnough(l)) return;
       const shape = this.toShape(l);
       if (shape) {
         l.snapped = shape;
@@ -67,6 +70,17 @@ export class PenTool implements Tool {
         this.board.invalidate('overlay');
       }
     }, HOLD_MS);
+  }
+
+  private bigEnough(l: Live): boolean {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (let i = 0; i < l.pts.length; i += 3) {
+      x1 = Math.min(x1, l.pts[i]);
+      x2 = Math.max(x2, l.pts[i]);
+      y1 = Math.min(y1, l.pts[i + 1]);
+      y2 = Math.max(y2, l.pts[i + 1]);
+    }
+    return Math.max(x2 - x1, y2 - y1) / this.board.px > 70;
   }
 
   private toShape(l: Live): PathEl | null {
