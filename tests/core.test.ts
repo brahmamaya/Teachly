@@ -158,3 +158,17 @@ describe('arc through three points', () => {
     expect(arcThrough(0, 0, 200, 0, 100, 0)).toHaveLength(3);
   });
 });
+
+import { prettyExpr, usedParams } from '../src/mathexpr';
+describe('graph helpers', () => {
+  it('supports slider letters and pretty labels', () => {
+    const p = { a: 2, b: -1, c: 3 };
+    expect(compile('a x^2 + b x + c', { params: p })(2)).toBe(9);
+    p.a = 1;
+    expect(compile('a x^2 + b x + c', { params: p })(2)).toBe(5);
+    expect(usedParams('a*sin(b x) + c')).toEqual(['a', 'b', 'c']);
+    expect(usedParams('abs(x) + cos(x)')).toEqual([]);
+    expect(prettyExpr('x^2 - 3*x + sqrt(x)')).toBe('x² - 3·x + √(x)');
+    expect(() => compile('a x')).toThrow();
+  });
+});

@@ -75,7 +75,10 @@ export function openTimer(host: HTMLElement): void {
 
   const render = () => {
     if (running) left = Math.max(0, endAt - performance.now());
-    timeEl.textContent = fmt(left);
+    const txt = fmt(left);
+    timeEl.textContent = txt;
+    // Longer times (10:00) get a slightly smaller font so they stay inside the ring.
+    timeEl.dataset.len = String(txt.length);
     const f = total ? left / total : 0;
     prog.style.strokeDashoffset = String(C * (1 - f));
     card.classList.toggle('warn', running && left <= 10_000 && left > 0);

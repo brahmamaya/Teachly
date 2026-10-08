@@ -2616,3 +2616,122 @@ button:focus-visible {
     radial-gradient(120% 60% at 20% 0%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 60%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(236, 239, 244, 0.78));
 }
+
+/* Timer digits always fit inside the ring. */
+.qt-time {
+  font-size: 50px;
+  letter-spacing: 0;
+}
+.qt-time[data-len='5'] {
+  font-size: 42px;
+}
+.qtimer.mini .qt-time {
+  font-size: 28px;
+}
+.qtimer.mini .qt-time[data-len='5'] {
+  font-size: 23px;
+}
+
+/* ---------- Graph tool: examples, keypad, sliders ---------- */
+
+.g-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.g-ex,
+.g-key {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 11px;
+  font: 600 13px 'Exo 2', system-ui, sans-serif;
+  transition: transform 0.12s, background 0.2s;
+}
+
+.g-ex:active,
+.g-key:active {
+  transform: scale(0.93);
+}
+
+.g-row {
+  border-radius: 12px;
+  padding: 3px 4px 3px 8px;
+  border: 1.5px solid transparent;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.g-row.on {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+.g-clear {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.g-keys {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.g-key {
+  border-radius: 10px;
+  padding: 9px 0;
+  font-size: 14px;
+}
+
+.g-sliders:empty {
+  display: none;
+}
+
+.g-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.g-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.g-slider b {
+  width: 14px;
+  font-size: 16px;
+}
+
+.g-slider input {
+  flex: 1;
+}
+
+.g-slider span {
+  width: 42px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.g-range label {
+  font-size: 12px;
+}
+
+.g-range input {
+  padding: 6px 6px !important;
+}
+
+.g-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}

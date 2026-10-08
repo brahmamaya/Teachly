@@ -17,7 +17,10 @@ const ATRIG = new Set(['asin', 'acos', 'atan']);
 
 type Tok = { t: 'num'; v: number } | { t: 'id'; v: string } | { t: 'op'; v: string };
 
-function tokenize(src: string): Tok[] {
+/** Letters a teacher can use as adjustable numbers (sliders in the graph tool). */
+export const PARAMS = ['a', 'b', 'c', 'k', 'm'];
+
+function tokenize(src: string, params: boolean): Tok[] {
   const s = src.replace(/[×·]/g, '*').replace(/÷/g, '/').replace(/[−–]/g, '-').replace(/π/g, 'pi').replace(/²/g, '^2').replace(/³/g, '^3').replace(/√/g, 'sqrt');
   const out: Tok[] = [];
   let i = 0;
@@ -34,7 +37,7 @@ function tokenize(src: string): Tok[] {
       // Split runs like "xsin" or "pix" into known words.
       let rest = m;
       while (rest) {
-        const w = Object.keys(FUNCS).concat(['pi', 'x', 'e', 'y']).sort((a, b) => b.length - a.length).find((k) => rest.startsWith(k));
+        const w = Object.keys(FUNCS).concat(['pi', 'x', 'e', 'y'], params ? PARAMS : []).sort((a, b) => b.length - a.length).find((k) => rest.startsWith(k));
         if (!w) throw new Error(`Unknown word "${rest}"`);
         out.push({ t: 'id', v: w });
         rest = rest.slice(w.length);
@@ -50,8 +53,9 @@ function tokenize(src: string): Tok[] {
 
 type Node = (x: number) => number;
 
-export function compile(src: string, opts: { deg?: boolean } = {}): Fn {
-  const toks = tokenize(src);
+export function compile(src: string, opts: { deg?: boolean; params?: Record<string, number> } = {}): Fn {
+  const toks = tokenize(src, !!opts.params);
+  const params = opts.params;
   let i = 0;
   const peek = () => toks[i];
   const isOp = (v: string) => peek()?.t === 'op' && peek().v === v;
@@ -133,6 +137,11 @@ export function compile(src: string, opts: { deg?: boolean } = {}): Fn {
       if (t.v === 'pi') return () => Math.PI;
       if (t.v === 'e') return () => Math.E;
       if (t.v === 'y') throw new Error('Write only the right side, e.g. x^2 + 1');
+      if (params && PARAMS.includes(t.v)) {
+        const name = t.v;
+        // Read live, so moving a slider needs no re-compile.
+        return () => params[name] ?? 1;
+      }
       const f = FUNCS[t.v];
       // sin x, sin(x), sin 30
       const arg = isOp('(') ? (i++, (() => { const e = expr(); eat(')'); return e; })()) : power();
@@ -163,4 +172,27 @@ export function fmtNum(v: number): string {
   if (!isFinite(v)) return isNaN(v) ? 'Error' : v > 0 ? '∞' : '−∞';
   if (Math.abs(v) >= 1e12 || (Math.abs(v) < 1e-6 && v !== 0)) return v.toExponential(6).replace(/\.?0+e/, 'e');
   return String(parseFloat(v.toPrecision(12)));
+}
+
+/** Which adjustable letters (a, b, c, k, m) an expression uses. */
+export function usedParams(src: string): string[] {
+  try {
+    const found = new Set<string>();
+    for (const t of tokenize(src, true)) if (t.t === 'id' && PARAMS.includes(t.v)) found.add(t.v);
+    return PARAMS.filter((p) => found.has(p));
+  } catch {
+    return [];
+  }
+}
+
+/** Pretty form for labels: x^2 → x², sqrt → √, * → ·, pi → π. */
+export function prettyExpr(src: string): string {
+  const sup: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻' };
+  return src
+    .replace(/\^\(?(-?\d+)\)?/g, (_, n: string) => [...n].map((c) => sup[c] ?? c).join(''))
+    .replace(/sqrt/g, '√')
+    .replace(/\bpi\b/g, 'π')
+    .replace(/\*/g, '·')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
