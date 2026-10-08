@@ -4,9 +4,9 @@
 
 let current = 1;
 
-export type UiSize = 'small' | 'normal' | 'large';
+export type UiSize = 'xsmall' | 'small' | 'normal' | 'large';
 
-const PREF: Record<UiSize, number> = { small: 0.85, normal: 1, large: 1.3 };
+const PREF: Record<UiSize, number> = { xsmall: 0.68, small: 0.85, normal: 1, large: 1.3 };
 
 /** Current interface scale factor. */
 export function ui(): number {
@@ -37,7 +37,7 @@ export function computeUiScale(size: UiSize, toolbarWidth: number, avail = windo
   s *= PREF[size] ?? 1;
   // Never let the toolbar overflow the screen.
   if (toolbarWidth > 0) s = Math.min(s, (avail - 16) / toolbarWidth);
-  current = Math.max(0.6, Math.round(s * 100) / 100);
+  current = Math.max(0.5, Math.round(s * 100) / 100);
   document.documentElement.style.setProperty('--ui', String(current));
   return current;
 }

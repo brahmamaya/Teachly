@@ -4,7 +4,7 @@ import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } 
 export interface Settings {
   penOnly: boolean;
   palmErase: boolean;
-  uiSize: 'small' | 'normal' | 'large';
+  uiSize: 'xsmall' | 'small' | 'normal' | 'large';
   /** Many students write at once: every touch draws (no pinch zoom). */
   multiWrite: boolean;
   /** Pinch / wheel zoom. Off = the page is locked in place. */

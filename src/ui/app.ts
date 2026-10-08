@@ -461,7 +461,7 @@ export class App {
           <div class="pop-title">Toolbar position</div>
           <div class="seg">${(['bottom', 'top', 'left', 'right'] as const).map((z) => `<button class="${s.tbPos === z ? 'on' : ''}" data-tbpos="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
           <div class="pop-title">Button size</div>
-          <div class="seg">${(['small', 'normal', 'large'] as UiSize[]).map((z) => `<button class="${s.uiSize === z ? 'on' : ''}" data-uisize="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
+          <div class="seg">${([['xsmall', 'Extra small'], ['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']] as [UiSize, string][]).map(([z, n]) => `<button class="${s.uiSize === z ? 'on' : ''}" data-uisize="${z}">${n}</button>`).join('')}</div>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers move the board)</label>
           <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>
           <label class="check"><input type="checkbox" id="opt-zoom" data-set="allowZoom" ${s.allowZoom ? 'checked' : ''}> Allow zoom with two fingers (off = board stays fixed)</label>`;
