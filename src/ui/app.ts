@@ -29,13 +29,6 @@ import { toast } from './panel';
 const COLORS = ['#1e293b', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e', '#2563eb', '#a855f7'];
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
 const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#e2e8f0', '#1e293b', '#ef4444', '#2563eb', '#22c55e'];
-const PEN_SIZES = [2, 4, 8, 14];
-const HL_SIZES = [14, 24, 36];
-const ERASER_SIZES: [number, string][] = [
-  [20, 'S'],
-  [40, 'M'],
-  [80, 'L'],
-];
 const BOARDS: [string, string][] = [
   ['#ffffff', 'White'],
   ['#14532d', 'Green board'],
@@ -87,6 +80,10 @@ export class App {
     this.root = root;
     root.innerHTML = `
       <div class="board" id="board"></div>
+      <div class="brand" aria-label="Teachly by Physica">
+        <span class="brand-mark" aria-hidden="true">T</span>
+        <span class="brand-text"><b>Teachly</b><small>by Physica</small></span>
+      </div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <nav class="toolbar" aria-label="Tools"></nav>
       <div class="pagebar">
@@ -208,6 +205,7 @@ export class App {
     this.popFor = kind;
     anchor.classList.add('open');
     pop.addEventListener('click', (e) => this.onPopoverClick(e));
+    pop.addEventListener('input', (e) => this.onPopoverInput(e));
     this.fillPopover();
     this.positionPopover(anchor);
   }
@@ -236,13 +234,21 @@ export class App {
         pop.innerHTML = `
           <div class="seg"><button class="${!hl ? 'on' : ''}" data-style="pen">${icon('pen', 20)} Pen</button><button class="${hl ? 'on' : ''}" data-style="highlighter">${icon('highlighter', 20)} Highlighter</button></div>
           ${this.swatches(hl ? HL_COLORS : COLORS, color, 'color')}
-          <div class="sizes">${(hl ? HL_SIZES : PEN_SIZES).map((s) => `<button class="size ${s === size ? 'on' : ''}" data-size="${s}" aria-label="Size ${s}"><span style="width:${Math.min(30, s + 3)}px;height:${Math.min(30, s + 3)}px;background:${color}"></span></button>`).join('')}</div>`;
+          <div class="slider-row">
+            <span class="slider-label">Size</span>
+            <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize>
+            <span class="slider-preview"><i data-penprev style="width:${Math.min(44, size + 2)}px;height:${Math.min(44, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
+          </div>`;
         break;
       }
       case 'eraser':
         pop.innerHTML = `
           <div class="seg"><button class="${t.eraserMode === 'point' ? 'on' : ''}" data-emode="point">Erase part</button><button class="${t.eraserMode === 'stroke' ? 'on' : ''}" data-emode="stroke">Erase whole line</button></div>
-          <div class="sizes">${ERASER_SIZES.map(([s, l]) => `<button class="size ${s === t.eraserSize ? 'on' : ''}" data-esize="${s}">${l}</button>`).join('')}</div>
+          <div class="slider-row">
+            <span class="slider-label">Size</span>
+            <input type="range" id="eraser-size" min="10" max="160" value="${t.eraserSize}" data-erasersize>
+            <span class="slider-preview"><i data-eraserprev class="eraser-prev" style="width:${Math.min(44, t.eraserSize / 3.5 + 6)}px;height:${Math.min(44, t.eraserSize / 3.5 + 6)}px"></i></span>
+          </div>
           <button class="btn danger wide" data-act="clear">${icon('trash', 20)} Clear page</button>`;
         break;
       case 'shape':
@@ -304,9 +310,7 @@ export class App {
     const t = store.tool;
     if (d.style) store.setTool({ penStyle: d.style as 'pen' });
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
-    else if (d.size) store.setTool(t.penStyle === 'highlighter' ? { hlSize: Number(d.size) } : { size: Number(d.size) });
     else if (d.emode) store.setTool({ eraserMode: d.emode as 'point' });
-    else if (d.esize) store.setTool({ eraserSize: Number(d.esize) });
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();
@@ -319,6 +323,21 @@ export class App {
       return;
     }
     this.fillPopover();
+  }
+
+  /** Sliders update live without rebuilding the popover (so the drag is not interrupted). */
+  private onPopoverInput(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const v = Number(el.value);
+    if (el.dataset.pensize !== undefined) {
+      store.setTool(store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
+      const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
+      if (prev) prev.style.width = prev.style.height = `${Math.min(44, v + 2)}px`;
+    } else if (el.dataset.erasersize !== undefined) {
+      store.setTool({ eraserSize: v });
+      const prev = this.popover?.querySelector('[data-eraserprev]') as HTMLElement | null;
+      if (prev) prev.style.width = prev.style.height = `${Math.min(44, v / 3.5 + 6)}px`;
+    }
   }
 
   private setBoard(patch: { bg?: string; pattern?: BgPattern }): void {

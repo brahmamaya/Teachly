@@ -212,3 +212,23 @@ export function pathFromPoints(pts: [number, number][], closed: boolean): number
 export function isPath(el: El): el is PathEl {
   return el.type === 'path';
 }
+
+/**
+ * Stretch an element by (sx, sy) around the anchor (ax, ay). Line thickness
+ * is kept, so resizing a diagram never makes its outline fatter or thinner.
+ */
+export function resizeEl<T extends El>(el: T, ax: number, ay: number, sx: number, sy: number): T {
+  if (el.type === 'path') {
+    const pts = el.pts.slice();
+    for (let i = 0; i < pts.length; i += 3) {
+      pts[i] = ax + (pts[i] - ax) * sx;
+      pts[i + 1] = ay + (pts[i + 1] - ay) * sy;
+    }
+    return { ...el, pts } as T;
+  }
+  const x1 = ax + (el.x - ax) * sx, x2 = ax + (el.x + el.w - ax) * sx;
+  const y1 = ay + (el.y - ay) * sy, y2 = ay + (el.y + el.h - ay) * sy;
+  const out = { ...el, x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) } as BoxEl;
+  if (out.type === 'text') out.fontSize = (el as unknown as { fontSize: number }).fontSize * Math.abs(sx);
+  return out as T;
+}

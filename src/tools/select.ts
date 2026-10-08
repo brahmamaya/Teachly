@@ -1,5 +1,5 @@
 import type { Board, Ptr, Tool } from '../board';
-import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, matMul, similarity, transformEl } from '../geometry';
+import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, resizeEl, similarity, transformEl } from '../geometry';
 import { drawEl } from '../renderer';
 import { store } from '../store';
 import type { El, Rect, TextEl } from '../types';
@@ -7,11 +7,14 @@ import type { TextEditor } from './text';
 
 type Mode =
   | { k: 'move'; sx: number; sy: number; moved: boolean; clicked: El | null }
-  | { k: 'scale'; px: number; py: number; d0: number }
+  /** hx / hy: which side is dragged (-1 left/top, 1 right/bottom, 0 untouched). */
+  | { k: 'resize'; r: Rect; hx: number; hy: number; keep: boolean }
   | { k: 'rotate'; cx: number; cy: number; a0: number }
   | { k: 'lasso'; pts: number[]; add: boolean };
 
-const HANDLE = 9;
+const HANDLE = 10;
+
+type Handle = { x: number; y: number; hx: number; hy: number };
 
 export class SelectTool implements Tool {
   cursor = 'default';
@@ -19,6 +22,8 @@ export class SelectTool implements Tool {
   private pid = -1;
   private mat: Mat = IDENTITY;
   private lastTap = { t: 0, id: '' };
+  /** Anchor and stretch factors while resizing. */
+  private resizeArgs: [number, number, number, number] | null = null;
 
   constructor(private board: Board, private editor: TextEditor) {}
 
@@ -26,17 +31,39 @@ export class SelectTool implements Tool {
     return this.board.selectionBounds();
   }
 
-  private handles(r: Rect): { corners: [number, number][]; rot: [number, number] } {
+  /** Can the selection be stretched in one direction (no text, pictures or rotated items)? */
+  private stretchable(): boolean {
+    return store.selectedEls().every((e) => e.type === 'path');
+  }
+
+  private handles(r: Rect): { grips: Handle[]; rot: [number, number] } {
     const px = this.board.px;
-    return {
-      corners: [
-        [r.x, r.y],
-        [r.x + r.w, r.y],
-        [r.x + r.w, r.y + r.h],
-        [r.x, r.y + r.h],
-      ],
-      rot: [r.x + r.w / 2, r.y - 34 * px],
-    };
+    const grips: Handle[] = [];
+    for (const hy of [-1, 0, 1])
+      for (const hx of [-1, 0, 1]) {
+        if (!hx && !hy) continue;
+        if ((!hx || !hy) && !this.stretchable()) continue;
+        grips.push({ x: r.x + ((hx + 1) / 2) * r.w, y: r.y + ((hy + 1) / 2) * r.h, hx, hy });
+      }
+    return { grips, rot: [r.x + r.w / 2, r.y - 40 * px] };
+  }
+
+  private gripAt(p: Ptr, r: Rect): Handle | null {
+    const hr = this.hitRadius(p);
+    let best: Handle | null = null;
+    let bd = hr;
+    for (const g of this.handles(r).grips) {
+      const d = Math.hypot(p.x - g.x, p.y - g.y);
+      if (d < bd) {
+        bd = d;
+        best = g;
+      }
+    }
+    return best;
+  }
+
+  private hitRadius(p: Ptr): number {
+    return HANDLE * 2 * this.board.px * (p.type === 'touch' ? 1.6 : 1);
   }
 
   private topHit(x: number, y: number): El | null {
@@ -52,10 +79,9 @@ export class SelectTool implements Tool {
   hitsSelection(p: Ptr): boolean {
     const r = this.bounds();
     if (!r) return false;
-    const hr = HANDLE * 1.8 * this.board.px * (p.type === 'touch' ? 1.6 : 1);
     const h = this.handles(r);
-    if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < hr) return true;
-    if (h.corners.some(([x, y]) => Math.hypot(p.x - x, p.y - y) < hr)) return true;
+    if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < this.hitRadius(p)) return true;
+    if (this.gripAt(p, r)) return true;
     return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
   }
 
@@ -68,22 +94,17 @@ export class SelectTool implements Tool {
     this.pid = p.id;
     this.mat = IDENTITY;
     const r = this.bounds();
-    const px = this.board.px;
-    const hr = HANDLE * 1.8 * px * (p.type === 'touch' ? 1.6 : 1);
     if (r) {
       const h = this.handles(r);
-      if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < hr) {
+      if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < this.hitRadius(p)) {
         const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
         this.mode = { k: 'rotate', cx, cy, a0: Math.atan2(p.y - cy, p.x - cx) };
         return;
       }
-      for (let i = 0; i < 4; i++) {
-        const [hx, hy] = h.corners[i];
-        if (Math.hypot(p.x - hx, p.y - hy) < hr) {
-          const [ox, oy] = h.corners[(i + 2) % 4];
-          this.mode = { k: 'scale', px: ox, py: oy, d0: Math.hypot(hx - ox, hy - oy) || 1 };
-          return;
-        }
+      const g = this.gripAt(p, r);
+      if (g) {
+        this.mode = { k: 'resize', r, hx: g.hx, hy: g.hy, keep: !this.stretchable() };
+        return;
       }
     }
     const hit = this.topHit(p.x, p.y);
@@ -116,9 +137,16 @@ export class SelectTool implements Tool {
         this.mat = [1, 0, 0, 1, dx, dy];
         break;
       }
-      case 'scale': {
-        const s = Math.max(0.02, Math.hypot(p.x - m.px, p.y - m.py) / m.d0);
-        this.mat = similarity(m.px, m.py, s, 0, 0, 0);
+      case 'resize': {
+        const { r, hx, hy } = m;
+        const min = 6 * this.board.px;
+        // The opposite side stays put.
+        const ax = hx > 0 ? r.x : r.x + r.w, ay = hy > 0 ? r.y : r.y + r.h;
+        let sx = hx ? Math.max(min, (p.x - ax) * hx) / r.w : 1;
+        let sy = hy ? Math.max(min, (p.y - ay) * hy) / r.h : 1;
+        if (m.keep) sx = sy = Math.max(hx ? sx : 0, hy ? sy : 0);
+        this.mat = [sx, 0, 0, sy, ax - ax * sx, ay - ay * sy];
+        this.resizeArgs = [ax, ay, sx, sy];
         break;
       }
       case 'rotate': {
@@ -155,17 +183,22 @@ export class SelectTool implements Tool {
           this.editor.open(el as TextEl, false);
         }
       }
+    } else if (m.k === 'resize' && this.resizeArgs) {
+      const [ax, ay, sx, sy] = this.resizeArgs;
+      store.mapEls(store.selection, (e) => resizeEl(e, ax, ay, sx, sy));
     } else if (this.mat !== IDENTITY) {
       const mat = this.mat;
       store.mapEls(store.selection, (e) => transformEl(e, mat));
     }
     this.mat = IDENTITY;
+    this.resizeArgs = null;
     this.board.invalidate('ink', 'overlay');
   }
 
   cancel(): void {
     this.mode = null;
     this.mat = IDENTITY;
+    this.resizeArgs = null;
     this.board.invalidate('ink', 'overlay');
   }
 
@@ -175,6 +208,11 @@ export class SelectTool implements Tool {
 
   drawInk(ctx: CanvasRenderingContext2D): void {
     if (this.mat === IDENTITY) return;
+    if (this.resizeArgs) {
+      const [ax, ay, sx, sy] = this.resizeArgs;
+      for (const el of store.selectedEls()) drawEl(ctx, resizeEl(el, ax, ay, sx, sy));
+      return;
+    }
     ctx.save();
     ctx.transform(...this.mat);
     for (const el of store.selectedEls()) drawEl(ctx, el);
@@ -188,11 +226,10 @@ export class SelectTool implements Tool {
     let cursor = 'default';
     if (r) {
       const h = this.handles(r);
-      const hr = HANDLE * 1.8 * this.board.px;
-      if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < hr) cursor = 'grab';
-      else if (h.corners.some(([x, y], i) => Math.hypot(p.x - x, p.y - y) < hr && (cursor = i % 2 ? 'nesw-resize' : 'nwse-resize'))) {
-        /* cursor set */
-      } else if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) cursor = 'move';
+      const g = this.gripAt(p, r);
+      if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < this.hitRadius(p)) cursor = 'grab';
+      else if (g) cursor = !g.hx ? 'ns-resize' : !g.hy ? 'ew-resize' : g.hx === g.hy ? 'nwse-resize' : 'nesw-resize';
+      else if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) cursor = 'move';
     }
     if (cursor === 'default' && this.topHit(p.x, p.y)) cursor = 'move';
     this.board.overlay.style.cursor = cursor;
@@ -237,12 +274,13 @@ export class SelectTool implements Tool {
     ctx.stroke();
     ctx.setLineDash([]);
     const h = this.handles(r);
-    const full = matMul(mat, IDENTITY);
+    const full = mat;
     const [tx, ty] = applyMat(full, r.x + r.w / 2, r.y);
-    const [rx, ry] = applyMat(full, h.rot[0], h.rot[1]);
+    // While resizing the knob follows the top edge; otherwise it moves/rotates with the selection.
+    const [rx, ry2] = this.resizeArgs ? [tx, ty - 40 * px] : applyMat(full, h.rot[0], h.rot[1]);
     ctx.beginPath();
     ctx.moveTo(tx, ty);
-    ctx.lineTo(rx, ry);
+    ctx.lineTo(rx, ry2);
     ctx.stroke();
     const handle = (x: number, y: number, round: boolean) => {
       ctx.beginPath();
@@ -254,13 +292,27 @@ export class SelectTool implements Tool {
       ctx.strokeStyle = '#3b82f6';
       ctx.stroke();
     };
-    for (const [x, y] of h.corners) handle(...applyMat(full, x, y), false);
-    handle(rx, ry, true);
+    for (const g of h.grips) {
+      const [x, y] = applyMat(full, g.x, g.y);
+      if (g.hx && g.hy) handle(x, y, false);
+      else {
+        // Edge grip: a pill along the side.
+        const w = (g.hx ? 7 : 22) * px, hh = (g.hx ? 22 : 7) * px;
+        ctx.beginPath();
+        ctx.roundRect(x - w / 2, y - hh / 2, w, hh, 4 * px);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.lineWidth = 2 * px;
+        ctx.strokeStyle = '#3b82f6';
+        ctx.stroke();
+      }
+    }
+    handle(rx, ry2, true);
     ctx.fillStyle = '#3b82f6';
     ctx.font = `700 ${12 * px}px system-ui`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⟳', rx, ry + 0.5 * px);
+    ctx.fillText('⟳', rx, ry2 + 0.5 * px);
     ctx.textAlign = 'left';
   }
 

@@ -908,3 +908,93 @@ button:focus-visible {
 #app.is-fullscreen .brand:hover {
   opacity: 1;
 }
+
+/* ---------- Brand ---------- */
+
+.brand {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 14px;
+  z-index: 3999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  pointer-events: none;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-text b {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.brand-text small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Size sliders ---------- */
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+}
+
+.slider-label {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.slider-row input[type='range'] {
+  flex: 1;
+  height: 36px;
+  accent-color: var(--accent);
+}
+
+.slider-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.slider-preview i {
+  display: block;
+  border-radius: 50%;
+}
+
+.slider-preview .eraser-prev {
+  background: #fff;
+  border: 2px solid var(--muted);
+}
