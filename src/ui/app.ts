@@ -25,6 +25,7 @@ import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openTimer } from '../widgets/timer';
 import { icon } from './icons';
 import { toast } from './panel';
+import { computeUiScale, inkScale, scaleFloating, ui, type UiSize } from './scale';
 
 const COLORS = ['#1e293b', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e', '#2563eb', '#a855f7'];
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
@@ -140,6 +141,9 @@ export class App {
     this.updateZoom();
     this.updateBoardTone();
     this.startClock();
+    this.applyScale();
+    window.addEventListener('resize', () => this.applyScale());
+    store.on('settings', () => this.applyScale());
     void loadLocal().then((doc) => doc && store.loadDoc(doc));
   }
 
@@ -219,10 +223,13 @@ export class App {
 
   private positionPopover(anchor: HTMLElement): void {
     const pop = this.popover!;
+    scaleFloating(pop);
+    const k = ui();
     const r = anchor.getBoundingClientRect();
-    const left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left + r.width / 2 - pop.offsetWidth / 2));
+    const pw = pop.offsetWidth * k, ph = pop.offsetHeight * k;
+    const left = Math.max(8, Math.min(window.innerWidth - pw - 8, r.left + r.width / 2 - pw / 2));
     pop.style.left = `${left}px`;
-    pop.style.top = `${Math.max(8, r.top - pop.offsetHeight - 12)}px`;
+    pop.style.top = `${Math.max(8, r.top - ph - 12 * k)}px`;
   }
 
   private swatches(colors: string[], current: string | null, attr: string): string {
@@ -295,6 +302,8 @@ export class App {
             <button class="menu-item" data-act="delete-page">${icon('trash', 20)}Delete this page</button>
             <button class="menu-item" data-act="fullscreen">${icon('fullscreen', 20)}Full screen</button>
           </div>
+          <div class="pop-title">Button size</div>
+          <div class="seg">${(['small', 'normal', 'large'] as UiSize[]).map((z) => `<button class="${s.uiSize === z ? 'on' : ''}" data-uisize="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers move the board)</label>
           <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>`;
         pop.onchange = (e) => {
@@ -336,12 +345,13 @@ export class App {
   private onPopoverInput(e: Event): void {
     const el = e.target as HTMLInputElement;
     const v = Number(el.value);
+    // Write straight into the tool state: no toolbar rebuild on every tick.
     if (el.dataset.pensize !== undefined) {
-      store.setTool(store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
+      Object.assign(store.tool, store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
       const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
       if (prev) prev.style.width = prev.style.height = `${Math.min(44, v + 2)}px`;
     } else if (el.dataset.erasersize !== undefined) {
-      store.setTool({ eraserSize: v });
+      store.tool.eraserSize = v;
       const prev = this.popover?.querySelector('[data-eraserprev]') as HTMLElement | null;
       if (prev) prev.style.width = prev.style.height = `${Math.min(44, v / 3.5 + 6)}px`;
     }
@@ -466,7 +476,8 @@ export class App {
     const fillable = paths.some((p) => p.closed);
     const first = (paths[0] ?? texts[0]) as { color: string } | undefined;
     const color = first?.color ?? null;
-    const width = paths[0]?.size ?? 0;
+    // Thickness is shown in the same units as the pen slider.
+    const width = (paths[0]?.size ?? 0) / inkScale();
     const fill = paths.find((p) => p.closed)?.fill ?? null;
     const sec = this.propSection;
 
@@ -494,11 +505,11 @@ export class App {
     bar.onclick = (e) => this.onPropsClick(e);
     bar.oninput = (e) => {
       const el = e.target as HTMLInputElement;
-      if (el.dataset.pwidth !== undefined) this.setWidth(Number(el.value), false);
+      if (el.dataset.pwidth !== undefined) this.setWidth(Number(el.value) * inkScale(), false);
     };
     bar.onchange = (e) => {
       const el = e.target as HTMLInputElement;
-      if (el.dataset.pwidth !== undefined) this.setWidth(Number(el.value), true);
+      if (el.dataset.pwidth !== undefined) this.setWidth(Number(el.value) * inkScale(), true);
     };
     this.positionProps();
   }
@@ -514,7 +525,7 @@ export class App {
       const c = d.pcolor;
       store.mapEls(store.selection, (el) => (el.type === 'path' || el.type === 'text' ? ({ ...el, color: c } as El) : el));
       if (store.selectedEls().some((x) => x.type === 'path' && x.style === 'shape')) store.setTool({ shapeColor: c });
-    } else if (d.pw) this.setWidth(Number(d.pw), true);
+    } else if (d.pw) this.setWidth(Number(d.pw) * inkScale(), true);
     else if (d.pfill) {
       const f = d.pfill === 'none' ? null : d.pfill;
       store.mapEls(store.selection, (el) => (el.type === 'path' && el.closed ? { ...el, fill: f } : el));
@@ -539,10 +550,10 @@ export class App {
     }
     if (commit) {
       this.widthPreview = null;
-      if (store.selectedEls().some((x) => x.type === 'path' && x.style === 'shape')) store.setTool({ shapeSize: w });
+      if (store.selectedEls().some((x) => x.type === 'path' && x.style === 'shape')) store.setTool({ shapeSize: w / inkScale() });
     }
     const val = this.props.querySelector('.width-val');
-    if (val) val.textContent = String(Math.round(w));
+    if (val) val.textContent = String(Math.round(w / inkScale()));
   }
 
   private scaleSelection(k: number): void {
@@ -576,10 +587,12 @@ export class App {
     if (!r) return;
     const [x1, y1] = this.board.toScreen(r.x, r.y);
     const [x2, y2] = this.board.toScreen(r.x + r.w, r.y + r.h);
-    const bw = bar.offsetWidth, bh = bar.offsetHeight;
-    let top = y1 - bh - 56;
+    scaleFloating(bar);
+    const k = ui();
+    const bw = bar.offsetWidth * k, bh = bar.offsetHeight * k;
+    let top = y1 - bh - 56 * k;
     if (top < 12) top = y2 + 24;
-    top = Math.max(12, Math.min(this.board.h - bh - 100, top));
+    top = Math.max(12, Math.min(this.board.h - bh - 100 * k, top));
     const left = Math.max(8, Math.min(this.board.w - bw - 8, (x1 + x2) / 2 - bw / 2));
     bar.style.left = `${left}px`;
     bar.style.top = `${top}px`;
@@ -603,6 +616,20 @@ export class App {
 
   private updatePageLabel(): void {
     (this.root.querySelector('.page-label') as HTMLElement).textContent = `${store.index + 1} / ${store.doc.pages.length}`;
+  }
+
+  /** Size the toolbar and panels for this screen (phone → 86" panel). */
+  private applyScale(): void {
+    // The toolbar's own width is unaffected by its CSS transform.
+    computeUiScale(store.settings.uiSize, this.toolbar.offsetWidth);
+    // Lift the page arrows above the toolbar when they would overlap.
+    const k = ui();
+    const tbRight = window.innerWidth / 2 + (this.toolbar.offsetWidth * k) / 2;
+    const pb = this.root.querySelector('.pagebar') as HTMLElement;
+    const pbLeft = window.innerWidth - 14 - pb.offsetWidth * k;
+    this.root.classList.toggle('pagebar-up', tbRight > pbLeft - 8);
+    this.closePopover();
+    this.positionProps();
   }
 
   /** Logo and clock switch to light text on green / black boards. */
@@ -679,7 +706,7 @@ export class App {
       if (text) {
         e.preventDefault();
         const v = this.board.viewRect();
-        const fs = store.tool.fontSize;
+        const fs = store.tool.fontSize * inkScale();
         const sz = measureText(text, fs, false, 900, false);
         const cx = v.x + v.w / 2, cy = v.y + v.h / 2;
         const el: El = { id: uid(), type: 'text', text, x: cx - sz.w / 2, y: cy - sz.h / 2, w: sz.w, h: sz.h, rot: 0, color: store.tool.color, fontSize: fs };

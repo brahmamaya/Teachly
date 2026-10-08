@@ -3,6 +3,7 @@ import { uid } from '../geometry';
 import { drawPathEl } from '../renderer';
 import { buildShape } from '../shapes';
 import { store } from '../store';
+import { inkScale } from '../ui/scale';
 import type { PathEl } from '../types';
 import type { SelectTool } from './select';
 
@@ -21,7 +22,7 @@ export class ShapeTool implements Tool {
 
   private style() {
     const t = store.tool;
-    return { color: t.shapeColor, size: t.shapeSize, fill: t.shapeFill };
+    return { color: t.shapeColor, size: t.shapeSize * inkScale(), fill: t.shapeFill };
   }
 
   down(p: Ptr): void {
@@ -57,7 +58,7 @@ export class ShapeTool implements Tool {
     let els = this.preview;
     if (Math.hypot(p.x - s.x, p.y - s.y) < 6 * this.board.px) {
       // Tap: drop a default-sized shape.
-      const d = 160;
+      const d = 160 * inkScale();
       const line = ['line', 'arrow', 'dashed'].includes(store.tool.shape);
       els = buildShape(store.tool.shape, s.x - d / 2, s.y - (line ? 0 : d / 2), s.x + d / 2, s.y + (line ? 0 : d / 2), this.style(), false);
     }
@@ -174,7 +175,7 @@ export class CompassTool implements Tool {
           style: 'shape',
           pts: this.arc,
           color: store.tool.shapeColor,
-          size: store.tool.shapeSize,
+          size: store.tool.shapeSize * inkScale(),
           opacity: 1,
           closed: full,
           fill: null,
@@ -248,7 +249,7 @@ export class CompassTool implements Tool {
     ctx.fillText(`r = ${(this.r / 40).toFixed(1)} cm`, mx + 8 * px, my - 8 * px);
     if (this.arc.length) {
       ctx.strokeStyle = store.tool.shapeColor;
-      ctx.lineWidth = store.tool.shapeSize;
+      ctx.lineWidth = store.tool.shapeSize * inkScale();
       ctx.beginPath();
       ctx.moveTo(this.arc[0], this.arc[1]);
       for (let i = 3; i < this.arc.length; i += 3) ctx.lineTo(this.arc[i], this.arc[i + 1]);

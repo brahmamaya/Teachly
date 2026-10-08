@@ -2,6 +2,7 @@ import type { Board, Ptr, Tool } from '../board';
 import { bbox, distToSegment, uid } from '../geometry';
 import { drawEl } from '../renderer';
 import { store } from '../store';
+import { inkScale } from '../ui/scale';
 import type { El, PathEl } from '../types';
 
 /** Densify a polyline so no segment is longer than `step`. */
@@ -55,7 +56,7 @@ export class EraserTool implements Tool {
 
   private radius(p: Ptr): number {
     if (this.palm) return (Math.max(p.width, p.height, 60) / 2) * this.board.px * 1.4;
-    return (store.tool.eraserSize / 2) * this.board.px;
+    return (store.tool.eraserSize / 2) * this.board.px * inkScale();
   }
 
   private mode() {

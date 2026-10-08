@@ -4,6 +4,7 @@ import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } 
 export interface Settings {
   penOnly: boolean;
   palmErase: boolean;
+  uiSize: 'small' | 'normal' | 'large';
 }
 
 export interface ToolState {
@@ -36,6 +37,7 @@ function loadSettings(): Settings {
   const defaults: Settings = {
     penOnly: false,
     palmErase: true,
+    uiSize: 'normal',
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

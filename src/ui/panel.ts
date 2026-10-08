@@ -1,4 +1,5 @@
 import { icon } from './icons';
+import { scaleFloating, ui } from './scale';
 
 export interface PanelOpts {
   id: string;
@@ -44,7 +45,8 @@ export function floatingPanel(host: HTMLElement, opts: PanelOpts, toggle = true)
   // Position once the caller has filled the body, so the real size is known.
   el.style.visibility = 'hidden';
   requestAnimationFrame(() => {
-    const W = el.offsetWidth, H = el.offsetHeight;
+    scaleFloating(el);
+    const W = el.offsetWidth * ui(), H = el.offsetHeight * ui();
     // Keep clear of the bottom toolbar where possible.
     const x = opts.x ?? Math.max(12, Math.min(window.innerWidth - W - 12, window.innerWidth / 2 - W / 2 + n * 28));
     const y = opts.y ?? Math.max(12, Math.min(window.innerHeight - H - 96, 72 + n * 28));

@@ -1,6 +1,7 @@
 import type { Board, Ptr, Tool } from '../board';
 import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, resizeEl, similarity, transformEl } from '../geometry';
 import { drawEl } from '../renderer';
+import { ui } from '../ui/scale';
 import { store } from '../store';
 import type { El, Rect, TextEl } from '../types';
 import type { TextEditor } from './text';
@@ -63,7 +64,7 @@ export class SelectTool implements Tool {
   }
 
   private hitRadius(p: Ptr): number {
-    return HANDLE * 2 * this.board.px * (p.type === 'touch' ? 1.6 : 1);
+    return HANDLE * 2 * this.board.px * ui() * (p.type === 'touch' ? 1.6 : 1);
   }
 
   private topHit(x: number, y: number): El | null {
@@ -238,6 +239,8 @@ export class SelectTool implements Tool {
   drawOverlay(ctx: CanvasRenderingContext2D): void {
     if (store.tool.tool !== 'select' && store.tool.tool !== 'shape') return;
     const px = this.board.px;
+    // Handles are sized for fingers on big panels too.
+    const hp = px * ui();
     const m = this.mode;
     if (m?.k === 'lasso' && m.pts.length > 2) {
       ctx.beginPath();
@@ -277,15 +280,15 @@ export class SelectTool implements Tool {
     const full = mat;
     const [tx, ty] = applyMat(full, r.x + r.w / 2, r.y);
     // While resizing the knob follows the top edge; otherwise it moves/rotates with the selection.
-    const [rx, ry2] = this.resizeArgs ? [tx, ty - 40 * px] : applyMat(full, h.rot[0], h.rot[1]);
+    const [rx, ry2] = this.resizeArgs ? [tx, ty - 40 * hp] : applyMat(full, h.rot[0], h.rot[1]);
     ctx.beginPath();
     ctx.moveTo(tx, ty);
     ctx.lineTo(rx, ry2);
     ctx.stroke();
     const handle = (x: number, y: number, round: boolean) => {
       ctx.beginPath();
-      if (round) ctx.arc(x, y, HANDLE * px, 0, Math.PI * 2);
-      else ctx.rect(x - HANDLE * 0.8 * px, y - HANDLE * 0.8 * px, HANDLE * 1.6 * px, HANDLE * 1.6 * px);
+      if (round) ctx.arc(x, y, HANDLE * hp, 0, Math.PI * 2);
+      else ctx.rect(x - HANDLE * 0.8 * hp, y - HANDLE * 0.8 * hp, HANDLE * 1.6 * hp, HANDLE * 1.6 * hp);
       ctx.fillStyle = '#fff';
       ctx.fill();
       ctx.lineWidth = 2 * px;
@@ -297,9 +300,9 @@ export class SelectTool implements Tool {
       if (g.hx && g.hy) handle(x, y, false);
       else {
         // Edge grip: a pill along the side.
-        const w = (g.hx ? 7 : 22) * px, hh = (g.hx ? 22 : 7) * px;
+        const w = (g.hx ? 7 : 22) * hp, hh = (g.hx ? 22 : 7) * hp;
         ctx.beginPath();
-        ctx.roundRect(x - w / 2, y - hh / 2, w, hh, 4 * px);
+        ctx.roundRect(x - w / 2, y - hh / 2, w, hh, 4 * hp);
         ctx.fillStyle = '#fff';
         ctx.fill();
         ctx.lineWidth = 2 * px;
@@ -309,10 +312,10 @@ export class SelectTool implements Tool {
     }
     handle(rx, ry2, true);
     ctx.fillStyle = '#3b82f6';
-    ctx.font = `700 ${12 * px}px system-ui`;
+    ctx.font = `700 ${12 * hp}px system-ui`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⟳', rx, ry2 + 0.5 * px);
+    ctx.fillText('⟳', rx, ry2 + 0.5 * hp);
     ctx.textAlign = 'left';
   }
 

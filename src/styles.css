@@ -11,6 +11,8 @@
   --danger: #dc2626;
   --shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.08);
   --radius: 18px;
+  /* Interface scale, set from the screen size in src/ui/scale.ts */
+  --ui: 1;
   color-scheme: light;
 }
 
@@ -41,6 +43,7 @@ button {
   font: inherit;
   color: inherit;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 button:focus-visible {
@@ -133,15 +136,14 @@ button:focus-visible {
   position: absolute;
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--ui));
+  transform-origin: 50% 100%;
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 6px;
   z-index: 4000;
-  max-width: calc(100vw - 16px);
-  overflow-x: auto;
-  scrollbar-width: none;
+  white-space: nowrap;
 }
 
 .tb-btn {
@@ -218,6 +220,13 @@ button:focus-visible {
   align-items: center;
   padding: 6px;
   z-index: 3999;
+  transform: scale(var(--ui));
+  transform-origin: 100% 100%;
+}
+
+/* When the toolbar is too wide, the page arrows sit just above it. */
+#app.pagebar-up .pagebar {
+  bottom: calc(26px + env(safe-area-inset-bottom, 0px) + 78px * var(--ui));
 }
 
 .page-label {
@@ -261,20 +270,21 @@ button:focus-visible {
   padding: 10px 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 1000px) {
-  .pagebar {
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-  }
+  transform: scale(var(--ui));
+  transform-origin: 100% 0;
 }
 
 @media (max-width: 640px) {
-  .tb-btn {
-    min-width: 52px;
-    height: 56px;
+  .toolbar {
+    padding: 4px;
+    gap: 0;
   }
-  .tb-label {
+  .tb-btn {
+    min-width: 46px;
+    height: 54px;
+  }
+  .tb-label,
+  .tb-sep {
     display: none;
   }
 }
@@ -296,7 +306,6 @@ button:focus-visible {
 @keyframes pop {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
 }
 
@@ -913,6 +922,8 @@ button:focus-visible {
   gap: 10px;
   opacity: 0.55;
   pointer-events: none;
+  transform: scale(var(--ui));
+  transform-origin: 0 0;
 }
 
 .brand-mark {
@@ -991,7 +1002,8 @@ button:focus-visible {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top, 0px));
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--ui));
+  transform-origin: 50% 0;
   z-index: 3999;
   display: flex;
   align-items: baseline;
@@ -1021,4 +1033,12 @@ button:focus-visible {
 
 #app[data-board='dark'] .brand-text small {
   color: rgba(255, 255, 255, 0.8);
+}
+
+/* Phones: keep the top line short so logo and clock never collide. */
+@media (max-width: 640px) {
+  .brand-text,
+  .clock small {
+    display: none;
+  }
 }

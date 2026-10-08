@@ -4,6 +4,7 @@ import type { Snapper } from '../instruments';
 import { freehandPath } from '../renderer';
 import { recognize } from '../shapes';
 import { store } from '../store';
+import { inkScale } from '../ui/scale';
 import type { PathEl, PathStyle } from '../types';
 
 interface Live {
@@ -40,7 +41,7 @@ export class PenTool implements Tool {
       pts: [x, y, p.p],
       style,
       color: hl ? t.hlColor : t.color,
-      size: hl ? t.hlSize : t.size,
+      size: (hl ? t.hlSize : t.size) * inkScale(),
       sim: p.type !== 'pen',
       snapper,
       snapped: null,

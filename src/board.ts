@@ -186,7 +186,10 @@ export class Board {
     const r = this.el.getBoundingClientRect();
     this.w = r.width;
     this.h = r.height;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 3);
+    // Sharp on retina phones, but cap the pixel count so 4K / 86" panels
+    // (three full-screen layers) stay fast.
+    const area = Math.max(1, r.width * r.height);
+    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(9_000_000 / area)));
     for (const c of [this.bg, this.ink, this.overlay]) {
       c.width = Math.round(r.width * this.dpr);
       c.height = Math.round(r.height * this.dpr);

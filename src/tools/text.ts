@@ -2,6 +2,7 @@ import type { Board, Ptr, Tool } from '../board';
 import { hitTest, uid } from '../geometry';
 import { measureText, textFont } from '../renderer';
 import { store } from '../store';
+import { inkScale } from '../ui/scale';
 import type { TextEl } from '../types';
 
 const STICKY_COLORS = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa'];
@@ -119,7 +120,7 @@ export class TextTool implements Tool {
       this.editor.open(hit, false);
       return;
     }
-    const fs = store.tool.fontSize;
+    const fs = store.tool.fontSize * inkScale();
     const sticky = this.sticky;
     const el: TextEl = {
       id: uid(),
