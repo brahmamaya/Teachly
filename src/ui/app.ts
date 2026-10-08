@@ -200,13 +200,14 @@ export class App {
       `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 22)}${extra}</button>`;
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
-    left.innerHTML = `
+    left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       ${tool('select', 'select', 'Select')}
       ${tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
       ${tool('eraser', 'eraser', 'Eraser')}
       ${tool('shape', 'shapes', 'Shapes')}
       ${tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`)}
       ${tool('text', 'text', 'Text')}
+      <i class="tb-sep" aria-hidden="true"></i>
       ${tool('tape', 'tape', 'Tape — hide answers, tap to show', `<span class="swatch-dot" style="background:${t.tapeColor}"></span>`)}
       ${tool('laser', 'laser', 'Laser pointer')}`;
     right.innerHTML = `
@@ -222,10 +223,34 @@ export class App {
       <button class="tb-btn ${this.pages.open ? 'open' : ''}" data-act="pages" title="All pages">${icon('pages', 22)}</button>
       <button class="tb-btn ${this.popFor === 'menu' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 22)}</button>`;
     this.updateUndo();
+    this.moveIndicator(left);
     if (this.popover) {
       const anchor = this.toolbar.querySelector(`[data-tool="${this.popFor}"],[data-pop="${this.popFor}"]`) as HTMLElement | null;
       if (anchor) this.positionPopover(anchor);
     }
+  }
+
+  /** Last place of the sliding highlight, so it can glide to the new tool. */
+  private indAt: { x: number; w: number } | null = null;
+
+  /** The white highlight slides smoothly from the old tool to the new one. */
+  private moveIndicator(bar: HTMLElement): void {
+    const ind = bar.querySelector('.tb-ind') as HTMLElement;
+    const btn = bar.querySelector('.tb-btn.active') as HTMLElement | null;
+    if (!btn) {
+      ind.style.opacity = '0';
+      return;
+    }
+    const to = { x: btn.offsetLeft, w: btn.offsetWidth };
+    const from = this.indAt ?? to;
+    ind.style.transition = 'none';
+    ind.style.width = `${from.w}px`;
+    ind.style.transform = `translateX(${from.x}px)`;
+    void ind.offsetWidth;
+    ind.style.transition = '';
+    ind.style.width = `${to.w}px`;
+    ind.style.transform = `translateX(${to.x}px)`;
+    this.indAt = to;
   }
 
   private updateUndo(): void {
