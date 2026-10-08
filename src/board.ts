@@ -193,21 +193,22 @@ export class Board {
       if (!this.isFit || store.camera.x !== fit.x || store.camera.y !== fit.y) store.setCamera(fit);
       return;
     }
-    const z = Math.max(fit.z, Math.min(fit.z * 6, c.z));
-    if (z - fit.z < 1e-3) {
-      store.setCamera(fit);
-      return;
-    }
+    // Free board: slide anywhere (the board goes on beyond the page),
+    // zoom from a wide overview up to 6× the page.
+    const z = Math.max(fit.z * 0.3, Math.min(fit.z * 6, c.z));
     if (store.tool.tool === 'hand') this.navFree = true;
-    const vw = this.w / z, vh = this.h / z;
-    const x = Math.max(PAGE.x - 40 / z, Math.min(PAGE.x + PAGE.w - vw + 40 / z, c.x));
-    const y = Math.max(PAGE.y - 40 / z, Math.min(PAGE.y + PAGE.h - vh + 40 / z, c.y));
-    store.setCamera({ x, y, z });
+    store.setCamera({ x: c.x, y: c.y, z });
+  }
+
+  /** Showing the starting view (the whole page)? */
+  get isHome(): boolean {
+    const f = this.fitCam(), c = this.cam;
+    return Math.abs(c.z - f.z) < 1e-3 && Math.abs(c.x - f.x) * c.z < 1 && Math.abs(c.y - f.y) * c.z < 1;
   }
 
   /** Give a page that has never been shown the fitted view. */
   ensureCam(): void {
-    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3 || (!this.free && !this.isFit)) store.setCamera(this.fitCam());
+    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3 || (!this.free && !this.isHome)) store.setCamera(this.fitCam());
   }
 
   panBy(dsx: number, dsy: number): void {
@@ -297,7 +298,8 @@ export class Board {
     this.bgKey = key;
     const ctx = this.bgCtx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    drawBackground(ctx, p.bg, p.pattern, c, this.w, this.h, PAGE);
+    // The board surface goes on beyond the page (slide it with the Hand).
+    drawBackground(ctx, p.bg, p.pattern, c, this.w, this.h);
   }
 
   renderInk(): void {
@@ -327,11 +329,7 @@ export class Board {
       from = 0;
     }
     this.worldTransform(ctx);
-    // Everything lives on the page: clip to its rectangle.
     ctx.save();
-    ctx.beginPath();
-    ctx.rect(PAGE.x, PAGE.y, PAGE.w, PAGE.h);
-    ctx.clip();
     drawEls(ctx, from ? els.slice(from) : els, this.viewRect(), skip);
     tool.drawInk?.(ctx);
     ctx.restore();
@@ -428,7 +426,7 @@ export class Board {
         const r = this.el.getBoundingClientRect();
         const sx = e.clientX - r.left, sy = e.clientY - r.top;
         // Ctrl / pinch-to-zoom on a trackpad, or any scroll with the Hand tool: zoom.
-        if (e.ctrlKey || e.metaKey || (store.tool.tool === 'hand' && this.isFit)) {
+        if (e.ctrlKey || e.metaKey) {
           this.zoomAt(sx, sy, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)));
         } else {
           const k = e.deltaMode ? 30 : 1;
@@ -474,7 +472,7 @@ export class Board {
     if (store.tool.tool === 'hand') {
       const now = performance.now(), lt = this.lastHandTap;
       if (now - lt.t < 320 && Math.hypot(p.sx - lt.x, p.sy - lt.y) < 40) {
-        if (this.isFit) this.zoomAt(p.sx, p.sy, 2);
+        if (this.isHome) this.zoomAt(p.sx, p.sy, 2);
         else this.fitPage();
         this.lastHandTap = { t: 0, x: 0, y: 0 };
       } else this.lastHandTap = { t: now, x: p.sx, y: p.sy };

@@ -304,7 +304,7 @@ export class App {
       else {
         this.closePopover();
         store.setTool({ tool: id });
-        if (id === 'hand') toast('Hand: drag to move · pinch or scroll to zoom · double-tap to zoom in / whole page', 3500);
+        if (id === 'hand') toast('Hand: slide the board any way for more space · pinch to zoom · double-tap = zoom / back to page', 4000);
         // Shapes: show the picker right away, a shape must be chosen first.
         if (id === 'shape') this.togglePopover('shape', this.toolbar.querySelector('[data-tool=shape]') as HTMLElement);
       }
@@ -1033,10 +1033,10 @@ export class App {
 
   private updateZoom(): void {
     const pill = this.root.querySelector('.zoom-pill') as HTMLElement;
-    // Shown only while zoomed into the page; tap to see the whole page again.
+    // Shown only after moving / zooming the board; tap to go back to the whole page.
     const z = Math.round((store.camera.z / this.board.fitZ) * 100);
-    pill.hidden = this.board.isFit;
-    pill.textContent = `${z}%  ·  Whole page`;
+    pill.hidden = this.board.isHome;
+    pill.textContent = z === 100 ? '⟲  Back to page' : `${z}%  ·  Whole page`;
   }
 
   private bindKeys(): void {

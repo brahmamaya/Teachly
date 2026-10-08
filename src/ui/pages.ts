@@ -1,6 +1,5 @@
 import { uid } from '../geometry';
-import { PAGE } from '../page';
-import { renderRegion } from '../renderer';
+import { pageRegion, renderRegion } from '../renderer';
 import { store } from '../store';
 import type { Page } from '../types';
 import { icon } from './icons';
@@ -15,7 +14,7 @@ let copied: Page | null = null;
 function thumb(p: Page): string {
   let src = thumbs.get(p);
   if (!src) {
-    src = renderRegion(p, PAGE, 320, 180).toDataURL('image/jpeg', 0.75);
+    src = renderRegion(p, pageRegion(p.els), 320, 180).toDataURL('image/jpeg', 0.75);
     thumbs.set(p, src);
   }
   return src;

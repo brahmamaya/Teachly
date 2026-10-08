@@ -556,6 +556,16 @@ export function contentBounds(els: El[]): Rect | null {
   return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
 }
 
+/** The part of a page worth showing: the page itself plus anything written beyond it. */
+export function pageRegion(els: El[]): Rect {
+  const b = contentBounds(els);
+  if (!b) return { ...PAGE };
+  const pad = 24;
+  const x1 = Math.min(PAGE.x, b.x - pad), y1 = Math.min(PAGE.y, b.y - pad);
+  const x2 = Math.max(PAGE.x + PAGE.w, b.x + b.w + pad), y2 = Math.max(PAGE.y + PAGE.h, b.y + b.h + pad);
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+
 export function renderRegion(
   page: { bg: string; pattern: BgPattern; els: El[] },
   region: Rect,

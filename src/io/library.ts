@@ -1,6 +1,5 @@
 import { uid } from '../geometry';
-import { PAGE } from '../page';
-import { renderRegion } from '../renderer';
+import { pageRegion, renderRegion } from '../renderer';
 import { newPage } from '../store';
 import type { Doc } from '../types';
 
@@ -68,7 +67,7 @@ export async function listNotebooks(): Promise<NotebookMeta[]> {
 
 function cover(doc: Doc): string {
   try {
-    return renderRegion(doc.pages[0], PAGE, 240, 135).toDataURL('image/jpeg', 0.7);
+    return renderRegion(doc.pages[0], pageRegion(doc.pages[0].els), 240, 135).toDataURL('image/jpeg', 0.7);
   } catch {
     return '';
   }

@@ -1,7 +1,7 @@
 import type { Board } from '../board';
 import { regroup, uid } from '../geometry';
 import { fitInPage, PAGE } from '../page';
-import { renderRegion } from '../renderer';
+import { pageRegion, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
 
@@ -191,8 +191,8 @@ export async function openFile(file?: File): Promise<void> {
 // Export
 
 function exportCanvas(_board: Board, page: Page, maxSide = 2400): HTMLCanvasElement {
-  // Exports show exactly the board page.
-  const r: Rect = PAGE;
+  // Exports show the page plus anything written beyond it.
+  const r: Rect = pageRegion(page.els);
   const k = Math.min(3, maxSide / Math.max(r.w, r.h));
   return renderRegion(page, r, r.w * k, r.h * k);
 }
