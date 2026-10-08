@@ -126,3 +126,19 @@ describe('tables', () => {
     expect(cellAt(base, 400, 10)).toBeNull();
   });
 });
+
+import { compile, fmtNum } from '../src/mathexpr';
+describe('maths expressions', () => {
+  it('reads common school expressions', () => {
+    expect(compile('2x^2 - 3x + 1')(2)).toBe(3);
+    expect(compile('sin(pi/2)')(0)).toBeCloseTo(1);
+    expect(compile('sin 30', { deg: true })(0)).toBeCloseTo(0.5);
+    expect(compile('(x+1)(x-1)')(3)).toBe(8);
+    expect(compile('|x| + sqrt(16)')(-2)).toBe(6);
+    expect(compile('5!')(0)).toBe(120);
+    expect(compile('3×4÷2−1')(0)).toBe(5);
+    expect(compile('-2^2')(0)).toBe(-4);
+    expect(fmtNum(0.1 + 0.2)).toBe('0.3');
+    expect(() => compile('2+')).toThrow();
+  });
+});

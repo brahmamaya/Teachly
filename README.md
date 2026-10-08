@@ -61,7 +61,7 @@ Teachly is deliberately simple: one toolbar at the bottom, big buttons, and opti
 | **Laser** | Glowing pointer trail that fades by itself |
 | **Undo / Redo** | Every step, including clearing a page |
 | **Insert** | Picture, PDF / book pages, PowerPoint (.pptx) slides, table, new page |
-| **Tools** | Ruler and protractor (the pen snaps to their edges), compass, timer, spotlight, screen cover |
+| **Tools** | Ruler and protractor (the pen snaps to their edges), compass, timer, spotlight, screen cover, magnifier, graph plotter (type y = f(x), up to 3 curves, axes and numbers drawn for you), calculator (DEG/RAD, writes the answer on the board), random picker (numbers or student names, no repeats), scoreboard (2–6 teams), **group writing** (many students write at the same time on a touch board) |
 | **Menu** | Board colour, 8 templates (plain, grid, lines, 4-line, dots, graph, music, Cornell), My notebooks, record lesson as video (board + voice), open / save file, save as PDF, full screen |
 
 **Change a shape:** tap it, and a bar appears with **Colour**, **Thickness**, **Fill**, **Size − / +**, **Copy** and **Delete**.

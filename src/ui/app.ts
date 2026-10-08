@@ -29,6 +29,9 @@ import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openTimer } from '../widgets/timer';
 import { toggleRecording } from '../widgets/recorder';
+import { openCalculator, openPicker, openScoreboard } from '../widgets/classroom';
+import { openGraph } from '../widgets/graph';
+import { toggleMagnifier } from '../widgets/magnifier';
 import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
 import { Library } from './library';
@@ -370,13 +373,19 @@ export class App {
         break;
       case 'tools': {
         const ins = this.board.instruments;
-        pop.innerHTML = `<div class="grid-btns">
+        pop.innerHTML = `<div class="grid-btns tools-grid">
           ${this.gridBtn('ruler', 'ruler', 'Ruler', ins.has('ruler'))}
           ${this.gridBtn('protractor', 'protractor', 'Protractor', ins.has('protractor'))}
           ${this.gridBtn('compass', 'compass', 'Compass', t.tool === 'compass')}
           ${this.gridBtn('timer', 'timer', 'Timer')}
           ${this.gridBtn('spotlight', 'spotlight', 'Spotlight')}
-          ${this.gridBtn('curtain', 'curtain', 'Screen cover')}</div>`;
+          ${this.gridBtn('curtain', 'curtain', 'Screen cover')}
+          ${this.gridBtn('magnifier', 'magnifier', 'Magnifier')}
+          ${this.gridBtn('graph', 'graph', 'Graph y = f(x)')}
+          ${this.gridBtn('calc', 'calc', 'Calculator')}
+          ${this.gridBtn('picker', 'dice', 'Random picker')}
+          ${this.gridBtn('score', 'score', 'Scoreboard')}
+          ${this.gridBtn('multi', 'pen', 'Group writing', store.settings.multiWrite)}</div>`;
         break;
       }
       case 'menu': {
@@ -563,6 +572,22 @@ export class App {
         return toggleSpotlight(this.root);
       case 'curtain':
         return toggleCurtain(this.root.querySelector('#board') as HTMLElement);
+      case 'magnifier':
+        return toggleMagnifier(this.root, b);
+      case 'graph':
+        return openGraph(this.root, b);
+      case 'calc':
+        return openCalculator(this.root, b);
+      case 'picker':
+        return openPicker(this.root);
+      case 'score':
+        return openScoreboard(this.root);
+      case 'multi': {
+        const on = !store.settings.multiWrite;
+        store.setSettings({ multiWrite: on });
+        if (on && store.tool.tool !== 'pen') store.setTool({ tool: 'pen' });
+        return toast(on ? 'Group writing on — many students can write at the same time (pinch zoom is off)' : 'Group writing off', 4000);
+      }
       case 'new':
         // The current notebook stays in My notebooks, so nothing is lost.
         void saveNotebook(store.doc).then(async () => {

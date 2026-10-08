@@ -34,7 +34,7 @@ export class PenTool implements Tool {
   constructor(private board: Board) {}
 
   down(p: Ptr): void {
-    if (this.live.size && p.type !== 'pen') return;
+    if (this.live.size && p.type !== 'pen' && !store.settings.multiWrite) return;
     const t = store.tool;
     const style: PathStyle = t.penStyle;
     const hl = style === 'highlighter';

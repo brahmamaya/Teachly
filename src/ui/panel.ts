@@ -116,9 +116,13 @@ export function toast(msg: string, ms = 2200): void {
 }
 
 /** Tiny beep using WebAudio (timer alarms, picker). */
+let audio: AudioContext | null = null;
 export function beep(freq = 880, ms = 180, times = 1): void {
   try {
-    const ac = new AudioContext();
+    // One shared audio context (Safari allows only a few).
+    audio ??= new AudioContext();
+    const ac = audio;
+    if (ac.state === 'suspended') void ac.resume();
     for (let i = 0; i < times; i++) {
       const o = ac.createOscillator();
       const g = ac.createGain();
@@ -133,7 +137,6 @@ export function beep(freq = 880, ms = 180, times = 1): void {
       o.start(t0);
       o.stop(t0 + ms / 1000 + 0.05);
     }
-    setTimeout(() => ac.close(), times * (ms + 140) + 300);
   } catch {
     /* audio unavailable */
   }

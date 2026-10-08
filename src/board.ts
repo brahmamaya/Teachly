@@ -432,7 +432,9 @@ export class Board {
     this.pointers.set(p.id, p);
 
     // Two-finger gesture (pinch / pan / rotate-free zoom).
-    if (p.type === 'touch' && this.touchCount() === 2) {
+    // (Off in "many writers" mode: every finger draws, like Note 3's group writing.)
+    const multi = store.settings.multiWrite;
+    if (!multi && p.type === 'touch' && this.touchCount() === 2) {
       const ids = [...this.pointers.values()].filter((q) => q.type === 'touch').map((q) => q.id) as [number, number];
       for (const id of ids) {
         const r = this.routed.get(id);
@@ -451,7 +453,7 @@ export class Board {
     // Once a stylus has been used, fingers and palms only move the board
     // (palm rejection, like a real tablet).
     if (p.type === 'pen') this.sawPen = true;
-    if (p.button === 1 || this.spaceDown || ((store.settings.penOnly || this.sawPen) && p.type === 'touch')) {
+    if (p.button === 1 || this.spaceDown || (!multi && (store.settings.penOnly || this.sawPen) && p.type === 'touch')) {
       this.routed.set(p.id, 'pan');
       this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
       this.el.classList.add('panning');

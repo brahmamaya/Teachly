@@ -5,6 +5,8 @@ export interface Settings {
   penOnly: boolean;
   palmErase: boolean;
   uiSize: 'small' | 'normal' | 'large';
+  /** Many students write at once: every touch draws (no pinch zoom). */
+  multiWrite: boolean;
 }
 
 export interface ToolState {
@@ -42,6 +44,7 @@ function loadSettings(): Settings {
     penOnly: false,
     palmErase: true,
     uiSize: 'normal',
+    multiWrite: false,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
