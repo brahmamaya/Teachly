@@ -1,5 +1,6 @@
 import type { Board } from '../board';
 import { uid } from '../geometry';
+import { fitInPage } from '../page';
 import { newPage, store } from '../store';
 import type { ImageEl, Page } from '../types';
 
@@ -24,9 +25,10 @@ export async function importPptx(board: Board, file: File, onProgress?: (done: n
     const pages: Page[] = [];
     for (let i = 0; i < slides.length; i++) {
       const el = slides[i];
-      const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 1.5, logging: false, useCORS: true });
-      const h = (SLIDE_W * canvas.height) / canvas.width;
-      const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.9), x: 0, y: 0, w: SLIDE_W, h, rot: 0, locked: true };
+      const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 2, logging: false, useCORS: true });
+      // Each slide fills the board page (16:9 slides fit it exactly).
+      const rect = fitInPage(canvas.width, canvas.height);
+      const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.9), ...rect, rot: 0, locked: true };
       const p = newPage(store.page.bg, 'none');
       p.els = [img];
       pages.push(p);
@@ -34,7 +36,7 @@ export async function importPptx(board: Board, file: File, onProgress?: (done: n
     }
     previewer.destroy();
     addPages(pages);
-    board.fitContent();
+    board.fitPage();
   } finally {
     host.remove();
   }

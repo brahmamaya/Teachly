@@ -9,6 +9,18 @@ export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last
   switch (el.style) {
     case 'highlighter':
       return { size: el.size, thinning: 0, smoothing: 0.7, streamline: 0.6, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
+    case 'brush':
+      // Soft brush: thick when slow, thin when fast, tapered ends.
+      return {
+        size: el.size * 2.6,
+        thinning: 0.55,
+        smoothing: 0.75,
+        streamline: 0.55,
+        simulatePressure: !!el.sim,
+        last,
+        start: { taper: el.size * 6, cap: true },
+        end: { taper: el.size * 8, cap: true },
+      };
     default:
       // Stylus: follows pressure closely. Finger / mouse / board touch: steadier,
       // nearly even width and more streamlining to hide touchscreen jitter.
@@ -32,7 +44,41 @@ export function outlineToPath(outline: number[][]): Path2D {
   return path;
 }
 
+/**
+ * Calligraphy: a flat nib held at 45°. Every segment becomes a parallelogram
+ * swept by the nib, so strokes are broad in one direction and hairline-thin
+ * in the other — like a real italic pen.
+ */
+function calligraphyPath(pts: number[], size: number): Path2D {
+  const path = new Path2D();
+  const a = -Math.PI / 4;
+  const nx = Math.cos(a) * size * 0.9, ny = Math.sin(a) * size * 0.9;
+  // Light smoothing so hand jitter does not show in the broad strokes.
+  const xs: number[] = [], ys: number[] = [];
+  for (let i = 0; i < pts.length; i += 3) {
+    const j = Math.max(0, i - 3), k = Math.min(pts.length - 3, i + 3);
+    xs.push((pts[j] + pts[i] * 2 + pts[k]) / 4);
+    ys.push((pts[j + 1] + pts[i + 1] * 2 + pts[k + 1]) / 4);
+  }
+  if (xs.length === 1) {
+    xs.push(xs[0] + 0.1);
+    ys.push(ys[0] + 0.1);
+  }
+  for (let i = 1; i < xs.length; i++) {
+    const x0 = xs[i - 1], y0 = ys[i - 1], x1 = xs[i], y1 = ys[i];
+    const q = [x0 - nx, y0 - ny, x0 + nx, y0 + ny, x1 + nx, y1 + ny, x1 - nx, y1 - ny];
+    // Same winding for every quad so overlaps never cancel out (nonzero fill).
+    const area = (q[2] - q[0]) * (q[5] - q[1]) - (q[4] - q[0]) * (q[3] - q[1]);
+    const order = area >= 0 ? [0, 2, 4, 6] : [6, 4, 2, 0];
+    path.moveTo(q[order[0]], q[order[0] + 1]);
+    for (const o of order.slice(1)) path.lineTo(q[o], q[o + 1]);
+    path.closePath();
+  }
+  return path;
+}
+
 export function freehandPath(pts: number[], el: Pick<PathEl, 'style' | 'size' | 'sim'>, last: boolean): Path2D {
+  if (el.style === 'calligraphy') return calligraphyPath(pts, el.size);
   const input: number[][] = [];
   for (let i = 0; i < pts.length; i += 3) input.push([pts[i], pts[i + 1], pts[i + 2]]);
   return outlineToPath(getStroke(input, freehandOptions(el, last)));
@@ -117,10 +163,31 @@ export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
       if (el.arrow === 2) drawArrowHead(ctx, el.pts[3], el.pts[4], el.pts[0], el.pts[1], el.size);
     }
   } else {
+    // A filled freehand drawing: colour the area it encloses, under the ink.
+    if (el.fill) {
+      ctx.fillStyle = el.fill;
+      ctx.fill(fillPath(el));
+    }
     ctx.fillStyle = el.color;
     ctx.fill(getPath(el));
   }
   ctx.globalAlpha = 1;
+}
+
+const fillCache = new WeakMap<PathEl, Path2D>();
+
+/** The area inside a hand-drawn stroke (its line, closed back to the start). */
+function fillPath(el: PathEl): Path2D {
+  let p = fillCache.get(el);
+  if (!p) {
+    p = new Path2D();
+    const pts = el.pts;
+    p.moveTo(pts[0], pts[1]);
+    for (let i = 3; i < pts.length; i += 3) p.lineTo(pts[i], pts[i + 1]);
+    p.closePath();
+    fillCache.set(el, p);
+  }
+  return p;
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
@@ -281,7 +348,38 @@ export function isDarkColor(hex: string): boolean {
   return 0.299 * r + 0.587 * g + 0.114 * b < 128;
 }
 
-export function drawBackground(ctx: CanvasRenderingContext2D, bg: string, pattern: BgPattern, cam: Camera, w: number, h: number): void {
+/**
+ * Board background. With `page`, the area around the page is shaded and the
+ * page itself is drawn as a clear rectangle with an edge, so it is obvious
+ * where the board ends.
+ */
+export function drawBackground(ctx: CanvasRenderingContext2D, bg: string, pattern: BgPattern, cam: Camera, w: number, h: number, page?: Rect): void {
+  if (!page) return drawSurface(ctx, bg, pattern, cam, w, h);
+  const dark = isDarkColor(bg);
+  ctx.fillStyle = dark ? '#161616' : '#c9ccd1';
+  ctx.fillRect(0, 0, w, h);
+  const px = (page.x - cam.x) * cam.z, py = (page.y - cam.y) * cam.z;
+  const pw = page.w * cam.z, ph = page.h * cam.z;
+  // Soft lift so the page reads as a sheet on the desk.
+  ctx.save();
+  ctx.shadowColor = dark ? 'rgba(0,0,0,0.85)' : 'rgba(15,23,42,0.28)';
+  ctx.shadowBlur = 28;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = bg;
+  ctx.fillRect(px, py, pw, ph);
+  ctx.restore();
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px, py, pw, ph);
+  ctx.clip();
+  drawSurface(ctx, bg, pattern, cam, w, h);
+  ctx.restore();
+  ctx.strokeStyle = dark ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.22)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(Math.round(px) + 0.5, Math.round(py) + 0.5, Math.round(pw) - 1, Math.round(ph) - 1);
+}
+
+function drawSurface(ctx: CanvasRenderingContext2D, bg: string, pattern: BgPattern, cam: Camera, w: number, h: number): void {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
   if (pattern === 'none') return;

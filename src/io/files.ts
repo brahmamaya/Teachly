@@ -1,6 +1,7 @@
 import type { Board } from '../board';
 import { uid } from '../geometry';
-import { contentBounds, renderRegion } from '../renderer';
+import { fitInPage, PAGE } from '../page';
+import { renderRegion } from '../renderer';
 import { newPage, store } from '../store';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
 
@@ -113,7 +114,8 @@ function safeName(s: string): string {
 export async function insertImageSrc(board: Board, dataUrl: string, at?: { x: number; y: number }): Promise<ImageEl> {
   const { src, w, h } = await normalizeImage(dataUrl);
   const v = board.viewRect();
-  const k = Math.min(1, (v.w * 0.6) / w, (v.h * 0.6) / h);
+  // Never bigger than ~70% of the page.
+  const k = Math.min(1, (Math.min(v.w, PAGE.w) * 0.7) / w, (Math.min(v.h, PAGE.h) * 0.7) / h);
   const el: ImageEl = {
     id: uid(),
     type: 'image',
@@ -159,11 +161,13 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   }
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const pages: Page[] = [];
-  const W = 1280;
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const base = page.getViewport({ scale: 1 });
-    const scale = Math.min(3, 2000 / base.width);
+    // Each PDF page sits exactly on the board page (whole page visible).
+    const rect = fitInPage(base.width, base.height);
+    // Sharp enough for a 4K panel showing the page full screen.
+    const scale = Math.min(4, (rect.w * 2.2) / base.width);
     const vp = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(vp.width);
@@ -172,8 +176,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport: vp, canvas } as Parameters<typeof page.render>[0]).promise;
-    const h = (W * vp.height) / vp.width;
-    const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.88), x: 0, y: 0, w: W, h, rot: 0, locked: true };
+    const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.88), ...rect, rot: 0, locked: true };
     const p = newPage(store.page.bg, 'none');
     p.els = [img];
     pages.push(p);
@@ -185,7 +188,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   const replace = store.page.els.length === 0;
   all.splice(replace ? store.index : store.index + 1, replace ? 1 : 0, ...pages);
   store.commit(all, replace ? store.index : store.index + 1);
-  board.fitContent();
+  board.fitPage();
 }
 
 // ---------------------------------------------------------------------------
@@ -212,18 +215,9 @@ export async function openFile(file?: File): Promise<void> {
 // ---------------------------------------------------------------------------
 // Export
 
-function pageRegion(board: Board, page: Page): Rect {
-  const b = contentBounds(page.els);
-  const pad = 40;
-  if (!b) {
-    const v = board.viewRect();
-    return v;
-  }
-  return { x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 };
-}
-
-function exportCanvas(board: Board, page: Page, maxSide = 2400): HTMLCanvasElement {
-  const r = pageRegion(board, page);
+function exportCanvas(_board: Board, page: Page, maxSide = 2400): HTMLCanvasElement {
+  // Exports show exactly the board page.
+  const r: Rect = PAGE;
   const k = Math.min(3, maxSide / Math.max(r.w, r.h));
   return renderRegion(page, r, r.w * k, r.h * k);
 }

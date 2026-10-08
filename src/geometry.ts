@@ -104,6 +104,8 @@ export function hitTest(el: El, px: number, py: number, tol: number): boolean {
       if (distToSegment(px, py, p[n - 3], p[n - 2], p[0], p[1]) <= r) return true;
       if (el.fill && pointInPolygon(px, py, p, 3)) return true;
     }
+    // Filled freehand drawings can be grabbed anywhere inside.
+    if (el.fill && el.style !== 'shape' && pointInPolygon(px, py, p, 3)) return true;
     return false;
   }
   // Box: move the point into the box's local frame.

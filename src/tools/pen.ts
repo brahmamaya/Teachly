@@ -129,7 +129,7 @@ export class PenTool implements Tool {
         id: uid(),
         type: 'path',
         style: l.snapper ? 'shape' : l.style,
-        pts: l.snapper ? [l.pts[0], l.pts[1], 0.5, l.pts[l.pts.length - 3], l.pts[l.pts.length - 2], 0.5] : l.pts,
+        pts: l.snapper ? [l.pts[0], l.pts[1], 0.5, l.pts[l.pts.length - 3], l.pts[l.pts.length - 2], 0.5] : smoothPts(l.pts),
         color: l.color,
         size: l.size,
         opacity: l.snapper && l.style === 'highlighter' ? 0.4 : 1,
@@ -184,4 +184,23 @@ export class PenTool implements Tool {
       ctx.globalAlpha = 1;
     }
   }
+}
+
+/**
+ * Gentle smoothing of a finished stroke (two [1 2 1] passes). It irons out the
+ * small zig-zags touch screens add without rounding off real corners much;
+ * the end points stay exactly where the pen was.
+ */
+export function smoothPts(pts: number[]): number[] {
+  if (pts.length < 12) return pts;
+  let a = pts;
+  for (let pass = 0; pass < 2; pass++) {
+    const b = a.slice();
+    for (let i = 3; i < a.length - 3; i += 3) {
+      b[i] = (a[i - 3] + a[i] * 2 + a[i + 3]) / 4;
+      b[i + 1] = (a[i - 2] + a[i + 1] * 2 + a[i + 4]) / 4;
+    }
+    a = b;
+  }
+  return a;
 }

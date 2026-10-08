@@ -1269,3 +1269,147 @@ button:focus-visible {
 .pop-title {
   letter-spacing: 0.14em;
 }
+
+/* ---------- Pen types ---------- */
+
+.pen-types {
+  display: grid;
+  grid-template-columns: repeat(2, 150px);
+  gap: 8px;
+}
+
+.pen-type {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 8px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+
+.pen-type canvas {
+  width: 132px;
+  height: 44px;
+}
+
+.pen-type:hover {
+  border-color: var(--muted);
+}
+
+.pen-type:active {
+  transform: scale(0.97);
+}
+
+.pen-type.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 18px var(--accent-soft);
+}
+
+/* ---------- Solid, smooth toolbars ---------- */
+
+#app {
+  --bar: #ffffff;
+  --bar-border: rgba(15, 23, 42, 0.1);
+  --bar-shadow: 0 10px 30px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.08);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#app[data-board='dark'] {
+  --bar: #141414;
+  --bar-border: rgba(255, 255, 255, 0.1);
+  --bar-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 32px rgba(0, 0, 0, 0.8);
+}
+
+#app .toolbar,
+#app[data-board='light'] .toolbar,
+#app[data-board='dark'] .toolbar {
+  background: var(--bar);
+  border: 1px solid var(--bar-border);
+  box-shadow: var(--bar-shadow);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 20px;
+  padding: 6px;
+  gap: 4px;
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.tb-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  color: var(--muted);
+  transition: background 0.22s var(--ease), color 0.22s var(--ease), box-shadow 0.22s var(--ease), transform 0.15s var(--ease);
+}
+
+.tb-btn .icon {
+  transition: transform 0.22s var(--ease);
+}
+
+.tb-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.tb-btn:hover .icon {
+  transform: translateY(-1px);
+}
+
+.tb-btn:active {
+  transform: scale(0.92);
+}
+
+.tb-btn.active {
+  color: var(--on-accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 6px 18px var(--accent-soft);
+}
+
+.tb-btn.active .icon {
+  transform: scale(1.06);
+}
+
+.tb-btn.open {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.tb-pagenav {
+  padding: 0 4px;
+  margin: 0 2px;
+  border-left: 1px solid var(--bar-border);
+  border-right: 1px solid var(--bar-border);
+}
+
+.tb-pagenav .icon-btn {
+  width: 36px;
+  height: 48px;
+  color: var(--muted);
+  transition: color 0.2s var(--ease), background 0.2s var(--ease);
+}
+
+.tb-pagenav .icon-btn:hover {
+  color: var(--text);
+}
+
+/* While writing, the bars step back but stay visible. */
+#app.drawing .toolbar {
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-btn,
+  .tb-btn .icon,
+  #app .toolbar {
+    transition: none;
+  }
+}

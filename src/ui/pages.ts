@@ -1,5 +1,6 @@
 import { uid } from '../geometry';
-import { contentBounds, renderRegion } from '../renderer';
+import { PAGE } from '../page';
+import { renderRegion } from '../renderer';
 import { store } from '../store';
 import type { Page } from '../types';
 import { icon } from './icons';
@@ -14,14 +15,7 @@ let copied: Page | null = null;
 function thumb(p: Page): string {
   let src = thumbs.get(p);
   if (!src) {
-    const b = contentBounds(p.els) ?? { x: 0, y: 0, w: 1280, h: 720 };
-    const pad = 30;
-    let w = b.w + pad * 2, h = b.h + pad * 2;
-    // Keep a 16:9 frame around the content.
-    if (w / h > 16 / 9) h = (w * 9) / 16;
-    else w = (h * 16) / 9;
-    const region = { x: b.x + b.w / 2 - w / 2, y: b.y + b.h / 2 - h / 2, w, h };
-    src = renderRegion(p, region, 320, 180).toDataURL('image/jpeg', 0.75);
+    src = renderRegion(p, PAGE, 320, 180).toDataURL('image/jpeg', 0.75);
     thumbs.set(p, src);
   }
   return src;

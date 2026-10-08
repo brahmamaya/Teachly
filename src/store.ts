@@ -9,7 +9,7 @@ export interface Settings {
 
 export interface ToolState {
   tool: ToolId;
-  penStyle: 'pen' | 'highlighter';
+  penStyle: 'pen' | 'brush' | 'calligraphy' | 'highlighter';
   color: string;
   size: number;
   hlColor: string;
@@ -22,6 +22,8 @@ export interface ToolState {
   eraserMode: EraserMode;
   eraserSize: number;
   fontSize: number;
+  /** Paint bucket colour ('none' clears a fill). */
+  fillColor: string;
 }
 
 type Listener = () => void;
@@ -72,6 +74,7 @@ export class Store {
     eraserMode: 'point',
     eraserSize: 30,
     fontSize: 32,
+    fillColor: '#3b82f6',
   };
 
   private undoStack: Snapshot[] = [];

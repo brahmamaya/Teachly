@@ -14,10 +14,11 @@ import {
   saveFile,
   saveLocal,
 } from '../io/files';
-import { isDarkColor, measureText } from '../renderer';
-import { newPage, store } from '../store';
+import { freehandPath, isDarkColor, measureText } from '../renderer';
+import { newPage, store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
 import { EraserTool } from '../tools/eraser';
+import { FillTool } from '../tools/fill';
 import { makeTable, resizeTable, TableEditor } from '../tools/table';
 import { CompassTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
@@ -33,6 +34,13 @@ import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui, type UiSize } from './scale';
 
 const COLORS = ['#1e293b', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e', '#2563eb', '#a855f7'];
+/** Three pens like Note 3 (plus the highlighter). */
+const PEN_TYPES: [ToolState['penStyle'], string][] = [
+  ['pen', 'Pen'],
+  ['brush', 'Brush'],
+  ['calligraphy', 'Calligraphy'],
+  ['highlighter', 'Highlighter'],
+];
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
 const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#e2e8f0', '#1e293b', '#ef4444', '#2563eb', '#22c55e'];
 /** Board colours: dark boards first (default black), then light ones. */
@@ -101,6 +109,7 @@ export class App {
       ['pen', new PenTool(this.board)],
       ['eraser', new EraserTool(this.board)],
       ['shape', new ShapeTool(this.board, this.selectTool)],
+      ['fill', new FillTool(this.board)],
       ['text', new TextTool(this.board, this.editor)],
       ['compass', new CompassTool(this.board)],
     ];
@@ -158,9 +167,10 @@ export class App {
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
     left.innerHTML = `
       ${tool('select', 'select', 'Select')}
-      ${tool('pen', t.penStyle === 'highlighter' ? 'highlighter' : 'pen', 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
+      ${tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
       ${tool('eraser', 'eraser', 'Eraser')}
       ${tool('shape', 'shapes', 'Shapes')}
+      ${tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`)}
       ${tool('text', 'text', 'Text')}`;
     right.innerHTML = `
       <button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 22)}</button>
@@ -189,7 +199,7 @@ export class App {
   private onToolbarClick(b: HTMLElement): void {
     if (b.dataset.tool) {
       const id = b.dataset.tool as ToolId;
-      const hasOptions = id === 'pen' || id === 'eraser' || id === 'shape';
+      const hasOptions = id === 'pen' || id === 'eraser' || id === 'shape' || id === 'fill';
       if (store.tool.tool === id && hasOptions) this.togglePopover(id, b);
       else {
         this.closePopover();
@@ -252,15 +262,21 @@ export class App {
         const color = hl ? t.hlColor : t.color;
         const size = hl ? t.hlSize : t.size;
         pop.innerHTML = `
-          <div class="seg"><button class="${!hl ? 'on' : ''}" data-style="pen">${icon('pen', 20)} Pen</button><button class="${hl ? 'on' : ''}" data-style="highlighter">${icon('highlighter', 20)} Highlighter</button></div>
+          <div class="pen-types">${PEN_TYPES.map(([k, n]) => `<button class="pen-type ${t.penStyle === k ? 'on' : ''}" data-style="${k}"><canvas width="132" height="44" data-sample="${k}"></canvas><span>${n}</span></button>`).join('')}</div>
           ${this.swatches(hl ? HL_COLORS : COLORS, color, 'color')}
           <div class="slider-row">
             <span class="slider-label">Size</span>
             <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize>
             <span class="slider-preview"><i data-penprev style="width:${Math.min(44, size + 2)}px;height:${Math.min(44, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
           </div>`;
+        this.drawPenSamples(pop);
         break;
       }
+      case 'fill':
+        pop.innerHTML = `<div class="pop-title">Fill colour</div>
+          <div class="swatches"><button class="swatch none ${t.fillColor === 'none' ? 'on' : ''}" data-fillc="none" aria-label="Remove fill"></button>${[...FILLS, '#3b82f6', '#eab308', '#a855f7', '#ffffff'].filter((c, i, a) => a.indexOf(c) === i).map((c) => `<button class="swatch ${t.fillColor === c ? 'on' : ''}" style="background:${c}" data-fillc="${c}" aria-label="${c}"></button>`).join('')}</div>
+          <div class="muted small center">Tap inside any shape or drawing to colour it.</div>`;
+        break;
       case 'eraser':
         pop.innerHTML = `
           <div class="seg"><button class="${t.eraserMode === 'point' ? 'on' : ''}" data-emode="point">Erase part</button><button class="${t.eraserMode === 'stroke' ? 'on' : ''}" data-emode="stroke">Erase whole line</button></div>
@@ -343,6 +359,25 @@ export class App {
     }
   }
 
+  /** Each pen card shows a real sample stroke drawn with that pen. */
+  private drawPenSamples(pop: HTMLElement): void {
+    const ink = getComputedStyle(pop).color || '#fff';
+    pop.querySelectorAll<HTMLCanvasElement>('canvas[data-sample]').forEach((c) => {
+      const style = c.dataset.sample as PathEl['style'];
+      const ctx = c.getContext('2d')!;
+      ctx.clearRect(0, 0, c.width, c.height);
+      const pts: number[] = [];
+      for (let i = 0; i <= 40; i++) {
+        const x = 12 + i * 2.7;
+        pts.push(x, 22 + Math.sin(i / 6.4) * 11, 0.3 + 0.4 * Math.sin((i / 40) * Math.PI));
+      }
+      const hl = style === 'highlighter';
+      ctx.globalAlpha = hl ? 0.55 : 1;
+      ctx.fillStyle = hl ? store.tool.hlColor : ink;
+      ctx.fill(freehandPath(pts, { style, size: hl ? 12 : style === 'calligraphy' ? 6 : 4, sim: style === 'brush' }, true));
+    });
+  }
+
   private gridBtn(act: string, ic: string, label: string, on = false): string {
     return `<button class="grid-btn ${on ? 'on' : ''}" data-act="${act}">${icon(ic, 30)}<span>${label}</span></button>`;
   }
@@ -355,6 +390,7 @@ export class App {
     if (d.style) store.setTool({ penStyle: d.style as 'pen' });
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
     else if (d.emode) store.setTool({ eraserMode: d.emode as 'point' });
+    else if (d.fillc) store.setTool({ fillColor: d.fillc });
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();
@@ -421,7 +457,7 @@ export class App {
         this.pages.toggle();
         return;
       case 'zoom-reset':
-        return b.zoomTo(1);
+        return b.fitPage();
       case 'prev':
         return store.goTo(store.index - 1);
       case 'next':
@@ -537,12 +573,14 @@ export class App {
     const tables = els.filter((e): e is TableEl => e.type === 'table');
     const table = els.length === 1 ? tables[0] : undefined;
     const colorable = paths.length + texts.length + tables.length > 0;
-    const fillable = paths.some((p) => p.closed) || tables.length > 0;
+    // Shapes, tables and any hand-drawn line (its loop is filled) can be filled.
+    const canFill = (p: PathEl) => p.closed || (p.style !== 'shape' && p.style !== 'highlighter' && p.pts.length >= 9);
+    const fillable = paths.some(canFill) || tables.length > 0;
     const first = (paths[0] ?? texts[0] ?? tables[0]) as { color: string } | undefined;
     const color = first?.color ?? null;
     // Thickness is shown in the same units as the pen slider.
     const width = (paths[0]?.size ?? 0) / inkScale();
-    const fill = paths.find((p) => p.closed)?.fill ?? tables[0]?.fill ?? null;
+    const fill = paths.find(canFill)?.fill ?? tables[0]?.fill ?? null;
     const sec = this.propSection;
 
     let panel = '';
@@ -599,7 +637,9 @@ export class App {
     } else if (d.pw) this.setWidth(Number(d.pw) * inkScale(), true);
     else if (d.pfill) {
       const f = d.pfill === 'none' ? null : d.pfill;
-      store.mapEls(store.selection, (el) => ((el.type === 'path' && el.closed) || el.type === 'table' ? { ...el, fill: f } : el));
+      store.mapEls(store.selection, (el) =>
+        (el.type === 'path' && (el.closed || (el.style !== 'shape' && el.style !== 'highlighter'))) || el.type === 'table' ? { ...el, fill: f } : el,
+      );
       store.setTool({ shapeFill: f });
     } else if (d.trows || d.tcols) {
       store.mapEls(store.selection, (el) => (el.type === 'table' ? resizeTable(el, Number(d.trows ?? 0), Number(d.tcols ?? 0)) : el));
@@ -706,6 +746,11 @@ export class App {
     const stacked = window.innerWidth / oneRow < 0.85;
     this.root.classList.toggle('tb-stacked', stacked);
     computeUiScale(store.settings.uiSize, stacked ? Math.max(L, R) + 20 : oneRow);
+    // Keep the page clear of the clock (top) and the toolbars (bottom).
+    const k = ui();
+    const bar = 64 * k;
+    this.board.insets = { top: 14 + 30 * k, right: 12, bottom: 22 + (stacked ? bar * 2 + 10 : bar), left: 12 };
+    this.board.resize();
     this.closePopover();
     this.positionProps();
   }
@@ -728,9 +773,10 @@ export class App {
 
   private updateZoom(): void {
     const pill = this.root.querySelector('.zoom-pill') as HTMLElement;
-    const z = Math.round(store.camera.z * 100);
-    pill.hidden = z === 100;
-    pill.textContent = `${z}%  ·  Reset`;
+    // Shown only while zoomed into the page; tap to see the whole page again.
+    const z = Math.round((store.camera.z / this.board.fitZ) * 100);
+    pill.hidden = this.board.isFit;
+    pill.textContent = `${z}%  ·  Whole page`;
   }
 
   private bindKeys(): void {

@@ -2,7 +2,8 @@
 // object, which lets history snapshots share structure and lets render
 // caches be keyed by object identity.
 
-export type PathStyle = 'pen' | 'highlighter' | 'shape';
+/** pen: smooth ink · brush: soft tapered strokes · calligraphy: flat slanted nib. */
+export type PathStyle = 'pen' | 'brush' | 'calligraphy' | 'highlighter' | 'shape';
 
 export interface PathEl {
   id: string;
@@ -88,7 +89,7 @@ export interface Camera {
   z: number;
 }
 
-export type ToolId = 'select' | 'pen' | 'eraser' | 'shape' | 'text' | 'compass';
+export type ToolId = 'select' | 'pen' | 'eraser' | 'shape' | 'fill' | 'text' | 'compass';
 
 export type ShapeKind =
   | 'line'

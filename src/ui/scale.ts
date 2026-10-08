@@ -43,11 +43,11 @@ export function computeUiScale(size: UiSize, toolbarWidth: number): number {
 }
 
 /**
- * Ink scale: on big panels a "size 4" pen must still look like a marker
- * from the back of the class, so ink grows with the interface (never shrinks).
+ * Ink scale. The board is a fixed page fitted to the screen, so ink sizes are
+ * already relative to the page and look the same on every screen.
  */
 export function inkScale(): number {
-  return Math.max(1, current);
+  return 1;
 }
 
 /** Apply the scale to an absolutely positioned floating element. */

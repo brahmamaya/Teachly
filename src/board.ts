@@ -1,6 +1,7 @@
 import { bbox } from './geometry';
 import { Instruments } from './instruments';
-import { contentBounds, drawBackground, drawEls, setAssetLoadCallback } from './renderer';
+import { PAGE } from './page';
+import { drawBackground, drawEls, setAssetLoadCallback } from './renderer';
 import { store } from './store';
 import type { Camera, Rect, ToolId } from './types';
 
@@ -102,8 +103,10 @@ export class Board {
     store.on('doc', () => this.invalidate('bg', 'ink', 'overlay'));
     store.on('page', () => {
       this.cancelAll();
+      this.ensureCam();
       this.invalidate('bg', 'ink', 'overlay');
     });
+    store.on('doc', () => this.ensureCam());
     store.on('camera', () => this.invalidate('bg', 'ink', 'overlay'));
     store.on('selection', () => this.invalidate('overlay'));
     store.on('tool', () => {
@@ -144,9 +147,47 @@ export class Board {
 
   // ---- camera ----------------------------------------------------------------
 
+  /** Screen space kept free around the page (toolbars, clock). Set by the app. */
+  insets = { top: 12, right: 12, bottom: 12, left: 12 };
+
+  /** Zoom at which the whole page just fits on screen. */
+  get fitZ(): number {
+    const i = this.insets;
+    return Math.max(0.05, Math.min((this.w - i.left - i.right) / PAGE.w, (this.h - i.top - i.bottom) / PAGE.h));
+  }
+
+  /** Camera showing the whole page, centred in the free area. */
+  private fitCam(): Camera {
+    const z = this.fitZ, i = this.insets;
+    const cx = i.left + (this.w - i.left - i.right) / 2;
+    const cy = i.top + (this.h - i.top - i.bottom) / 2;
+    return { x: PAGE.x + PAGE.w / 2 - cx / z, y: PAGE.y + PAGE.h / 2 - cy / z, z };
+  }
+
+  get isFit(): boolean {
+    return Math.abs(this.cam.z - this.fitZ) < 1e-3;
+  }
+
+  /**
+   * The board never drifts: you cannot zoom out past the page, and when
+   * zoomed in you can only move around inside it.
+   */
   setCam(c: Camera): void {
-    c.z = Math.max(0.1, Math.min(8, c.z));
-    store.setCamera(c);
+    const fit = this.fitCam();
+    const z = Math.max(fit.z, Math.min(fit.z * 6, c.z));
+    if (z - fit.z < 1e-3) {
+      store.setCamera(fit);
+      return;
+    }
+    const vw = this.w / z, vh = this.h / z;
+    const x = Math.max(PAGE.x - 40 / z, Math.min(PAGE.x + PAGE.w - vw + 40 / z, c.x));
+    const y = Math.max(PAGE.y - 40 / z, Math.min(PAGE.y + PAGE.h - vh + 40 / z, c.y));
+    store.setCamera({ x, y, z });
+  }
+
+  /** Give a page that has never been shown the fitted view. */
+  ensureCam(): void {
+    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ - 1e-3) store.setCamera(this.fitCam());
   }
 
   panBy(dsx: number, dsy: number): void {
@@ -156,24 +197,14 @@ export class Board {
 
   zoomAt(sx: number, sy: number, factor: number): void {
     const c = this.cam;
-    const z = Math.max(0.1, Math.min(8, c.z * factor));
+    const z = c.z * factor;
     const [wx, wy] = this.toWorld(sx, sy);
     this.setCam({ x: wx - sx / z, y: wy - sy / z, z });
   }
 
-  zoomTo(z: number): void {
-    this.zoomAt(this.w / 2, this.h / 2, z / this.cam.z);
-  }
-
-  fitContent(): void {
-    const b = contentBounds(store.page.els);
-    if (!b) {
-      this.setCam({ x: 0, y: 0, z: 1 });
-      return;
-    }
-    const pad = 60;
-    const z = Math.min(2, Math.max(0.1, Math.min((this.w - pad * 2) / b.w, (this.h - pad * 2 - 80) / b.h)));
-    this.setCam({ x: b.x + b.w / 2 - this.w / 2 / z, y: b.y + b.h / 2 - (this.h - 80) / 2 / z, z });
+  /** Back to the whole page. */
+  fitPage(): void {
+    store.setCamera(this.fitCam());
   }
 
   centerOn(r: Rect): void {
@@ -197,6 +228,9 @@ export class Board {
       c.style.width = `${r.width}px`;
       c.style.height = `${r.height}px`;
     }
+    // New screen size: every page goes back to its fitted view.
+    store.cameras.clear();
+    if (this.w && this.h) this.ensureCam();
     this.invalidate('bg', 'ink', 'overlay');
   }
 
@@ -229,7 +263,7 @@ export class Board {
     const ctx = this.bgCtx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const p = store.page;
-    drawBackground(ctx, p.bg, p.pattern, this.cam, this.w, this.h);
+    drawBackground(ctx, p.bg, p.pattern, this.cam, this.w, this.h, PAGE);
   }
 
   renderInk(): void {
@@ -240,8 +274,14 @@ export class Board {
     const tool = this.tool;
     const hidden = tool.hidden?.() ?? null;
     const skip = this.hiddenIds.size ? new Set([...(hidden ?? []), ...this.hiddenIds]) : hidden ?? undefined;
+    // Everything lives on the page: clip to its rectangle.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(PAGE.x, PAGE.y, PAGE.w, PAGE.h);
+    ctx.clip();
     drawEls(ctx, store.page.els, this.viewRect(), skip);
     tool.drawInk?.(ctx);
+    ctx.restore();
   }
 
   private renderOverlay(): void {

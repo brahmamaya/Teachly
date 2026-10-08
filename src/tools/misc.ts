@@ -1,10 +1,11 @@
 import type { Board, Ptr, Tool } from '../board';
-import { uid } from '../geometry';
+import { bbox, translateEl, uid, unionRects } from '../geometry';
+import { drawGuides, type Guide, guideTargets, snapToGuides } from '../guides';
 import { drawPathEl } from '../renderer';
 import { buildShape } from '../shapes';
 import { store } from '../store';
 import { inkScale } from '../ui/scale';
-import type { PathEl } from '../types';
+import type { PathEl, Rect } from '../types';
 import type { SelectTool } from './select';
 
 /**
@@ -17,6 +18,9 @@ export class ShapeTool implements Tool {
   private start: { id: number; x: number; y: number } | null = null;
   private preview: PathEl[] = [];
   private delegating = false;
+  /** Smart guides for the shape being drawn. */
+  private guides: Guide[] = [];
+  private targets: Rect[] = [];
 
   constructor(private board: Board, private select: SelectTool) {}
 
@@ -37,6 +41,7 @@ export class ShapeTool implements Tool {
     const [x, y] = snap ? snap.project(p.x, p.y) : [p.x, p.y];
     this.start = { id: p.id, x, y };
     this.preview = [];
+    this.targets = guideTargets(store.page.els, new Set());
   }
 
   move(p: Ptr): void {
@@ -44,6 +49,14 @@ export class ShapeTool implements Tool {
     const s = this.start;
     if (!s || s.id !== p.id) return;
     this.preview = buildShape(store.tool.shape, s.x, s.y, p.x, p.y, this.style(), p.shift);
+    // Line the new shape up with what is already on the page (Alt = free).
+    this.guides = [];
+    const box = unionRects(this.preview.map(bbox));
+    if (box && !p.alt) {
+      const g = snapToGuides(box, this.targets, 8 * this.board.px);
+      if (g.dx || g.dy) this.preview = this.preview.map((e) => translateEl(e, g.dx, g.dy));
+      this.guides = g.guides;
+    }
     this.board.invalidate('overlay');
   }
 
@@ -63,6 +76,7 @@ export class ShapeTool implements Tool {
       els = buildShape(store.tool.shape, s.x - d / 2, s.y - (line ? 0 : d / 2), s.x + d / 2, s.y + (line ? 0 : d / 2), this.style(), false);
     }
     this.preview = [];
+    this.guides = [];
     store.addEls(els);
     store.select(els.map((e) => e.id));
   }
@@ -90,6 +104,7 @@ export class ShapeTool implements Tool {
 
   drawOverlay(ctx: CanvasRenderingContext2D): void {
     for (const el of this.preview) drawPathEl(ctx, el);
+    if (this.start) drawGuides(ctx, this.guides, this.board.px);
   }
 }
 

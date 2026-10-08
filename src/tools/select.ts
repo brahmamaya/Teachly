@@ -4,11 +4,12 @@ import { drawEl, isDarkColor } from '../renderer';
 import { ui } from '../ui/scale';
 import { store } from '../store';
 import type { El, Rect, TextEl } from '../types';
+import { drawGuides, type Guide, guideTargets, snapToGuides } from '../guides';
 import { cellAt, type TableEditor } from './table';
 import type { TextEditor } from './text';
 
 type Mode =
-  | { k: 'move'; sx: number; sy: number; moved: boolean; clicked: El | null }
+  | { k: 'move'; sx: number; sy: number; moved: boolean; clicked: El | null; r0: Rect | null; targets: Rect[] | null }
   /** hx / hy: which side is dragged (-1 left/top, 1 right/bottom, 0 untouched). */
   | { k: 'resize'; r: Rect; hx: number; hy: number; keep: boolean }
   | { k: 'rotate'; cx: number; cy: number; a0: number }
@@ -24,6 +25,8 @@ export class SelectTool implements Tool {
   private pid = -1;
   private mat: Mat = IDENTITY;
   private lastTap = { t: 0, id: '' };
+  /** Alignment guides shown while moving. */
+  private guides: Guide[] = [];
   /** Anchor and stretch factors while resizing. */
   private resizeArgs: [number, number, number, number] | null = null;
 
@@ -120,11 +123,11 @@ export class SelectTool implements Tool {
         else sel.add(hit.id);
         store.select(sel);
       } else if (!store.selection.has(hit.id)) store.select([hit.id]);
-      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: hit };
+      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: hit, r0: null, targets: null };
       return;
     }
     if (r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
-      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: null };
+      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: null, r0: null, targets: null };
       return;
     }
     if (!p.shift) store.clearSelection();
@@ -136,9 +139,19 @@ export class SelectTool implements Tool {
     if (!m || p.id !== this.pid) return;
     switch (m.k) {
       case 'move': {
-        const dx = p.x - m.sx, dy = p.y - m.sy;
+        let dx = p.x - m.sx, dy = p.y - m.sy;
         if (!m.moved && Math.hypot(dx, dy) < 3 * this.board.px) return;
         m.moved = true;
+        // Smart guides: line up with other drawings and the page (Alt = free move).
+        m.r0 ??= this.bounds();
+        m.targets ??= guideTargets(store.page.els, store.selection);
+        this.guides = [];
+        if (m.r0 && !p.alt) {
+          const g = snapToGuides({ ...m.r0, x: m.r0.x + dx, y: m.r0.y + dy }, m.targets, 8 * this.board.px);
+          dx += g.dx;
+          dy += g.dy;
+          this.guides = g.guides;
+        }
         this.mat = [1, 0, 0, 1, dx, dy];
         break;
       }
@@ -200,6 +213,7 @@ export class SelectTool implements Tool {
     }
     this.mat = IDENTITY;
     this.resizeArgs = null;
+    this.guides = [];
     this.board.invalidate('ink', 'overlay');
   }
 
@@ -207,6 +221,7 @@ export class SelectTool implements Tool {
     this.mode = null;
     this.mat = IDENTITY;
     this.resizeArgs = null;
+    this.guides = [];
     this.board.invalidate('ink', 'overlay');
   }
 
@@ -266,6 +281,7 @@ export class SelectTool implements Tool {
       ctx.stroke();
       ctx.setLineDash([]);
     }
+    drawGuides(ctx, this.guides, px);
     const r = this.bounds();
     if (!r) return;
     const mat = this.mat;
