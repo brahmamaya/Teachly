@@ -57,3 +57,23 @@ export async function installApp(host: HTMLElement): Promise<void> {
 
 const shareIcon =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+
+export const DOWNLOAD_URL = 'https://brahmamaya.github.io/Teachly/download.html';
+
+/** Share the download page: native share sheet when available, else copy. */
+export async function shareApp(): Promise<void> {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Teachly by Physica', text: 'Free interactive whiteboard for teachers — install it on your device:', url: DOWNLOAD_URL });
+      return;
+    } catch {
+      /* cancelled — fall back to copying */
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(DOWNLOAD_URL);
+    toast('Download link copied — paste it in WhatsApp or email');
+  } catch {
+    toast(DOWNLOAD_URL, 6000);
+  }
+}
