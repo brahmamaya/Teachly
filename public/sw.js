@@ -1,6 +1,6 @@
 // Teachly service worker: works offline, but always shows the newest version
 // when online. Pages are network-first; hashed build assets are cache-first.
-const CACHE = 'teachly-v2';
+const CACHE = 'teachly-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -25,7 +25,8 @@ self.addEventListener('fetch', (e) => {
         return res;
       }
       try {
-        const res = await fetch(req);
+        // Skip the browser's HTTP cache so a new version shows immediately.
+        const res = await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' });
         if (res.ok) cache.put(req, res.clone());
         return res;
       } catch {

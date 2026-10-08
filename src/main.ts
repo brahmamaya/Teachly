@@ -7,8 +7,27 @@ const app = new App(root);
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {
-      /* offline support unavailable */
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker
+      .register('./sw.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        // Look for a new version whenever the app comes back to the screen.
+        document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && reg.update());
+      })
+      .catch(() => {
+        /* offline support unavailable */
+      });
+    // A new version took over. Right after opening, reload at once; in the
+    // middle of a lesson, wait until the teacher comes back to the app
+    // (the board is autosaved by then) so nothing is interrupted.
+    let pending = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || pending) return;
+      pending = true;
+      if (performance.now() < 10_000) window.location.reload();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (pending && document.visibilityState === 'visible') window.location.reload();
     });
   });
 }
