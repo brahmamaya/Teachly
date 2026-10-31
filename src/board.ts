@@ -259,8 +259,12 @@ export class Board {
     // Resizing a canvas wipes it: draw every layer from scratch.
     this.inkState = null;
     this.bgKey = '';
-    // New screen size: every page goes back to its fitted view.
-    store.cameras.clear();
+    // A really new screen size: every page goes back to its fitted view.
+    const size = `${Math.round(this.w)}x${Math.round(this.h)}`;
+    if (size !== this.lastSize) {
+      if (this.lastSize) store.cameras.clear();
+      this.lastSize = size;
+    }
     if (this.w && this.h) this.ensureCam();
     this.invalidate('bg', 'ink', 'overlay');
   }
@@ -396,6 +400,10 @@ export class Board {
     return 0.5;
   }
 
+  private lastSize = '';
+  /** Last time the board was touched (housekeeping waits for a quiet moment). */
+  lastInput = performance.now();
+
   /** A finger, pen or mouse is on the board right now. */
   get busyInput(): boolean {
     return this.pointers.size > 0;
@@ -506,6 +514,7 @@ export class Board {
       }
     }
     this.lastSeen.set(p.id, now);
+    this.lastInput = now;
     this.learnTouchSize(p);
 
     // Two-finger gesture (pinch / pan / zoom) — only in slide mode, because

@@ -16,6 +16,8 @@ import { freehandPath, isDarkColor, measureText } from '../renderer';
 import { store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
 import { blankNotebook, loadLastNotebook, saveNotebook } from '../io/library';
+import { restorePlace, restoreTools, trackSession } from '../io/session';
+import { startHousekeeping } from '../io/housekeeping';
 import { EraserTool } from '../tools/eraser';
 import { FillTool } from '../tools/fill';
 import { LaserTool } from '../tools/laser';
@@ -224,7 +226,14 @@ export class App {
         void saveNotebook(store.doc).catch(() => {});
       }
     });
-    void loadLastNotebook().then((doc) => doc && store.loadDoc(doc));
+    // Back exactly where the lesson stopped: notebook, page, spot, pen.
+    restoreTools();
+    void loadLastNotebook().then((doc) => {
+      if (doc) store.loadDoc(doc);
+      requestAnimationFrame(() => restorePlace(this.board));
+      trackSession(this.board);
+    });
+    startHousekeeping(this.board);
   }
 
   // ---------------------------------------------------------------------------
@@ -1157,7 +1166,8 @@ export class App {
       }
       saveLocalSafe();
     };
-    this.saveTimer = window.setTimeout(attempt, 2000);
+    // Short pause: if the power goes, at most the last second is lost.
+    this.saveTimer = window.setTimeout(attempt, 1200);
   }
 }
 

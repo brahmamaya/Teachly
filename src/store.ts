@@ -130,7 +130,7 @@ export class Store {
   /** Record current state for undo, then apply a change to pages. */
   commit(pages: Page[], index = this.index): void {
     this.undoStack.push(this.snapshot());
-    if (this.undoStack.length > 300) this.undoStack.shift();
+    if (this.undoStack.length > 150) this.undoStack.shift();
     this.redoStack = [];
     const pageChanged = index !== this.index;
     this.doc = { ...this.doc, pages };
@@ -164,6 +164,12 @@ export class Store {
     const pages = this.doc.pages.slice();
     pages[this.index] = { ...this.page, ...patch };
     this.commit(pages);
+  }
+
+  /** Keep only the most recent undo steps (memory housekeeping). */
+  trimHistory(keep: number): void {
+    if (this.undoStack.length > keep) this.undoStack.splice(0, this.undoStack.length - keep);
+    if (this.redoStack.length > keep) this.redoStack.splice(0, this.redoStack.length - keep);
   }
 
   get canUndo(): boolean {

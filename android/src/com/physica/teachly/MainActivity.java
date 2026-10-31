@@ -159,6 +159,9 @@ public class MainActivity extends Activity {
         });
 
         setContentView(web);
+        // Fresh start every time: drop the web cache (notebooks live in the
+        // app's own storage and are not touched).
+        web.clearCache(true);
         if (state != null) web.restoreState(state);
         else web.loadUrl(START);
     }

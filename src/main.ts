@@ -8,11 +8,22 @@ const app = new App(root);
 
 // Keep the opening screen up for about two seconds from page start, then fade it out.
 const splash = document.getElementById('splash');
+// After an automatic refresh, skip the opening screen: straight back to work.
+let quick = false;
+try {
+  quick = sessionStorage.getItem('teachly.quickStart') === '1';
+  sessionStorage.removeItem('teachly.quickStart');
+} catch {
+  /* ignore */
+}
 if (splash) {
-  window.setTimeout(() => {
-    splash.classList.add('hide');
-    window.setTimeout(() => splash.remove(), 600);
-  }, Math.max(0, 2000 - performance.now()));
+  window.setTimeout(
+    () => {
+      splash.classList.add('hide');
+      window.setTimeout(() => splash.remove(), 600);
+    },
+    quick ? 0 : Math.max(0, 2000 - performance.now()),
+  );
 }
 (window as unknown as { teachly: App }).teachly = app;
 

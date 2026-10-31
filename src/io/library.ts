@@ -148,3 +148,22 @@ export async function duplicateNotebook(id: string): Promise<void> {
 export function blankNotebook(title: string, bg = '#000000'): Doc {
   return { version: 1, id: uid(), title, pages: [newPage(bg)] };
 }
+
+/** Remove notebook data left behind by an interrupted save (not in the index). */
+export async function cleanOrphans(): Promise<number> {
+  try {
+    const d = await db();
+    const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const req = d.transaction(STORE).objectStore(STORE).getAllKeys();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+    const known = new Set(list.map((m) => `nb:${m.id}`));
+    const orphans = keys.map(String).filter((k) => k.startsWith('nb:') && !known.has(k));
+    if (orphans.length) await put([], orphans);
+    return orphans.length;
+  } catch {
+    return 0;
+  }
+}

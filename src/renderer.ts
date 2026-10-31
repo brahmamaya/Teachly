@@ -143,6 +143,19 @@ export function setAssetLoadCallback(fn: () => void): void {
   onAssetLoad = fn;
 }
 
+/** Forget pictures that are no longer on any page (keeps memory small on long days). */
+export function trimImageCache(keep: Set<string>): number {
+  let freed = 0;
+  for (const [src, img] of images) {
+    if (keep.has(src)) continue;
+    img.onload = null;
+    img.src = '';
+    images.delete(src);
+    freed++;
+  }
+  return freed;
+}
+
 export function getImage(src: string): HTMLImageElement {
   let img = images.get(src);
   if (!img) {
