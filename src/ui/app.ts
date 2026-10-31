@@ -12,7 +12,7 @@ import {
   readAsDataURL,
   saveFile,
 } from '../io/files';
-import { freehandPath, isDarkColor, measureText } from '../renderer';
+import { isDarkColor, measureText } from '../renderer';
 import { store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
 import { blankNotebook, loadLastNotebook, saveNotebook } from '../io/library';
@@ -404,15 +404,15 @@ export class App {
         const hl = t.penStyle === 'highlighter';
         const color = hl ? t.hlColor : t.color;
         const size = hl ? t.hlSize : t.size;
+        // Compact: pen kinds as small icons, colours, one thin size slider.
+        pop.className = 'popover pop-pen';
         pop.innerHTML = `
-          <div class="pen-types">${PEN_TYPES.map(([k, n]) => `<button class="pen-type ${t.penStyle === k ? 'on' : ''}" data-style="${k}"><canvas width="132" height="44" data-sample="${k}"></canvas><span>${n}</span></button>`).join('')}</div>
+          <div class="pen-icons">${PEN_TYPES.map(([k, n]) => `<button class="pen-ico ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 22)}</button>`).join('')}</div>
           ${this.swatches(hl ? HL_COLORS : COLORS, color, 'color')}
-          <div class="slider-row">
-            <span class="slider-label">Size</span>
-            <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize>
-            <span class="slider-preview"><i data-penprev style="width:${Math.min(44, size + 2)}px;height:${Math.min(44, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
+          <div class="pen-size">
+            <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
+            <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
           </div>`;
-        this.drawPenSamples(pop);
         break;
       }
       case 'fill':
@@ -524,25 +524,6 @@ export class App {
     }
   }
 
-  /** Each pen card shows a real sample stroke drawn with that pen. */
-  private drawPenSamples(pop: HTMLElement): void {
-    const ink = getComputedStyle(pop).color || '#fff';
-    pop.querySelectorAll<HTMLCanvasElement>('canvas[data-sample]').forEach((c) => {
-      const style = c.dataset.sample as PathEl['style'];
-      const ctx = c.getContext('2d')!;
-      ctx.clearRect(0, 0, c.width, c.height);
-      const pts: number[] = [];
-      for (let i = 0; i <= 40; i++) {
-        const x = 12 + i * 2.7;
-        pts.push(x, 22 + Math.sin(i / 6.4) * 11, 0.3 + 0.4 * Math.sin((i / 40) * Math.PI));
-      }
-      const hl = style === 'highlighter';
-      ctx.globalAlpha = hl ? 0.55 : 1;
-      ctx.fillStyle = hl ? store.tool.hlColor : ink;
-      ctx.fill(freehandPath(pts, { style, size: hl ? 12 : style === 'calligraphy' ? 6 : 4, sim: style === 'brush' }, true));
-    });
-  }
-
   private gridBtn(act: string, ic: string, label: string, on = false): string {
     return `<button class="grid-btn ${on ? 'on' : ''}" data-act="${act}">${icon(ic, 30)}<span>${label}</span></button>`;
   }
@@ -592,7 +573,7 @@ export class App {
     if (el.dataset.pensize !== undefined) {
       Object.assign(store.tool, store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
       const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
-      if (prev) prev.style.width = prev.style.height = `${Math.min(44, v + 2)}px`;
+      if (prev) prev.style.width = prev.style.height = `${Math.min(26, v + 2)}px`;
     } else if (el.dataset.erasersize !== undefined) {
       store.tool.eraserSize = v;
       const prev = this.popover?.querySelector('[data-eraserprev]') as HTMLElement | null;

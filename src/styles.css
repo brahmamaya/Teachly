@@ -3255,3 +3255,63 @@ button:focus-visible {
   letter-spacing: 0.12em;
   opacity: 0.9;
 }
+
+/* ---------- Compact pen menu ---------- */
+.popover.pop-pen {
+  padding: 10px;
+  gap: 10px;
+  width: auto;
+  max-width: 300px;
+}
+.pen-icons {
+  display: flex;
+  gap: 6px;
+}
+.pen-ico {
+  flex: 1;
+  height: 42px;
+  min-width: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.pen-ico.on {
+  background: var(--accent);
+  color: var(--on-accent, #000);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.pop-pen .swatches {
+  display: grid;
+  grid-template-columns: repeat(5, 30px);
+  gap: 8px;
+  justify-content: center;
+}
+.pop-pen .swatch {
+  width: 30px;
+  height: 30px;
+}
+.pen-size {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+}
+.pen-size input {
+  flex: 1;
+}
+.pen-prev {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.pen-prev i {
+  border-radius: 50%;
+  display: block;
+  box-shadow: 0 0 0 1px rgba(127, 127, 127, 0.4);
+}
