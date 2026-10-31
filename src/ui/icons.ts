@@ -1,6 +1,7 @@
 // Minimal stroke icon set (24×24, currentColor).
 const P: Record<string, string> = {
-  select: '<path d="M5 3l14 8-6 2-3 6z"/>',
+  // Select: a dashed selection box with a pointer inside its corner.
+  select: '<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M4 15v4a1 1 0 0 0 1 1h4" /><path d="M12 4h0M4 12h0M20 12h0M12 20h0" stroke-width="2.4"/><path d="M13 13l7.5 3-3.2 1.2-1.2 3.3z" fill="currentColor" stroke-linejoin="round"/>',
   pen: '<path d="M4 20l4-1 11-11a2.1 2.1 0 0 0-3-3L5 16z"/><path d="M14 6l3 3"/>',
   highlighter: '<path d="M9 11l-5 5v4h4l5-5"/><path d="M9 11l6-6 4 4-6 6z"/><path d="M4 20h16"/>',
   brush: '<path d="M18 3l3 3-9 9-3-3z"/><path d="M9 12c-3 0-5 2-5 5 0 1-1 2-2 2 2 2 7 2 9-1 1-1 1-3 1-3"/>',
