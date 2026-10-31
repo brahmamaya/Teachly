@@ -48,7 +48,23 @@ export class ShapeTool implements Tool {
     if (this.delegating) return this.select.move(p);
     const s = this.start;
     if (!s || s.id !== p.id) return;
-    this.preview = buildShape(store.tool.shape, s.x, s.y, p.x, p.y, this.style(), p.shift);
+    let ex = p.x, ey = p.y;
+    let level: Guide | null = null;
+    // Lines close to level or upright snap exactly horizontal / vertical,
+    // with a dotted guide along them (Alt = free angle).
+    if (['line', 'arrow', 'dashed'].includes(store.tool.shape) && !p.shift && !p.alt) {
+      const dx = ex - s.x, dy = ey - s.y, len = Math.hypot(dx, dy);
+      const deg = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
+      const pad = 40 * this.board.px;
+      if (len > 20 * this.board.px && deg < 6) {
+        ey = s.y;
+        level = { dir: 'h', at: s.y, from: Math.min(s.x, ex) - pad, to: Math.max(s.x, ex) + pad };
+      } else if (len > 20 * this.board.px && deg > 84) {
+        ex = s.x;
+        level = { dir: 'v', at: s.x, from: Math.min(s.y, ey) - pad, to: Math.max(s.y, ey) + pad };
+      }
+    }
+    this.preview = buildShape(store.tool.shape, s.x, s.y, ex, ey, this.style(), p.shift);
     // Line the new shape up with what is already on the page (Alt = free).
     this.guides = [];
     const box = unionRects(this.preview.map(bbox));
@@ -56,7 +72,14 @@ export class ShapeTool implements Tool {
       const g = snapToGuides(box, this.targets, 8 * this.board.px);
       if (g.dx || g.dy) this.preview = this.preview.map((e) => translateEl(e, g.dx, g.dy));
       this.guides = g.guides;
+      if (level) {
+        // The level guide follows the line if it was nudged into line too.
+        level.at += level.dir === 'h' ? g.dy : g.dx;
+        level.from += level.dir === 'h' ? g.dx : g.dy;
+        level.to += level.dir === 'h' ? g.dx : g.dy;
+      }
     }
+    if (level) this.guides.push(level);
     this.board.invalidate('overlay');
   }
 
