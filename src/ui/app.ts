@@ -10,7 +10,6 @@ import {
   pasteElements,
   pickFiles,
   readAsDataURL,
-  saveFile,
 } from '../io/files';
 import { isDarkColor, measureText } from '../renderer';
 import { store, type ToolState } from '../store';
@@ -36,7 +35,7 @@ import { openGraph } from '../widgets/graph';
 import { toggleMagnifier } from '../widgets/magnifier';
 import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
-import { Library } from './library';
+import { Library, saveNotebookDialog } from './library';
 import { PAGE_DRAG, PagesPanel } from './pages';
 import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
@@ -563,7 +562,7 @@ export class App {
             <button class="menu-item" data-act="open-pptx">${icon('slides', 20)}Open PowerPoint</button>
             <button class="menu-item" data-act="record">${icon('record', 20)}Record lesson (video)</button>
             <button class="menu-item" data-act="open">${icon('open', 20)}Open file</button>
-            <button class="menu-item" data-act="save">${icon('save', 20)}Save file (to share)</button>
+            <button class="menu-item" data-act="save">${icon('save', 20)}Save notebook</button>
             <button class="menu-item" data-act="export">${icon('download', 20)}Save as PDF</button>
             <button class="menu-item" data-act="delete-page">${icon('trash', 20)}Delete this page</button>
             <button class="menu-item" data-act="fullscreen">${icon('fullscreen', 20)}Full screen</button>
@@ -790,8 +789,9 @@ export class App {
         void openFile();
         return;
       case 'save':
-        saveFile();
-        return toast('Lesson saved to Downloads');
+        // Name it (and pick a folder): kept in My notebooks on this device.
+        void saveNotebookDialog(this.root);
+        return;
       case 'export':
         void this.withProgress('Making PDF', () => exportPdf(b));
         return;
@@ -1095,7 +1095,7 @@ export class App {
         this.board.updateCursor();
       } else if (ctrl && k === 'z' && !e.shiftKey) store.undo();
       else if (ctrl && (k === 'y' || (k === 'z' && e.shiftKey))) store.redo();
-      else if (ctrl && k === 's') saveFile();
+      else if (ctrl && k === 's') void saveNotebookDialog(this.root);
       else if (ctrl && k === 'c') copySelection();
       else if (ctrl && k === 'v') return; // handled by the paste event
       else if (ctrl && k === 'd') this.duplicate();

@@ -14,12 +14,21 @@ export interface NotebookMeta {
   pages: number;
   /** Small JPEG of the first page. */
   thumb: string;
+  /** Folder id ('' or missing = not in a folder). */
+  folder?: string;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  created: number;
 }
 
 const DB = 'teachly';
 const STORE = 'docs';
 const INDEX = 'library';
 const LAST = 'teachly.lastNotebook';
+const FOLDERS = 'folders';
 
 let dbp: Promise<IDBDatabase> | null = null;
 function db(): Promise<IDBDatabase> {
@@ -80,11 +89,15 @@ function cover(doc: Doc): string {
   }
 }
 
-/** Save a notebook (gives it an id first if it has none). */
-export async function saveNotebook(doc: Doc): Promise<Doc> {
+/**
+ * Save a notebook (gives it an id first if it has none). It stays in its
+ * folder unless `folder` is given ('' = no folder).
+ */
+export async function saveNotebook(doc: Doc, folder?: string): Promise<Doc> {
   if (!doc.id) doc = { ...doc, id: uid() };
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
-  const meta: NotebookMeta = { id: doc.id!, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: cover(doc) };
+  const was = list.find((m) => m.id === doc.id)?.folder ?? '';
+  const meta: NotebookMeta = { id: doc.id!, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: cover(doc), folder: folder ?? was };
   const next = [meta, ...list.filter((m) => m.id !== doc.id)];
   await put([[`nb:${doc.id}`, doc], [INDEX, next]]);
   try {
@@ -142,7 +155,45 @@ export async function renameNotebook(id: string, title: string): Promise<void> {
 
 export async function duplicateNotebook(id: string): Promise<void> {
   const doc = await loadNotebook(id);
-  if (doc) await saveNotebook({ ...doc, id: uid(), title: `${doc.title} (copy)` });
+  const folder = (await listNotebooks()).find((m) => m.id === id)?.folder ?? '';
+  if (doc) await saveNotebook({ ...doc, id: uid(), title: `${doc.title} (copy)` }, folder);
+}
+
+/** Put a notebook into a folder ('' = out of every folder). Its pages are not touched. */
+export async function moveNotebook(id: string, folder: string): Promise<void> {
+  const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+  await put([[INDEX, list.map((m) => (m.id === id ? { ...m, folder } : m))]]);
+}
+
+// ---- folders -------------------------------------------------------------
+
+export async function listFolders(): Promise<Folder[]> {
+  try {
+    return ((await get<Folder[]>(FOLDERS)) ?? []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
+export async function createFolder(name: string): Promise<Folder> {
+  const f: Folder = { id: uid(), name, created: Date.now() };
+  await put([[FOLDERS, [...((await get<Folder[]>(FOLDERS)) ?? []), f]]]);
+  return f;
+}
+
+export async function renameFolder(id: string, name: string): Promise<void> {
+  const all = (await get<Folder[]>(FOLDERS)) ?? [];
+  await put([[FOLDERS, all.map((f) => (f.id === id ? { ...f, name } : f))]]);
+}
+
+/** Remove a folder. Its notebooks are kept: they go back to My notebooks. */
+export async function deleteFolder(id: string): Promise<void> {
+  const all = (await get<Folder[]>(FOLDERS)) ?? [];
+  const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+  await put([
+    [FOLDERS, all.filter((f) => f.id !== id)],
+    [INDEX, list.map((m) => (m.folder === id ? { ...m, folder: '' } : m))],
+  ]);
 }
 
 export function blankNotebook(title: string, bg = '#000000'): Doc {
