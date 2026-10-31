@@ -40,6 +40,9 @@ function escape(s: string): string {
 
 export default defineConfig({
   base: './',
+  define: {
+    __BUILD__: JSON.stringify(new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })),
+  },
   publicDir: false,
   plugins: [inlineEverything()],
   build: {

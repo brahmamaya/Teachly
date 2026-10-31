@@ -27,6 +27,9 @@ function precacheList(): Plugin {
 
 export default defineConfig({
   base: './',
+  define: {
+    __BUILD__: JSON.stringify(new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })),
+  },
   plugins: [precacheList()],
   build: {
     // Older Android boards run older browsers: translate newer syntax.

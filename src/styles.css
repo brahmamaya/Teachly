@@ -3517,3 +3517,10 @@ button:focus-visible {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 46px * var(--ui));
   }
 }
+
+.app-version {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.55;
+  text-align: center;
+}

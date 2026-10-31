@@ -119,6 +119,10 @@ const TB_ITEMS: [string, string, 'left' | 'right'][] = [
   ['pages', 'All pages', 'right'],
 ];
 
+/** When this version was built (shown in the menu, to check updates arrived). */
+declare const __BUILD__: string;
+const BUILD_TIME = typeof __BUILD__ === 'string' ? __BUILD__ : 'dev';
+
 const RECENT_KEY = 'teachly.recentColors';
 function recentColors(): string[] {
   try {
@@ -568,7 +572,8 @@ export class App {
           </div>
           <button class="menu-item wide-item" data-act="tbedit">${icon('settings', 20)}Edit toolbar — choose its buttons</button>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers and palm don't draw)</label>
-          <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>`;
+          <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>
+          <div class="app-version">Version ${BUILD_TIME}</div>`;
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
           if (el.dataset.set) store.setSettings({ [el.dataset.set]: el.checked });
