@@ -12,11 +12,12 @@ import { mathKeyboard } from './mathkeys';
 // Graph tool (Desmos-style): a list of equations on the left, a live graph
 // on the right that you drag to move and pinch / scroll to zoom. Touch a
 // curve to read its coordinates. "Put on board" places exactly what you
-// see as one piece (with a futuristic panel, neon curves and bold labels).
+// see as one piece (clean panel, clear curves and bold labels).
 
-const CURVES = ['#22d3ee', '#f472b6', '#facc15', '#4ade80', '#a78bfa', '#fb923c'];
-/** Deeper versions of the same colours, readable on a white background. */
-const CURVES_LIGHT = ['#0284c7', '#db2777', '#ca8a04', '#16a34a', '#7c3aed', '#ea580c'];
+/** Natural chalk-like colours on black (bright, not neon). */
+const CURVES = ['#6cb4ee', '#ff6b5b', '#ffd54f', '#7ccf7f', '#b9a2e8', '#ffad4d'];
+/** Deep marker versions of the same colours, readable on white. */
+const CURVES_LIGHT = ['#1f4fb4', '#c62828', '#9a6b00', '#2e7d32', '#5e35b1', '#e0620d'];
 const MAX = 6;
 const KEY = 'teachly.graph2';
 
@@ -296,7 +297,7 @@ export function buildGraph(spec: Spec, box: Rect, theme: Theme): El[] {
   }
   if (X(0) === ax && Y(0) === ay) place('0', [[ax - fontSize - 4 * u, ay + 4 * u]], T.tick, fontSize, 'orbitron');
 
-  // Curves: a soft neon glow under a crisp line, clipped to the panel.
+  // Curves: one clean, solid line each, clipped to the panel.
   const span = y1 - y0;
   fs.forEach((q) => {
     const runs: [number, number][][] = [];
@@ -316,7 +317,6 @@ export function buildGraph(spec: Spec, box: Rect, theme: Theme): El[] {
     }
     if (run.length > 1) runs.push(run);
     for (const r0 of runs) for (const seg of clipRows(r0, gy0, gy1)) {
-      els.push(path(seg, q.color, 11 * u, { opacity: 0.16 }));
       els.push(path(seg, q.color, 3.4 * u));
     }
   });

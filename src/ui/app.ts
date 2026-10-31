@@ -41,8 +41,14 @@ import { PagesPanel } from './pages';
 import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 
-// Natural marker / chalk colours (true, not neon).
-const COLORS = ['#ffffff', '#1a1a1a', '#d32f2f', '#1565c0', '#2e7d32', '#f9a825', '#ef6c00', '#6a1b9a', '#5d4037'];
+// Natural colours, chosen for the board you are on. Both lists keep the same
+// order (white↔black, blue, red, green, orange, pink, yellow, purple), so
+// switching board swaps the pen to the matching readable colour.
+/** Chalk on a blackboard: soft, bright, never neon. */
+const CHALK = ['#ffffff', '#6cb4ee', '#ff6b5b', '#7ccf7f', '#ffad4d', '#f590b8', '#ffe066', '#b9a2e8'];
+/** Markers on a white or green board: deep and rich. */
+const MARKERS = ['#1a1a1a', '#1f4fb4', '#c62828', '#2e7d32', '#e0620d', '#ad1457', '#9a6b00', '#5e35b1'];
+const boardColors = (): string[] => (isDarkColor(store.page.bg) ? CHALK : MARKERS);
 /** Three pens like Note 3 (plus the highlighter). */
 const PEN_TYPES: [ToolState['penStyle'], string][] = [
   ['pen', 'Pen'],
@@ -431,7 +437,7 @@ export class App {
         pop.className = 'popover pop-pen';
         pop.innerHTML = `
           <div class="pen-icons">${PEN_TYPES.map(([k, n]) => `<button class="pen-ico ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 22)}</button>`).join('')}</div>
-          ${this.swatches(hl ? HL_COLORS : COLORS, color, 'color')}
+          ${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}
           <div class="pen-size">
             <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
             <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
@@ -631,10 +637,17 @@ export class App {
   private setBoard(patch: { bg?: string; pattern?: BgPattern }): void {
     store.updatePage(patch);
     if (patch.bg) {
-      // Keep the pen readable on dark boards.
+      // Keep the pen readable: swap to the matching colour for this board.
+      // (Ink already on the board keeps its colour.)
       const dark = isDarkColor(patch.bg);
-      if (dark && (store.tool.color === '#1e293b' || store.tool.color === '#1a1a1a')) store.setTool({ color: '#ffffff', shapeColor: '#ffffff' });
-      if (!dark && store.tool.color === '#ffffff') store.setTool({ color: '#1a1a1a', shapeColor: '#1a1a1a' });
+      const [from, to] = dark ? [MARKERS, CHALK] : [CHALK, MARKERS];
+      const swap = (c: string): string | null => {
+        if (dark && c === '#1e293b') return CHALK[0];
+        const i = from.indexOf(c.toLowerCase());
+        return i >= 0 ? to[i] : null;
+      };
+      const c = swap(store.tool.color), sc = swap(store.tool.shapeColor);
+      if (c || sc) store.setTool({ ...(c ? { color: c } : {}), ...(sc ? { shapeColor: sc } : {}) });
     }
   }
 
@@ -832,7 +845,7 @@ export class App {
     const sec = this.propSection;
 
     let panel = '';
-    if (sec === 'color') panel = this.swatches(COLORS, color, 'pcolor');
+    if (sec === 'color') panel = this.swatches(boardColors(), color, 'pcolor');
     if (sec === 'width')
       panel = `<div class="width-row"><input type="range" id="prop-width" min="1" max="30" value="${Math.round(width)}" data-pwidth><span class="width-val">${Math.round(width)}</span></div>
         <div class="sizes">${[2, 4, 8, 14].map((s) => `<button class="size ${Math.round(width) === s ? 'on' : ''}" data-pw="${s}"><span style="width:${s + 3}px;height:${s + 3}px;background:var(--text)"></span></button>`).join('')}</div>`;
