@@ -72,6 +72,8 @@ export class Board {
   /** "Wet ink": the line being written, drawn bit by bit (no redraw per move). */
   readonly wet: HTMLCanvasElement;
   readonly wetCtx: CanvasRenderingContext2D;
+  /** Pixels of the video being recorded (null = not recording). */
+  recordPixels: number | null = null;
   private wetDirty = false;
   private bgCtx: CanvasRenderingContext2D;
   private inkCtx: CanvasRenderingContext2D;
@@ -271,6 +273,8 @@ export class Board {
     // budget so writing never lags; iPads, laptops and phones stay sharp.
     const budget = liteDevice() ? 2_800_000 : 8_400_000;
     this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
+    // While a lesson video is recorded, draw at the video's size (up to 4K) so it is sharp.
+    if (this.recordPixels) this.dpr = Math.min(4, Math.max(this.dpr, Math.sqrt(this.recordPixels / area)));
     for (const c of [this.bg, this.ink, this.wet, this.overlay]) {
       c.width = Math.round(r.width * this.dpr);
       c.height = Math.round(r.height * this.dpr);
