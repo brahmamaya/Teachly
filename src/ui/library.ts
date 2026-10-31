@@ -19,7 +19,7 @@ import {
 } from '../io/library';
 import { store } from '../store';
 import { icon } from './icons';
-import { toast } from './panel';
+import { fadeOut, toast } from './panel';
 
 // "My notebooks": every lesson saved on this device, as cover cards, sorted
 // into folders the teacher makes. Unlimited notebooks and folders, all free.
@@ -44,7 +44,7 @@ function modal<T>(host: HTMLElement, html: string, read: (box: HTMLElement) => T
     host.appendChild(back);
     const box = back.querySelector('.sv-box') as HTMLFormElement;
     const done = (v: T | null) => {
-      back.remove();
+      fadeOut(back);
       resolve(v);
     };
     back.addEventListener('pointerdown', (e) => {
@@ -184,7 +184,7 @@ export class Library {
   }
 
   close(): void {
-    this.el?.remove();
+    if (this.el) fadeOut(this.el, 180);
     this.el = null;
   }
 

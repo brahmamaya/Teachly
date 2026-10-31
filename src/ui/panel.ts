@@ -98,6 +98,16 @@ export function makeDraggable(el: HTMLElement, handle: HTMLElement): void {
 }
 
 /** Simple toast message. */
+/**
+ * Close something smoothly: a short fade, then it is removed. It stops
+ * taking taps at once, so the next thing can open straight away.
+ */
+export function fadeOut(el: Element, ms = 150): void {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return el.remove();
+  el.classList.add('leaving');
+  window.setTimeout(() => el.remove(), ms);
+}
+
 export function toast(msg: string, ms = 2200): void {
   let host = document.querySelector('.toasts') as HTMLElement | null;
   if (!host) {

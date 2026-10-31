@@ -1,7 +1,7 @@
 import type { Board } from '../board';
 import { download } from '../io/files';
 import { icon } from '../ui/icons';
-import { toast } from '../ui/panel';
+import { fadeOut, toast } from '../ui/panel';
 
 // Lesson recording: the board (everything written, live) plus the teacher's
 // voice, saved as a video file. Runs only while recording, so it costs
@@ -58,7 +58,7 @@ function chooseQuality(host: HTMLElement): Promise<Quality | null> {
     host.appendChild(back);
     let pick = last;
     const done = (q: Quality | null) => {
-      back.remove();
+      fadeOut(back);
       resolve(q);
     };
     back.addEventListener('click', (e) => {

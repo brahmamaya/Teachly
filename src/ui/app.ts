@@ -37,7 +37,7 @@ import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
 import { Library, saveNotebookDialog } from './library';
 import { PAGE_DRAG, PagesPanel } from './pages';
-import { toast } from './panel';
+import { fadeOut, toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 
 // Natural colours, chosen for the board you are on. Both lists keep the same
@@ -364,7 +364,7 @@ export class App {
 
   private closePopover(): void {
     if (!this.popover) return;
-    this.popover.remove();
+    fadeOut(this.popover);
     this.popover = null;
     this.popFor = '';
     this.toolbar.querySelectorAll('.open').forEach((x) => x.classList.remove('open'));

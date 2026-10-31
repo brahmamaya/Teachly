@@ -3,7 +3,7 @@ import { pageRegion, renderRegion } from '../renderer';
 import { store } from '../store';
 import type { Page } from '../types';
 import { icon } from './icons';
-import { toast } from './panel';
+import { fadeOut, toast } from './panel';
 
 // Page sorter (like Note 3): a side panel with every page as a thumbnail.
 // Tap a page to open it; the buttons below act on the open page.
@@ -40,7 +40,7 @@ export class PagesPanel {
 
   close(): void {
     if (!this.el) return;
-    this.el.remove();
+    fadeOut(this.el);
     this.el = null;
     this.unsub?.();
     this.unsub = null;
