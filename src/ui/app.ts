@@ -41,7 +41,8 @@ import { PagesPanel } from './pages';
 import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 
-const COLORS = ['#1e293b', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e', '#2563eb', '#a855f7'];
+// Natural marker / chalk colours (true, not neon).
+const COLORS = ['#ffffff', '#1a1a1a', '#d32f2f', '#1565c0', '#2e7d32', '#f9a825', '#ef6c00', '#6a1b9a', '#5d4037'];
 /** Three pens like Note 3 (plus the highlighter). */
 const PEN_TYPES: [ToolState['penStyle'], string][] = [
   ['pen', 'Pen'],
@@ -604,8 +605,8 @@ export class App {
     if (patch.bg) {
       // Keep the pen readable on dark boards.
       const dark = isDarkColor(patch.bg);
-      if (dark && store.tool.color === '#1e293b') store.setTool({ color: '#ffffff', shapeColor: '#ffffff' });
-      if (!dark && store.tool.color === '#ffffff') store.setTool({ color: '#1e293b', shapeColor: '#1e293b' });
+      if (dark && (store.tool.color === '#1e293b' || store.tool.color === '#1a1a1a')) store.setTool({ color: '#ffffff', shapeColor: '#ffffff' });
+      if (!dark && store.tool.color === '#ffffff') store.setTool({ color: '#1a1a1a', shapeColor: '#1a1a1a' });
     }
   }
 

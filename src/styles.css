@@ -114,7 +114,8 @@ button:focus-visible {
 }
 
 .layer.bg,
-.layer.ink {
+.layer.ink,
+.layer.wet {
   pointer-events: none;
 }
 

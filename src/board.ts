@@ -42,6 +42,8 @@ export interface Tool {
   drawScreen?(ctx: CanvasRenderingContext2D): boolean | void;
   /** Elements to hide on the ink layer (e.g. during transform preview). */
   hidden?(): Set<string> | null;
+  /** Redraw lines still being written on the wet-ink layer; true if any. */
+  redrawWet?(ctx: CanvasRenderingContext2D): boolean;
   /** Extra world-space drawing on the ink layer (e.g. transform preview). */
   drawInk?(ctx: CanvasRenderingContext2D): void;
   onActivate?(): void;
@@ -55,6 +57,10 @@ export class Board {
   readonly bg: HTMLCanvasElement;
   readonly ink: HTMLCanvasElement;
   readonly overlay: HTMLCanvasElement;
+  /** "Wet ink": the line being written, drawn bit by bit (no redraw per move). */
+  readonly wet: HTMLCanvasElement;
+  readonly wetCtx: CanvasRenderingContext2D;
+  private wetDirty = false;
   private bgCtx: CanvasRenderingContext2D;
   private inkCtx: CanvasRenderingContext2D;
   private ovCtx: CanvasRenderingContext2D;
@@ -100,7 +106,10 @@ export class Board {
     };
     [this.bg, this.bgCtx] = mk('bg', false);
     [this.ink, this.inkCtx] = mk('ink', false);
-    [this.overlay, this.ovCtx] = mk('overlay', true);
+    [this.wet, this.wetCtx] = mk('wet', false);
+    // (No "desynchronized" canvases: on some Android boards they show wrong
+    // colours and stutter.)
+    [this.overlay, this.ovCtx] = mk('overlay', false);
     this.instruments = new Instruments(this);
 
     new ResizeObserver(() => this.resize()).observe(container);
@@ -249,7 +258,7 @@ export class Board {
     const modest = (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 3;
     const budget = modest ? 3_800_000 : 8_400_000;
     this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
-    for (const c of [this.bg, this.ink, this.overlay]) {
+    for (const c of [this.bg, this.ink, this.wet, this.overlay]) {
       c.width = Math.round(r.width * this.dpr);
       c.height = Math.round(r.height * this.dpr);
       c.style.width = `${r.width}px`;
@@ -280,10 +289,30 @@ export class Board {
     this.dirty.delete('overlay');
   }
 
+  /** Set the wet-ink canvas up for drawing in board coordinates. */
+  wetBegin(): CanvasRenderingContext2D {
+    const ctx = this.wetCtx;
+    this.worldTransform(ctx);
+    this.wetDirty = true;
+    return ctx;
+  }
+
+  /** Clear the wet ink and let the tool redraw what is still being written. */
+  renderWet(): void {
+    const ctx = this.wetCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.wet.width, this.wet.height);
+    this.wetDirty = false;
+    this.worldTransform(ctx);
+    if (this.tool.redrawWet?.(ctx)) this.wetDirty = true;
+  }
+
   private frame(): void {
     this.raf = 0;
     if (this.dirty.has('bg')) this.renderBg();
     if (this.dirty.has('ink')) this.renderInk();
+    // Finished lines are now on the ink layer (or the view moved): refresh the wet layer.
+    if ((this.dirty.has('ink') || this.dirty.has('bg')) && this.wetDirty) this.renderWet();
     if (this.dirty.has('overlay') || this.animating) this.renderOverlay();
     this.dirty.clear();
     if (this.animating) this.invalidate('overlay');

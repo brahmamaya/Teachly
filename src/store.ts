@@ -86,7 +86,7 @@ export class Store {
     shapeFill: null,
     eraserMode: 'point',
     eraserSize: 30,
-    fontSize: 32,
+    fontSize: 22,
     fillColor: '#3b82f6',
     laserColor: '#ef4444',
     tapeColor: '#f59e0b',

@@ -9,14 +9,14 @@ import type { BgPattern, BoxEl, Camera, El, PathEl, Rect, TableEl, TapeEl, TextE
 export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last: boolean) {
   switch (el.style) {
     case 'highlighter':
-      return { size: el.size, thinning: 0, smoothing: 0.7, streamline: 0.6, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
+      return { size: el.size, thinning: 0, smoothing: 0.55, streamline: 0.3, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
     case 'brush':
       // Soft brush: thick when slow, thin when fast, tapered ends.
       return {
         size: el.size * 2.6,
         thinning: 0.55,
-        smoothing: 0.75,
-        streamline: 0.55,
+        smoothing: 0.6,
+        streamline: 0.3,
         simulatePressure: !!el.sim,
         last,
         start: { taper: el.size * 6, cap: true },
@@ -27,7 +27,7 @@ export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last
       // nearly even width and more streamlining to hide touchscreen jitter.
       return el.sim
         ? { size: el.size, thinning: 0.18, smoothing: 0.68, streamline: 0.58, simulatePressure: true, last, start: { cap: true }, end: { cap: true } }
-        : { size: el.size, thinning: 0.5, smoothing: 0.62, streamline: 0.4, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
+        : { size: el.size, thinning: 0.55, smoothing: 0.5, streamline: 0.18, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
   }
 }
 
@@ -127,7 +127,7 @@ function shapePath(el: PathEl): Path2D {
 function getPath(el: PathEl): Path2D {
   let p = pathCache.get(el);
   if (!p) {
-    p = el.style === 'shape' ? shapePath(el) : freehandPath(el.pts, el, true);
+    p = el.style === 'shape' ? shapePath(el) : isMarker(el) ? markerPath(el.pts) : freehandPath(el.pts, el, true);
     pathCache.set(el, p);
   }
   return p;
@@ -210,10 +210,51 @@ export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
       ctx.fillStyle = el.fill;
       ctx.fill(fillPath(el));
     }
-    ctx.fillStyle = el.color;
-    ctx.fill(getPath(el));
+    if (isMarker(el)) {
+      // Finger / board-touch pen: an even line exactly along the hand.
+      ctx.strokeStyle = el.color;
+      ctx.lineWidth = el.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke(getPath(el));
+    } else {
+      ctx.fillStyle = el.color;
+      ctx.fill(getPath(el));
+    }
   }
   ctx.globalAlpha = 1;
+}
+
+/** Pen written with a finger, mouse or board touch (no real pressure). */
+export function isMarker(el: Pick<PathEl, 'style' | 'sim'>): boolean {
+  return el.style === 'pen' && !!el.sim;
+}
+
+/**
+ * The centre line of a marker stroke: smooth curves through the midpoints
+ * of the samples, so it follows the hand exactly and stays round. The live
+ * (wet) drawing uses the same segments, so nothing shifts on lift-off.
+ */
+export function markerPath(pts: number[]): Path2D {
+  const p = new Path2D();
+  const n = pts.length / 3;
+  if (n === 0) return p;
+  p.moveTo(pts[0], pts[1]);
+  if (n === 1) {
+    p.lineTo(pts[0] + 0.01, pts[1]);
+    return p;
+  }
+  if (n === 2) {
+    p.lineTo(pts[3], pts[4]);
+    return p;
+  }
+  p.lineTo((pts[0] + pts[3]) / 2, (pts[1] + pts[4]) / 2);
+  for (let i = 1; i < n - 1; i++) {
+    const x = pts[i * 3], y = pts[i * 3 + 1];
+    p.quadraticCurveTo(x, y, (x + pts[i * 3 + 3]) / 2, (y + pts[i * 3 + 4]) / 2);
+  }
+  p.lineTo(pts[(n - 1) * 3], pts[(n - 1) * 3 + 1]);
+  return p;
 }
 
 const fillCache = new WeakMap<PathEl, Path2D>();

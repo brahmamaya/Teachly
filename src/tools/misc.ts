@@ -69,10 +69,11 @@ export class ShapeTool implements Tool {
     if (!s || s.id !== p.id) return;
     this.start = null;
     let els = this.preview;
-    if (Math.hypot(p.x - s.x, p.y - s.y) < 6 * this.board.px) {
+    // A tap (or a tiny wobble of a board touch) places one neat, standard-size shape.
+    if (Math.hypot(p.x - s.x, p.y - s.y) < 14 * this.board.px) {
       // Tap: drop a default-sized shape.
       const axes = store.tool.shape === 'axes2' || store.tool.shape === 'axes3';
-      const d = (axes ? 420 : 160) * inkScale(), dh = axes ? d * 0.8 : d;
+      const d = (axes ? 360 : 150) * inkScale(), dh = axes ? d * 0.8 : d;
       const line = ['line', 'arrow', 'dashed', 'arc'].includes(store.tool.shape);
       els = buildShape(store.tool.shape, s.x - d / 2, s.y - (line ? 0 : dh / 2), s.x + d / 2, s.y + (line ? 0 : dh / 2), this.style(), false);
     }
@@ -84,6 +85,10 @@ export class ShapeTool implements Tool {
       els = els.map((e) => ({ ...e, group }));
     }
     store.addEls(els);
+    // One touch → one shape. It stays selected for editing (colour, size,
+    // fill…); the next shape is picked from the Shapes button again, so a
+    // stray touch elsewhere never draws another one.
+    store.setTool({ tool: 'select' });
     store.select(els.map((e) => e.id));
   }
 

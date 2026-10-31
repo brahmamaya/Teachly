@@ -1,7 +1,7 @@
 import type { Board, Ptr, Tool } from '../board';
 import { dist, pathFromPoints, uid } from '../geometry';
 import type { Snapper } from '../instruments';
-import { freehandPath } from '../renderer';
+import { freehandPath, isMarker, markerPath } from '../renderer';
 import { recognize } from '../shapes';
 import { store } from '../store';
 import { inkScale } from '../ui/scale';
@@ -22,6 +22,12 @@ interface Live {
   lastY: number;
   predicted: number[];
   t0: number;
+  /** Finger / board-touch pen: drawn bit by bit on the wet-ink layer. */
+  marker: boolean;
+  /** Where the wet line has been drawn up to (midpoint of the last two samples). */
+  midX: number;
+  midY: number;
+  drawnTo: number;
 }
 
 // Hold still this long at the end of a drawing to snap it into a shape.
@@ -53,8 +59,19 @@ export class PenTool implements Tool {
       lastY: y,
       predicted: [],
       t0: performance.now(),
+      marker: !snapper && isMarker({ style, sim: p.type !== 'pen' }),
+      midX: x,
+      midY: y,
+      drawnTo: 0,
     };
     this.live.set(p.id, l);
+    if (l.marker) {
+      const ctx = this.wetStyle(l);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 0.01, y);
+      ctx.stroke();
+    }
     this.armHold(p.id, l);
     this.board.invalidate('overlay');
   }
@@ -69,10 +86,63 @@ export class PenTool implements Tool {
       const shape = this.toShape(l);
       if (shape) {
         l.snapped = shape;
+        if (l.marker) this.board.renderWet();
         navigator.vibrate?.(10);
         this.board.invalidate('overlay');
       }
     }, HOLD_MS);
+  }
+
+  private wetStyle(l: Live): CanvasRenderingContext2D {
+    const ctx = this.board.wetBegin();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = l.color;
+    ctx.lineWidth = l.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    return ctx;
+  }
+
+  /** Add only the new part of a marker line to the wet layer (cheap per move). */
+  private drawWet(l: Live): void {
+    const n = l.pts.length / 3;
+    if (n - 1 <= l.drawnTo) return;
+    const ctx = this.wetStyle(l);
+    ctx.beginPath();
+    ctx.moveTo(l.midX, l.midY);
+    for (let k = Math.max(1, l.drawnTo + 1); k < n; k++) {
+      const px = l.pts[(k - 1) * 3], py = l.pts[(k - 1) * 3 + 1];
+      const x = l.pts[k * 3], y = l.pts[k * 3 + 1];
+      const mx = (px + x) / 2, my = (py + y) / 2;
+      if (k === 1) ctx.lineTo(mx, my);
+      else ctx.quadraticCurveTo(px, py, mx, my);
+      l.midX = mx;
+      l.midY = my;
+    }
+    ctx.stroke();
+    l.drawnTo = n - 1;
+  }
+
+  /** The wet layer was cleared (a line finished, or the view moved): draw the lines still being written. */
+  redrawWet(ctx: CanvasRenderingContext2D): boolean {
+    let any = false;
+    for (const l of this.live.values()) {
+      if (!l.marker || l.snapped) continue;
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = l.color;
+      ctx.lineWidth = l.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke(markerPath(l.pts));
+      l.drawnTo = l.pts.length / 3 - 1;
+      const n = l.pts.length;
+      if (n >= 6) {
+        l.midX = (l.pts[n - 6] + l.pts[n - 3]) / 2;
+        l.midY = (l.pts[n - 5] + l.pts[n - 2]) / 2;
+      }
+      any = true;
+    }
+    return any;
   }
 
   private tiny(l: Live): boolean {
@@ -121,7 +191,8 @@ export class PenTool implements Tool {
       l.lastY = y;
     }
     l.predicted = [];
-    if (!l.snapper) for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
+    if (l.marker) this.drawWet(l);
+    else if (!l.snapper) for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
     // Re-arm hold detection only when the pen actually moved noticeably.
     const n = l.pts.length;
     if (n >= 6 && dist(l.pts[n - 3], l.pts[n - 2], l.pts[n - 6], l.pts[n - 5]) > 2 * this.board.px) this.armHold(p.id, l);
@@ -138,6 +209,7 @@ export class PenTool implements Tool {
       const t = tapeAt(store.page.els, l.pts[0], l.pts[1], 2 * this.board.px);
       if (t) {
         toggleTape(t);
+        if (l.marker) this.board.renderWet();
         this.board.invalidate('overlay');
         return;
       }
@@ -148,7 +220,8 @@ export class PenTool implements Tool {
         id: uid(),
         type: 'path',
         style: l.snapper ? 'shape' : l.style,
-        pts: l.snapper ? [l.pts[0], l.pts[1], 0.5, l.pts[l.pts.length - 3], l.pts[l.pts.length - 2], 0.5] : smoothPts(l.pts),
+        // Pen: exactly where the hand went. Brush / calligraphy: lightly smoothed.
+        pts: l.snapper ? [l.pts[0], l.pts[1], 0.5, l.pts[l.pts.length - 3], l.pts[l.pts.length - 2], 0.5] : l.style === 'pen' || l.style === 'highlighter' ? l.pts : smoothPts(l.pts),
         color: l.color,
         size: l.size,
         opacity: l.snapper && l.style === 'highlighter' ? 0.4 : 1,
@@ -176,6 +249,7 @@ export class PenTool implements Tool {
   cancel(): void {
     for (const l of this.live.values()) clearTimeout(l.holdTimer);
     this.live.clear();
+    this.board.renderWet();
     this.board.invalidate('overlay');
   }
 
@@ -198,8 +272,21 @@ export class PenTool implements Tool {
       }
       // Same smoothing as the finished stroke, so the line does not jump
       // when the pen is lifted.
+      if (l.marker) {
+        // The wet layer holds the line; here only the last little bit up to the finger.
+        const n = l.pts.length;
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = l.color;
+        ctx.lineWidth = l.size;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(l.midX, l.midY);
+        ctx.lineTo(l.pts[n - 3], l.pts[n - 2]);
+        ctx.stroke();
+        continue;
+      }
       const raw = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
-      const pts = l.snapper ? raw : smoothPts(raw);
+      const pts = l.snapper || l.style === 'pen' || l.style === 'highlighter' ? raw : smoothPts(raw);
       ctx.globalAlpha = l.style === 'highlighter' ? 0.38 : 1;
       ctx.fillStyle = l.color;
       ctx.fill(freehandPath(pts, { style: l.snapper ? 'highlighter' : l.style, size: l.size, sim: l.sim }, false));
