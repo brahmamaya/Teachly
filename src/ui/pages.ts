@@ -8,6 +8,9 @@ import { toast } from './panel';
 // Page sorter (like Note 3): a side panel with every page as a thumbnail.
 // Tap a page to open it; the buttons below act on the open page.
 
+/** Drag data type for a page dragged out of the page sorter. */
+export const PAGE_DRAG = 'application/x-teachly-page';
+
 const thumbs = new WeakMap<Page, string>();
 let copied: Page | null = null;
 
@@ -51,6 +54,15 @@ export class PagesPanel {
     this.host.appendChild(el);
     this.el = el;
     el.addEventListener('click', (e) => this.onClick(e));
+    // Drag a page onto the board: it carries the page itself (sharp, editable
+    // lines), not the small preview picture.
+    el.addEventListener('dragstart', (e) => {
+      const t = (e.target as HTMLElement).closest('.page-thumb') as HTMLElement | null;
+      if (!t || !e.dataTransfer) return;
+      e.dataTransfer.clearData();
+      e.dataTransfer.setData(PAGE_DRAG, t.dataset.i ?? '');
+      e.dataTransfer.effectAllowed = 'copy';
+    });
     const offDoc = store.on('doc', () => this.render());
     const offPage = store.on('page', () => this.render());
     this.unsub = () => {

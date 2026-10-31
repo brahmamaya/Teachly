@@ -3389,3 +3389,54 @@ button:focus-visible {
 .lite .board canvas {
   will-change: auto;
 }
+
+/* ---------- Toolbar flush with the bottom edge, slimmer ---------- */
+/* No gap under or beside the bars: more board for writing. */
+#app[data-board] .toolbar,
+#app .toolbar {
+  bottom: env(safe-area-inset-bottom, 0px);
+  padding: 3px;
+  border-bottom-width: 0;
+}
+#app[data-board] .toolbar.tb-left,
+#app .toolbar.tb-left {
+  left: 0;
+  border-left-width: 0;
+  border-radius: 0 16px 0 0;
+}
+#app[data-board] .toolbar.tb-right,
+#app .toolbar.tb-right {
+  right: 0;
+  border-right-width: 0;
+  border-radius: 16px 0 0 0;
+}
+#app .tb-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+#app .tb-btn .icon {
+  width: 21px;
+  height: 21px;
+}
+.tb-ind {
+  border-radius: 12px;
+}
+/* While writing the bars fade but never slide off the screen. */
+#app.drawing .toolbar {
+  translate: none;
+}
+/* Phones: action bar sits right on top of the drawing tools. */
+#app.tb-stacked .tb-right {
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 46px * var(--ui));
+  border-radius: 16px 0 0 16px;
+  border-bottom-width: 1px;
+}
+#app.tb-stacked .tb-left {
+  left: 0;
+}
+#app .toolbar .icon-btn {
+  width: 34px;
+  height: 40px;
+}

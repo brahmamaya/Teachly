@@ -1,5 +1,5 @@
 import { Board, type Tool } from '../board';
-import { regroup, similarity, transformEl, translateEl, uid } from '../geometry';
+import { bbox, regroup, resizeEl, similarity, transformEl, translateEl, uid, unionRects } from '../geometry';
 import {
   copySelection,
   exportPdf,
@@ -37,7 +37,7 @@ import { toggleMagnifier } from '../widgets/magnifier';
 import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
 import { Library } from './library';
-import { PagesPanel } from './pages';
+import { PAGE_DRAG, PagesPanel } from './pages';
 import { toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 
@@ -383,6 +383,15 @@ export class App {
     this.positionPopover(anchor);
   }
 
+  /** Top of the bottom bars under the span x1..x2 (phones stack two bars). */
+  private barsTop(x1: number, x2: number, top: number): number {
+    for (const b of this.root.querySelectorAll<HTMLElement>('.toolbar')) {
+      const r = b.getBoundingClientRect();
+      if (r.right > x1 && r.left < x2) top = Math.min(top, r.top);
+    }
+    return top;
+  }
+
   private positionPopover(anchor: HTMLElement): void {
     const pop = this.popover!;
     scaleFloating(pop);
@@ -394,7 +403,7 @@ export class App {
     const cy = Math.max(8, Math.min(H - ph - 8, r.top + r.height / 2 - ph / 2));
     // Open away from the edge the toolbar sits on.
     const [left, top] = {
-      bottom: [cx, Math.max(8, r.top - ph - gap)],
+      bottom: [cx, Math.max(8, this.barsTop(cx, cx + pw, r.top) - ph - gap)],
       top: [cx, Math.min(H - ph - 8, r.bottom + gap)],
       left: [Math.min(W - pw - 8, r.right + gap), cy],
       right: [Math.max(8, r.left - pw - gap), cy],
@@ -1145,6 +1154,8 @@ export class App {
       e.preventDefault();
       depth = 0;
       hint.hidden = true;
+      const pg = e.dataTransfer?.getData(PAGE_DRAG);
+      if (pg) return this.dropPage(Number(pg), e.clientX, e.clientY);
       const files = [...(e.dataTransfer?.files ?? [])];
       const images = files.filter((f) => f.type.startsWith('image/'));
       if (images.length) await insertImages(this.board, images);
@@ -1154,6 +1165,29 @@ export class App {
         else if (/\.(teachly|json)$/i.test(f.name)) await openFile(f);
       }
     });
+  }
+
+  /** A page dragged from the page sorter: its writing is copied at full quality. */
+  private dropPage(i: number, cx: number, cy: number): void {
+    const page = store.doc.pages[i];
+    const src = page?.els ?? [];
+    if (!src.length) return toast('That page is empty');
+    const b = unionRects(src.map(bbox));
+    if (!b) return;
+    const v = this.board.viewRect();
+    const k = Math.min(1, (v.w * 0.5) / Math.max(1, b.w), (v.h * 0.5) / Math.max(1, b.h));
+    const r = this.board.el.getBoundingClientRect();
+    const [wx, wy] = this.board.toWorld(cx - r.left, cy - r.top);
+    const dx = wx - (b.x + (b.w * k) / 2), dy = wy - (b.y + (b.h * k) / 2);
+    const group = uid();
+    const els = src.map((e) => {
+      const out = translateEl(resizeEl({ ...e, id: uid(), group, locked: false } as El, b.x, b.y, k, k), dx, dy);
+      // Lines shrink with the page, so the copy looks exactly like the page.
+      return out.type === 'path' ? { ...out, size: Math.max(0.6, out.size * k) } : out;
+    });
+    store.addEls(els);
+    store.setTool({ tool: 'select' });
+    store.select(els.map((e) => e.id));
   }
 
   private saveTimer = 0;
