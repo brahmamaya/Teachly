@@ -2,9 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.physica.teachly">
 
-    <!-- Privacy: no internet, no storage, no location, no contacts.
-         The only permission is the microphone, asked only when the teacher
-         records a lesson with voice. Everything stays on this device. -->
+    <!-- Privacy: no storage, no location, no contacts, nothing is uploaded.
+         Internet is used only to download Teachly's own newer version from
+         the Teachly website (automatic updates). The microphone is asked
+         only when the teacher records a lesson with voice. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

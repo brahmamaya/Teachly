@@ -29,6 +29,8 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -159,8 +161,12 @@ public class MainActivity extends Activity {
         // Fresh start every time: drop the web cache (notebooks live in the
         // app's own storage and are not touched).
         web.clearCache(true);
+        // A new version downloaded last time? Switch to it before the page loads.
+        if (state == null && Updater.applyPending(this)) toast("Teachly updated to the newest version");
         if (state != null) web.restoreState(state);
         else web.loadUrl(START);
+        // Quietly look for a newer version (used from the next start).
+        Updater.checkInBackground(getApplicationContext());
     }
 
     /** Serve the app's own files (packed in assets/www) on a secure address. */
@@ -169,7 +175,9 @@ public class MainActivity extends Activity {
         String path = u.getPath();
         if (path == null || path.equals("/") || path.isEmpty()) path = "/index.html";
         try {
-            InputStream in = getAssets().open("www" + path);
+            // Newest downloaded version first, else the one inside the APK.
+            File updated = new File(Updater.current(this), path.substring(1));
+            InputStream in = updated.isFile() ? new FileInputStream(updated) : getAssets().open("www" + path);
             String ext = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
             String mime = MIME.containsKey(ext) ? MIME.get(ext) : "application/octet-stream";
             WebResourceResponse res = new WebResourceResponse(mime, "utf-8", in);
