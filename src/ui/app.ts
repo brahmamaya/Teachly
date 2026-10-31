@@ -126,7 +126,7 @@ export class App {
       <div class="board" id="board"></div>
       <div class="corner" aria-hidden="true">
         <div class="clock"><b data-time></b></div>
-        <div class="brand">Teachly</div>
+        <div class="brand"><b>Teachly</b> <small>by Physica</small></div>
       </div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav></div>

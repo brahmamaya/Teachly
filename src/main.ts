@@ -6,7 +6,7 @@ import './ui/install';
 const root = document.getElementById('app')!;
 const app = new App(root);
 
-// Keep the opening screen up for about two seconds from page start, then fade it out.
+// Keep the opening screen up for three seconds from page start, then fade it out.
 const splash = document.getElementById('splash');
 // After an automatic refresh, skip the opening screen: straight back to work.
 let quick = false;
@@ -22,7 +22,7 @@ if (splash) {
       splash.classList.add('hide');
       window.setTimeout(() => splash.remove(), 600);
     },
-    quick ? 0 : Math.max(0, 2000 - performance.now()),
+    quick ? 0 : Math.max(0, 3000 - performance.now()),
   );
 }
 (window as unknown as { teachly: App }).teachly = app;

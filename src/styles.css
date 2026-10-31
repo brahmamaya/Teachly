@@ -3234,3 +3234,23 @@ button:focus-visible {
 #app.slide-on .board {
   cursor: grab;
 }
+
+/* Corner logo: "Teachly by Physica" in the futuristic face. */
+.brand {
+  font-family: 'Orbitron', 'Exo 2', sans-serif;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+.brand b {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+.brand small {
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  opacity: 0.9;
+}

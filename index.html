@@ -13,13 +13,14 @@
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <title>Teachly by Physica</title>
+    <title>Teachly</title>
   </head>
   <body>
     <div id="app"></div>
-    <!-- Opening screen in the Physica style: shown instantly, faded out by src/main.ts after ~2 s. -->
+    <!-- Opening screen in the Physica style: shown instantly, faded out by src/main.ts after 3 s. -->
     <div id="splash" aria-label="Teachly by Physica">
       <style>
+        @font-face { font-family: 'Orbitron'; src: url('./fonts/orbitron.woff2') format('woff2'); font-weight: 400 900; font-display: block; }
         #splash {
           position: fixed;
           inset: 0;
@@ -48,7 +49,7 @@
         #splash .sp-in > :nth-child(2) { animation-delay: 0.12s; }
         #splash .sp-in > :nth-child(3) { animation-delay: 0.3s; }
         #splash .sp-atom {
-          width: clamp(84px, 14vmin, 150px);
+          width: clamp(90px, 15vmin, 190px);
           height: auto;
           filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.35));
         }
@@ -59,33 +60,29 @@
         #splash .sp-name {
           font-family: 'Orbitron', 'Exo 2', sans-serif;
           font-weight: 900;
-          font-size: clamp(38px, 8vmin, 92px);
-          letter-spacing: 0.08em;
+          font-size: min(230px, 15vmin, 13vw);
+          letter-spacing: 0.06em;
           text-transform: uppercase;
           line-height: 1;
-          background: linear-gradient(90deg, #fff 0%, #9a9a9a 30%, #fff 50%, #9a9a9a 70%, #fff 100%);
+          background: linear-gradient(90deg, #fff 0%, #7dd3fc 25%, #fff 50%, #c4b5fd 75%, #fff 100%);
           background-size: 250% 100%;
           -webkit-background-clip: text;
           background-clip: text;
           color: transparent;
-          animation: sp-up 0.9s 0.12s cubic-bezier(0.2, 0.8, 0.2, 1) both, sp-shine 4s linear infinite;
-          filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.3));
+          animation: sp-up 0.9s 0.12s cubic-bezier(0.2, 0.8, 0.2, 1) both, sp-shine 3s linear infinite;
+          filter: drop-shadow(0 0 28px rgba(125, 211, 252, 0.45));
         }
         #splash .sp-by {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: clamp(14px, 2.2vmin, 22px);
-          font-weight: 600;
-          letter-spacing: 0.2em;
-          text-transform: uppercase;
-          color: #bdbdbd;
-        }
-        #splash .sp-by b {
           font-family: 'Orbitron', 'Exo 2', sans-serif;
           font-weight: 800;
-          letter-spacing: 0.06em;
-          text-transform: none;
+          font-size: clamp(22px, 4.6vmin, 70px);
+          letter-spacing: 0.32em;
+          text-transform: uppercase;
+          color: #e5e7eb;
+          text-shadow: 0 0 18px rgba(196, 181, 253, 0.45);
+        }
+        #splash .sp-by b {
+          font-weight: 900;
           color: #fff;
         }
         @keyframes sp-up {
@@ -110,7 +107,7 @@
           <circle cx="32" cy="32" r="3.8" fill="#fff" stroke="none" />
         </svg>
         <div class="sp-name">Teachly</div>
-        <div class="sp-by">by <b>physica.</b></div>
+        <div class="sp-by">by <b>Physica</b></div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
