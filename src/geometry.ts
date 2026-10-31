@@ -170,7 +170,12 @@ export function transformEl<T extends El>(el: T, m: Mat): T {
       pts[i] = x;
       pts[i + 1] = y;
     }
-    return { ...el, pts, size: el.size * s } as T;
+    const rings = el.rings?.map((r) => {
+      const o = r.slice();
+      for (let i = 0; i < o.length; i += 2) [o[i], o[i + 1]] = applyMat(m, o[i], o[i + 1]);
+      return o;
+    });
+    return { ...el, pts, size: el.size * s, ...(rings ? { rings } : {}) } as T;
   }
   const [cx, cy] = applyMat(m, el.x + el.w / 2, el.y + el.h / 2);
   const w = el.w * s, h = el.h * s;
@@ -242,7 +247,8 @@ export function resizeEl<T extends El>(el: T, ax: number, ay: number, sx: number
       pts[i] = ax + (pts[i] - ax) * sx;
       pts[i + 1] = ay + (pts[i + 1] - ay) * sy;
     }
-    return { ...el, pts } as T;
+    const rings = el.rings?.map((r) => r.map((v, i) => (i % 2 ? ay + (v - ay) * sy : ax + (v - ax) * sx)));
+    return { ...el, pts, ...(rings ? { rings } : {}) } as T;
   }
   const x1 = ax + (el.x - ax) * sx, x2 = ax + (el.x + el.w - ax) * sx;
   const y1 = ay + (el.y - ay) * sy, y2 = ay + (el.y + el.h - ay) * sy;

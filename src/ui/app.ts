@@ -459,7 +459,12 @@ export class App {
       case 'fill':
         pop.innerHTML = `<div class="pop-title">Fill colour</div>
           ${this.swatches([...FILLS, '#3b82f6', '#eab308', '#a855f7', '#ffffff'].filter((c, i, a) => a.indexOf(c) === i), t.fillColor, 'fillc', `<button class="swatch none ${t.fillColor === 'none' ? 'on' : ''}" data-fillc="none" aria-label="Remove fill"></button>`)}
-          <div class="muted small center">Tap inside any shape or drawing to colour it.</div>`;
+          <div class="slider-row">
+            <span class="slider-label">Transparency</span>
+            <input type="range" id="fill-opacity" min="0" max="90" step="5" value="${Math.round((1 - t.fillOpacity) * 100)}" data-fillop aria-label="Fill transparency in percent">
+            <span class="slider-preview"><b data-fillopv>${Math.round((1 - t.fillOpacity) * 100)}%</b></span>
+          </div>
+          <div class="muted small center">Tap inside any closed area to colour just that area.<br>Tap a coloured area again to change it.</div>`;
         break;
       case 'tape':
         pop.innerHTML = `<div class="pop-title">Tape</div>
@@ -640,6 +645,10 @@ export class App {
       Object.assign(store.tool, store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
       const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
       if (prev) prev.style.width = prev.style.height = `${Math.min(26, v + 2)}px`;
+    } else if (el.dataset.fillop !== undefined) {
+      store.tool.fillOpacity = 1 - v / 100;
+      const out = this.popover?.querySelector('[data-fillopv]') as HTMLElement | null;
+      if (out) out.textContent = `${v}%`;
     } else if (el.dataset.erasersize !== undefined) {
       store.tool.eraserSize = v;
       const prev = this.popover?.querySelector('[data-eraserprev]') as HTMLElement | null;

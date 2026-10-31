@@ -25,6 +25,12 @@ export interface PathEl {
   arc?: boolean;
   /** Pressure was simulated (mouse / touch). */
   sim?: boolean;
+  /**
+   * A paint-bucket fill: `pts` is the outline of the area and `rings` the
+   * other edges (holes inside it), filled with `fill` (even-odd) and no line.
+   */
+  region?: boolean;
+  rings?: number[][];
   locked?: boolean;
 }
 

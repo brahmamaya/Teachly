@@ -183,8 +183,30 @@ function drawArrowHead(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2
   ctx.fill();
 }
 
+const regionCache = new WeakMap<PathEl, Path2D>();
+/** Outline + holes of a paint-bucket fill, as one path. */
+function regionPath(el: PathEl): Path2D {
+  let p = regionCache.get(el);
+  if (p) return p;
+  p = new Path2D();
+  for (const [ring, stride] of [[el.pts, 3], ...(el.rings ?? []).map((r) => [r, 2] as const)] as [number[], number][]) {
+    for (let i = 0; i < ring.length; i += stride) (i ? p.lineTo : p.moveTo).call(p, ring[i], ring[i + 1]);
+    p.closePath();
+  }
+  regionCache.set(el, p);
+  return p;
+}
+
 export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
   ctx.globalAlpha = el.style === 'highlighter' ? 0.38 * el.opacity : el.opacity;
+  if (el.region) {
+    if (el.fill) {
+      ctx.fillStyle = el.fill;
+      ctx.fill(regionPath(el), 'evenodd');
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
   if (el.style === 'shape') {
     const p = getPath(el);
     if (el.fill && el.closed) {

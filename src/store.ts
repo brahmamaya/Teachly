@@ -32,6 +32,8 @@ export interface ToolState {
   fontSize: number;
   /** Paint bucket colour ('none' clears a fill). */
   fillColor: string;
+  /** Paint-bucket see-through: 0.1 (faint) … 1 (solid). */
+  fillOpacity: number;
   laserColor: string;
   tapeColor: string;
   /** Slide mode (✋): the board can be slid / zoomed while writing. */
@@ -91,6 +93,7 @@ export class Store {
     eraserSize: 30,
     fontSize: 22,
     fillColor: '#3b82f6',
+    fillOpacity: 1,
     laserColor: '#ef4444',
     tapeColor: '#f59e0b',
     slide: false,

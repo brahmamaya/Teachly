@@ -23,6 +23,8 @@ function densify(pts: number[], step: number): number[] {
 
 /** Split a path, removing points within radius r of segment (ax,ay)-(bx,by). */
 export function splitPath(el: PathEl, ax: number, ay: number, bx: number, by: number, r: number): PathEl[] | null {
+  // Rubbing out lines leaves paint-bucket fills alone (Object eraser removes them).
+  if (el.region) return null;
   let pts = el.pts;
   if (el.closed) pts = pts.concat([pts[0], pts[1], pts[2]]);
   pts = densify(pts, Math.max(1, r / 2));
