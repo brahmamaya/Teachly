@@ -8,7 +8,7 @@ const P: Record<string, string> = {
   eraser: '<path d="M7 21h10"/><path d="M5 15l9-9a2 2 0 0 1 3 0l3 3a2 2 0 0 1 0 3l-8 8H8l-3-3a2 2 0 0 1 0-2z"/>',
   shapes: '<rect x="3" y="12" width="9" height="9" rx="1"/><circle cx="16.5" cy="7.5" r="4.5"/>',
   text: '<path d="M5 6V4h14v2"/><path d="M12 4v16"/><path d="M9 20h6"/>',
-  laser: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+  laser: '<path d="M4 20l7.5-7.5"/><path d="M9.5 10.5l4 4"/><circle cx="17" cy="7" r="2.6" fill="currentColor"/><path d="M17 1.8v1.4M17 10.8v1.4M11.8 7h1.4M20.8 7h1.4M13.4 3.4l1 1M19.6 9.6l1 1M20.6 3.4l-1 1"/>',
   pan: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
   undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
   redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>',

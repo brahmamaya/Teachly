@@ -602,8 +602,12 @@ export class Board {
     // in use) or the right mouse button slide the board; on boards without
     // a stylus one finger writes and two fingers slide.
     const slide = store.tool.slide;
-    const slidePan = slide && (p.button === 2 || (p.type === 'touch' && store.settings.penOnly && !multi));
-    if (p.button === 1 || this.spaceDown || slidePan || (!multi && store.settings.penOnly && p.type === 'touch')) {
+    // The laser pointer works with anything — finger, pen or mouse — whatever
+    // the "stylus only" setting (it writes nothing, so nothing to reject).
+    const laser = store.tool.tool === 'laser';
+    const fingerRest = !laser && !multi && store.settings.penOnly && p.type === 'touch';
+    const slidePan = slide && (p.button === 2 || fingerRest);
+    if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
       if (slide) {
         // Double-tap: zoom in 2× there, or back to the whole page.
         const now = performance.now(), lt = this.lastHandTap;
@@ -624,7 +628,7 @@ export class Board {
       return;
     }
 
-    if (this.isPalm(p) && store.tool.tool !== 'eraser') {
+    if (this.isPalm(p) && store.tool.tool !== 'eraser' && store.tool.tool !== 'laser') {
       this.override = this.tools.get('eraser')!;
       (this.override as unknown as { palm: boolean }).palm = true;
       this.routed.set(p.id, 'override');

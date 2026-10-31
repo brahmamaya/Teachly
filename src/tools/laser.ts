@@ -95,15 +95,20 @@ export class LaserTool implements Tool {
       for (let i = 2; i < p.length - 2; i += 2) ctx.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2);
       if (p.length > 2) ctx.lineTo(p[p.length - 2], p[p.length - 1]);
       // Soft glow, coloured body and a bright core, like a real laser.
-      ctx.globalAlpha = alpha * 0.25;
+      // Wide soft glow, bright coloured body, white-hot core — easy to see
+      // from the back of the class on a big board.
+      ctx.globalAlpha = alpha * 0.22;
       ctx.strokeStyle = color;
-      ctx.lineWidth = 18 * px;
+      ctx.lineWidth = 26 * px;
+      ctx.stroke();
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.lineWidth = 14 * px;
       ctx.stroke();
       ctx.globalAlpha = alpha;
-      ctx.lineWidth = 7 * px;
+      ctx.lineWidth = 8 * px;
       ctx.stroke();
-      ctx.strokeStyle = '#ffe4e4';
-      ctx.lineWidth = 2.5 * px;
+      ctx.strokeStyle = '#fff5f5';
+      ctx.lineWidth = 3 * px;
       ctx.stroke();
     }
     if (this.tip) {
