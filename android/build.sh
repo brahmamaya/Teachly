@@ -36,7 +36,7 @@ rm -f "$OUT/assets/www/Teachly.html" "$OUT/assets/www/Teachly.apk" "$OUT/assets/
 # 2. Resources + manifest.
 "$AAPT2" compile --dir "$HERE/res" -o "$OUT/res.zip"
 "$AAPT2" link -I "$FRAMEWORK" --manifest "$HERE/AndroidManifest.xml" \
-  --min-sdk-version 24 --target-sdk-version 33 \
+  --min-sdk-version 24 --target-sdk-version 35 \
   --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
   -A "$OUT/assets" -o "$OUT/base.apk" "$OUT/res.zip"
 

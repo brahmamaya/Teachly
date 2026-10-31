@@ -8,7 +8,6 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -30,8 +29,6 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -48,7 +45,7 @@ public class MainActivity extends Activity {
     private static final String START = "https://" + HOST + "/index.html";
     private static final int REQ_FILE = 1;
     private static final int REQ_MIC = 2;
-    private static final int REQ_STORAGE = 3;
+    private static final int REQ_SAVE = 3;
 
     private static final Map<String, String> MIME = new HashMap<String, String>();
     static {
@@ -224,6 +221,22 @@ public class MainActivity extends Activity {
             fileCallback = null;
             return;
         }
+        if (requestCode == REQ_SAVE && pendingData != null) {
+            byte[] d = pendingData;
+            pendingData = null;
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    OutputStream os = getContentResolver().openOutputStream(data.getData());
+                    if (os == null) throw new IOException("Could not write the file");
+                    os.write(d);
+                    os.close();
+                    toast("Saved: " + pendingName);
+                } catch (Exception e) {
+                    toast("Could not save: " + e.getMessage());
+                }
+            }
+            return;
+        }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
@@ -264,24 +277,17 @@ public class MainActivity extends Activity {
                 os.write(data);
                 os.close();
             } else {
-                if (Build.VERSION.SDK_INT >= 23 && !hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                    pendingData = data;
-                    pendingName = name;
-                    pendingMime = mime;
-                    askPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQ_STORAGE);
-                    return;
-                }
-                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Teachly");
-                if (!dir.exists() && !dir.mkdirs()) throw new IOException("Could not create Downloads/Teachly");
-                File f = new File(dir, name);
-                int i = 1;
-                String base = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
-                String ext = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
-                while (f.exists()) f = new File(dir, base + " (" + (i++) + ")" + ext);
-                FileOutputStream os = new FileOutputStream(f);
-                os.write(data);
-                os.close();
-                MediaScannerConnection.scanFile(this, new String[] { f.getAbsolutePath() }, new String[] { mime }, null);
+                // Android 7–9: no storage permission; the system "Save to"
+                // screen lets the teacher pick where the file goes.
+                pendingData = data;
+                pendingName = name;
+                pendingMime = mime;
+                Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                save.addCategory(Intent.CATEGORY_OPENABLE);
+                save.setType(mime);
+                save.putExtra(Intent.EXTRA_TITLE, name);
+                startActivityForResult(save, REQ_SAVE);
+                return;
             }
             toast("Saved in Downloads/Teachly: " + name);
         } catch (Exception e) {
@@ -306,11 +312,6 @@ public class MainActivity extends Activity {
             if (ok) pendingMic.grant(pendingMic.getResources());
             else pendingMic.deny();
             pendingMic = null;
-        } else if (requestCode == REQ_STORAGE && pendingData != null) {
-            byte[] d = pendingData;
-            pendingData = null;
-            if (ok) save(d, pendingName, pendingMime);
-            else toast("Allow storage to save files");
         }
     }
 
