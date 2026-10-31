@@ -3499,23 +3499,13 @@ button:focus-visible {
 }
 
 /* The bars always touch the bottom of the screen. Android boards report the
-   hidden navigation bar as a "safe area", which left a gap; only iPhone and
-   iPad (home bar) keep that space. */
+   hidden navigation bar as a "safe area", which left a gap (iPad too). */
 #app[data-board] .toolbar,
 #app .toolbar {
   bottom: 0;
 }
 #app.tb-stacked .tb-right {
   bottom: calc(46px * var(--ui));
-}
-@supports (-webkit-touch-callout: none) {
-  #app[data-board] .toolbar,
-  #app .toolbar {
-    bottom: env(safe-area-inset-bottom, 0px);
-  }
-  #app.tb-stacked .tb-right {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 46px * var(--ui));
-  }
 }
 
 .app-version {
