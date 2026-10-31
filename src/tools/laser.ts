@@ -5,8 +5,9 @@ import { store } from '../store';
 // while you keep pointing, then disappears by itself 3 seconds after the
 // last stroke. Nothing is written on the page.
 
-const HOLD_MS = 3000;
-const FADE_MS = 450;
+// After lifting: a short pause, then a smooth fade — gone in 1.5 s.
+const HOLD_MS = 300;
+const FADE_MS = 1200;
 
 interface Trail {
   pts: number[];
@@ -79,7 +80,9 @@ export class LaserTool implements Tool {
       const since = performance.now() - this.lastUp;
       if (since > HOLD_MS + FADE_MS) this.trails = [];
       else if (since > HOLD_MS) {
-        alpha = 1 - (since - HOLD_MS) / FADE_MS;
+        // Ease-out fade: dims gently, no sudden drop.
+        const k = (since - HOLD_MS) / FADE_MS;
+        alpha = 1 - k * k * (3 - 2 * k);
         fading = true;
       }
     }
@@ -87,48 +90,58 @@ export class LaserTool implements Tool {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     for (const t of this.trails) {
-      const p = t.pts;
+      const p = smooth(t.pts);
       ctx.beginPath();
       ctx.moveTo(p[0], p[1]);
       if (p.length === 2) ctx.lineTo(p[0] + 0.01, p[1]);
       // Smooth curve through the midpoints.
       for (let i = 2; i < p.length - 2; i += 2) ctx.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2);
       if (p.length > 2) ctx.lineTo(p[p.length - 2], p[p.length - 1]);
-      // Soft glow, coloured body and a bright core, like a real laser.
-      // Wide soft glow, bright coloured body, white-hot core — easy to see
-      // from the back of the class on a big board.
-      ctx.globalAlpha = alpha * 0.22;
+      // Thin and clean: a soft halo, a slim coloured line, a bright core.
+      ctx.globalAlpha = alpha * 0.25;
       ctx.strokeStyle = color;
-      ctx.lineWidth = 26 * px;
-      ctx.stroke();
-      ctx.globalAlpha = alpha * 0.5;
-      ctx.lineWidth = 14 * px;
+      ctx.lineWidth = 9 * px;
       ctx.stroke();
       ctx.globalAlpha = alpha;
-      ctx.lineWidth = 8 * px;
+      ctx.lineWidth = 3.4 * px;
       ctx.stroke();
       ctx.strokeStyle = '#fff5f5';
-      ctx.lineWidth = 3 * px;
+      ctx.lineWidth = 1.2 * px;
       ctx.stroke();
     }
     if (this.tip) {
       const [x, y] = this.tip;
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(x, y, 16 * px, 0, Math.PI * 2);
+      ctx.arc(x, y, 9 * px, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.beginPath();
-      ctx.arc(x, y, 6.5 * px, 0, Math.PI * 2);
+      ctx.arc(x, y, 4 * px, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(x, y, 2.5 * px, 0, Math.PI * 2);
+      ctx.arc(x, y, 1.6 * px, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
     // Animate only during the short fade-out.
     return fading;
   }
+}
+
+/** Gentle smoothing of the trail (two light passes), ends kept in place. */
+function smooth(p: number[]): number[] {
+  if (p.length < 8) return p;
+  let a = p;
+  for (let pass = 0; pass < 2; pass++) {
+    const b = a.slice();
+    for (let i = 2; i < a.length - 2; i += 2) {
+      b[i] = (a[i - 2] + a[i] * 2 + a[i + 2]) / 4;
+      b[i + 1] = (a[i - 1] + a[i + 1] * 2 + a[i + 3]) / 4;
+    }
+    a = b;
+  }
+  return a;
 }

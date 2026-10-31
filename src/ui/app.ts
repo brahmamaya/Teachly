@@ -428,7 +428,7 @@ export class App {
       case 'laser':
         pop.innerHTML = `<div class="pop-title">Laser pointer</div>
           ${this.swatches(['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899'], t.laserColor, 'laserc')}
-          <div class="muted small center">Draw to point things out — it disappears 3 seconds after you stop.</div>`;
+          <div class="muted small center">Draw to point things out — it fades away 1.5 seconds after you lift.</div>`;
         break;
       case 'eraser':
         pop.innerHTML = `
