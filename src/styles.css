@@ -4088,3 +4088,7 @@ button:active:not(:disabled) {
   font-size: 12.5px;
   color: #64748b;
 }
+/* Pen colours: two rows of six, in the owner's order. */
+.pop-pen .swatches {
+  grid-template-columns: repeat(6, 30px);
+}

@@ -40,14 +40,13 @@ import { PAGE_DRAG, PagesPanel } from './pages';
 import { fadeOut, toast } from './panel';
 import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 
-// Natural colours, chosen for the board you are on. Both lists keep the same
-// order (white↔black, blue, red, green, orange, pink, yellow, purple), so
-// switching board swaps the pen to the matching readable colour.
-/** Chalk on a blackboard: soft, bright, never neon. */
-const CHALK = ['#ffffff', '#6cb4ee', '#ff6b5b', '#7ccf7f', '#ffad4d', '#f590b8', '#ffe066', '#b9a2e8'];
-/** Markers on a white or green board: deep and rich. */
-const MARKERS = ['#1a1a1a', '#1f4fb4', '#c62828', '#2e7d32', '#e0620d', '#ad1457', '#9a6b00', '#5e35b1'];
-const boardColors = (): string[] => (isDarkColor(store.page.bg) ? CHALK : MARKERS);
+// The owner's pen colours, exactly as chosen (row by row: red, orange,
+// yellow / green, indigo, blue / teal, magenta, dark green / black, brown,
+// white). Do not change these values.
+const PEN_COLORS = ['#db0000', '#ed6d00', '#febf00', '#4ceb45', '#2600a2', '#174ebd', '#3c8da4', '#d500a6', '#096800', '#000000', '#726253', '#f2f2f0'];
+const PEN_WHITE = '#f2f2f0';
+const PEN_BLACK = '#000000';
+const boardColors = (): string[] => PEN_COLORS;
 /** Three pens like Note 3 (plus the highlighter). */
 const PEN_TYPES: [ToolState['penStyle'], string][] = [
   ['pen', 'Pen'],
@@ -659,14 +658,15 @@ export class App {
   private setBoard(patch: { bg?: string; pattern?: BgPattern }): void {
     store.updatePage(patch);
     if (patch.bg) {
-      // Keep the pen readable: swap to the matching colour for this board.
+      // Keep the pen readable: white ink on a dark board, black on a light one.
       // (Ink already on the board keeps its colour.)
       const dark = isDarkColor(patch.bg);
-      const [from, to] = dark ? [MARKERS, CHALK] : [CHALK, MARKERS];
+      const whites = [PEN_WHITE, '#ffffff'], blacks = [PEN_BLACK, '#1a1a1a', '#1e293b'];
       const swap = (c: string): string | null => {
-        if (dark && c === '#1e293b') return CHALK[0];
-        const i = from.indexOf(c.toLowerCase());
-        return i >= 0 ? to[i] : null;
+        const x = c.toLowerCase();
+        if (dark && blacks.includes(x)) return PEN_WHITE;
+        if (!dark && whites.includes(x)) return PEN_BLACK;
+        return null;
       };
       const c = swap(store.tool.color), sc = swap(store.tool.shapeColor);
       if (c || sc) store.setTool({ ...(c ? { color: c } : {}), ...(sc ? { shapeColor: sc } : {}) });
