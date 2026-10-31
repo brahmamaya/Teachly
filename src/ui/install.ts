@@ -26,7 +26,7 @@ export function isInstalled(): boolean {
   return matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
 }
 
-function isAppleTouch(): boolean {
+export function isAppleTouch(): boolean {
   const ua = navigator.userAgent;
   // iPadOS reports itself as a Mac, but has touch.
   return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);

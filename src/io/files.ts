@@ -4,6 +4,7 @@ import { fitInPage, PAGE } from '../page';
 import { pageRegion, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
+import { isAppleTouch } from '../ui/install';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,6 +46,22 @@ export function download(blob: Blob, name: string): void {
     r.readAsDataURL(blob);
     return;
   }
+  // iPad / iPhone: the share sheet (Save to Files, AirDrop, WhatsApp…)
+  // instead of Safari's download page.
+  const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+  if (isAppleTouch() && nav.share && nav.canShare) {
+    const file = new File([blob], name, { type: blob.type || 'application/octet-stream' });
+    if (nav.canShare({ files: [file] })) {
+      nav.share({ files: [file] } as ShareData).catch((e: Error) => {
+        if (e.name !== 'AbortError') saveWithLink(blob, name);
+      });
+      return;
+    }
+  }
+  saveWithLink(blob, name);
+}
+
+function saveWithLink(blob: Blob, name: string): void {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -171,12 +188,13 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
 
 export function saveFile(): void {
   const doc = store.doc;
-  const blob = new Blob([JSON.stringify(doc)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(doc)], { type: 'application/octet-stream' });
   download(blob, `${safeName(doc.title)}.teachly`);
 }
 
 export async function openFile(file?: File): Promise<void> {
-  file ??= (await pickFiles('.teachly,.json,application/json'))[0];
+  // iPad / iPhone do not know the .teachly type and would grey the file out.
+  file ??= (await pickFiles(isAppleTouch() ? '' : '.teachly,.json,application/json'))[0];
   if (!file) return;
   try {
     const doc = JSON.parse(await file.text()) as Doc;
