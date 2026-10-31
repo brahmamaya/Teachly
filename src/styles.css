@@ -3451,9 +3451,9 @@ button:focus-visible {
   --ind-shadow: inset 0 0 0 1.5px rgba(37, 99, 235, 0.45);
 }
 #app .toolbar {
-  --text: #111111;
-  --muted: #111111;
-  color: #111111;
+  --text: #0f172a;
+  --muted: #334155;
+  color: #0f172a;
 }
 #app .toolbar .tb-btn .icon {
   stroke-width: 2.2;
@@ -3473,12 +3473,47 @@ button:focus-visible {
 #app .toolbar .page-label {
   color: #0f172a;
 }
-/* All toolbar icons are plain black. */
-#app .toolbar .tb-btn,
-#app .toolbar .icon-btn {
-  color: #111111;
-}
+/* Each button keeps its own colour, so tools are found at a glance. */
+#app .toolbar [data-tool='select'] { color: #1e293b; }
+#app .toolbar [data-act='slide'] { color: #b45309; }
+#app .toolbar [data-tool='pen'] { color: #1d4ed8; }
+#app .toolbar [data-tool='eraser'] { color: #db2777; }
+#app .toolbar [data-tool='shape'] { color: #7c3aed; }
+#app .toolbar [data-tool='fill'] { color: #0e7490; }
+#app .toolbar [data-tool='text'] { color: #111827; }
+#app .toolbar [data-tool='tape'] { color: #c2410c; }
+#app .toolbar [data-tool='laser'] { color: #dc2626; }
+#app .toolbar [data-act='undo'],
+#app .toolbar [data-act='redo'] { color: #15803d; }
+#app .toolbar [data-pop='insert'] { color: #1d4ed8; }
+#app .toolbar [data-pop='tools'] { color: #ea580c; }
+#app .toolbar [data-act='timer'] { color: #0d9488; }
+#app .toolbar [data-act='graph'] { color: #4f46e5; }
+#app .toolbar [data-act='prev'],
+#app .toolbar [data-act='next'] { color: #334155; }
+#app .toolbar [data-act='pages'] { color: #475569; }
+#app .toolbar [data-pop='menu'] { color: #0f172a; }
 /* Colour marks (pen, fill, tape) stay visible on the white bar, even white ink. */
 #app .toolbar .swatch-dot {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.45);
+}
+
+/* The bars always touch the bottom of the screen. Android boards report the
+   hidden navigation bar as a "safe area", which left a gap; only iPhone and
+   iPad (home bar) keep that space. */
+#app[data-board] .toolbar,
+#app .toolbar {
+  bottom: 0;
+}
+#app.tb-stacked .tb-right {
+  bottom: calc(46px * var(--ui));
+}
+@supports (-webkit-touch-callout: none) {
+  #app[data-board] .toolbar,
+  #app .toolbar {
+    bottom: env(safe-area-inset-bottom, 0px);
+  }
+  #app.tb-stacked .tb-right {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 46px * var(--ui));
+  }
 }
