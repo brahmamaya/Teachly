@@ -1,6 +1,7 @@
 // Teachly service worker: works offline, but always shows the newest version
 // when online. Pages are network-first; hashed build assets are cache-first.
 const CACHE = 'teachly-v4';
+// Only Teachly's own old caches are removed: other apps on the same site keep theirs.
 
 // Download the whole app up front so it works offline from the first launch
 // (important when it is installed on an iPad home screen).
@@ -21,7 +22,7 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('teachly-') && k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
   );
 });
 

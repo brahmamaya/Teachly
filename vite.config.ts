@@ -25,12 +25,30 @@ function precacheList(): Plugin {
   };
 }
 
+/**
+ * Content-Security-Policy for the web build: only Teachly's own files run,
+ * nothing is loaded from or sent to other sites. (Not in the single-file
+ * pen-drive version, which inlines its scripts.)
+ */
+const CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; " +
+  "media-src 'self' data: blob:; connect-src 'self' data: blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
+function csp(): Plugin {
+  return {
+    name: 'teachly-csp',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`);
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
   define: {
     __BUILD__: JSON.stringify(new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })),
   },
-  plugins: [precacheList()],
+  plugins: [precacheList(), csp()],
   build: {
     // Older Android boards run older browsers: translate newer syntax.
     target: ['es2019', 'chrome80', 'safari14'],
