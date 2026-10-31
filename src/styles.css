@@ -3377,3 +3377,15 @@ button:focus-visible {
 .gx-stage {
   background: #000;
 }
+
+/* Lite mode (big Android boards, modest devices): no blur, no shadows on
+   floating bars, short animations — every frame goes to the ink. */
+.lite *,
+.lite *::before,
+.lite *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.lite .board canvas {
+  will-change: auto;
+}

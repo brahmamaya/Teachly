@@ -1,7 +1,11 @@
 import './polyfills';
 import './styles.css';
 import { App } from './ui/app';
+import { liteDevice } from './board';
 import './ui/install';
+
+// Big classroom boards have slow graphics chips: drop costly glass blur there.
+if (liteDevice()) document.documentElement.classList.add('lite');
 
 const root = document.getElementById('app')!;
 const app = new App(root);

@@ -52,6 +52,18 @@ export interface Tool {
 
 type Layer = 'bg' | 'ink' | 'overlay';
 
+/**
+ * Android classroom boards (and devices with few cores / little memory)
+ * run in "lite" mode: fewer pixels per layer, no blur effects.
+ */
+export function liteDevice(): boolean {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const modest = (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 3;
+  const android = /Android/i.test(navigator.userAgent);
+  const bigScreen = Math.min(screen.width, screen.height) >= 700;
+  return modest || (android && bigScreen);
+}
+
 export class Board {
   readonly el: HTMLElement;
   readonly bg: HTMLCanvasElement;
@@ -247,6 +259,7 @@ export class Board {
 
   resize(): void {
     const r = this.el.getBoundingClientRect();
+    this.rect = { left: r.left, top: r.top };
     this.w = r.width;
     this.h = r.height;
     // Sharp on retina phones, but cap the pixel count so 4K / 86" panels
@@ -254,9 +267,9 @@ export class Board {
     const area = Math.max(1, r.width * r.height);
     // Pixel budget per layer: full 4K on strong devices; lighter on modest
     // classroom boards (few cores / little memory) so writing never lags.
-    const nav = navigator as Navigator & { deviceMemory?: number };
-    const modest = (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 3;
-    const budget = modest ? 3_800_000 : 8_400_000;
+    // Classroom boards (Android panels) and modest devices get a lighter
+    // budget so writing never lags; iPads, laptops and phones stay sharp.
+    const budget = liteDevice() ? 2_800_000 : 8_400_000;
     this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
     for (const c of [this.bg, this.ink, this.wet, this.overlay]) {
       c.width = Math.round(r.width * this.dpr);
@@ -394,8 +407,11 @@ export class Board {
 
   // ---- input -----------------------------------------------------------------
 
+  /** Board position on screen, measured on resize (not on every pointer event). */
+  private rect = { left: 0, top: 0 };
+
   private makePtr(e: PointerEvent): Ptr {
-    const r = this.el.getBoundingClientRect();
+    const r = this.rect;
     const conv = (ev: PointerEvent): [number, number, number] => {
       const [x, y] = this.toWorld(ev.clientX - r.left, ev.clientY - r.top);
       return [x, y, this.pressure(ev)];

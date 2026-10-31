@@ -221,6 +221,22 @@ export function isPath(el: El): el is PathEl {
  */
 export function resizeEl<T extends El>(el: T, ax: number, ay: number, sx: number, sy: number): T {
   if (el.type === 'path') {
+    // Small closed marks inside a group (graph points) keep their round shape:
+    // they move with the stretch but are scaled evenly.
+    if (el.group && el.closed && sx !== sy) {
+      const b = bbox(el);
+      if (b.w < 40 && b.h < 40) {
+        const k = Math.min(Math.abs(sx), Math.abs(sy));
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        const nx = ax + (cx - ax) * sx, ny = ay + (cy - ay) * sy;
+        const pts = el.pts.slice();
+        for (let i = 0; i < pts.length; i += 3) {
+          pts[i] = nx + (pts[i] - cx) * k;
+          pts[i + 1] = ny + (pts[i + 1] - cy) * k;
+        }
+        return { ...el, pts } as T;
+      }
+    }
     const pts = el.pts.slice();
     for (let i = 0; i < pts.length; i += 3) {
       pts[i] = ax + (pts[i] - ax) * sx;
@@ -231,7 +247,17 @@ export function resizeEl<T extends El>(el: T, ax: number, ay: number, sx: number
   const x1 = ax + (el.x - ax) * sx, x2 = ax + (el.x + el.w - ax) * sx;
   const y1 = ay + (el.y - ay) * sy, y2 = ay + (el.y + el.h - ay) * sy;
   const out = { ...el, x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) } as BoxEl;
-  if (out.type === 'text') out.fontSize = (el as unknown as { fontSize: number }).fontSize * Math.abs(sx);
+  if (out.type === 'text') {
+    // Writing never gets squashed: a sideways or up-down stretch moves it and
+    // scales it by the smaller of the two factors.
+    const k = Math.min(Math.abs(sx), Math.abs(sy));
+    const cx = out.x + out.w / 2, cy = out.y + out.h / 2;
+    out.w = el.w * k;
+    out.h = el.h * k;
+    out.x = cx - out.w / 2;
+    out.y = cy - out.h / 2;
+    out.fontSize = (el as unknown as { fontSize: number }).fontSize * k;
+  }
   return out as T;
 }
 

@@ -119,6 +119,8 @@ export class PenTool implements Tool {
       l.midX = mx;
       l.midY = my;
     }
+    // Reach the pen tip too (the next curve starts from the midpoint again).
+    ctx.lineTo(l.pts[(n - 1) * 3], l.pts[(n - 1) * 3 + 1]);
     ctx.stroke();
     l.drawnTo = n - 1;
   }
@@ -191,8 +193,14 @@ export class PenTool implements Tool {
       l.lastY = y;
     }
     l.predicted = [];
-    if (l.marker) this.drawWet(l);
-    else if (!l.snapper) for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
+    if (l.marker) {
+      // Marker: the wet layer alone shows the line — no full-screen redraw per move.
+      this.drawWet(l);
+      const n2 = l.pts.length;
+      if (n2 >= 6 && dist(l.pts[n2 - 3], l.pts[n2 - 2], l.pts[n2 - 6], l.pts[n2 - 5]) > 2 * this.board.px) this.armHold(p.id, l);
+      return;
+    }
+    if (!l.snapper) for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
     // Re-arm hold detection only when the pen actually moved noticeably.
     const n = l.pts.length;
     if (n >= 6 && dist(l.pts[n - 3], l.pts[n - 2], l.pts[n - 6], l.pts[n - 5]) > 2 * this.board.px) this.armHold(p.id, l);
@@ -272,19 +280,7 @@ export class PenTool implements Tool {
       }
       // Same smoothing as the finished stroke, so the line does not jump
       // when the pen is lifted.
-      if (l.marker) {
-        // The wet layer holds the line; here only the last little bit up to the finger.
-        const n = l.pts.length;
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = l.color;
-        ctx.lineWidth = l.size;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(l.midX, l.midY);
-        ctx.lineTo(l.pts[n - 3], l.pts[n - 2]);
-        ctx.stroke();
-        continue;
-      }
+      if (l.marker) continue; // drawn on the wet-ink layer
       const raw = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
       const pts = l.snapper || l.style === 'pen' || l.style === 'highlighter' ? raw : smoothPts(raw);
       ctx.globalAlpha = l.style === 'highlighter' ? 0.38 : 1;

@@ -45,7 +45,11 @@ export class SelectTool implements Tool {
 
   /** Can the selection be stretched in one direction (no text, pictures or rotated items)? */
   private stretchable(): boolean {
-    return store.selectedEls().every((e) => e.type === 'path' || e.type === 'table');
+    const els = store.selectedEls();
+    if (els.every((e) => e.type === 'path' || e.type === 'table')) return true;
+    // One group (a graph): free stretch sideways or up-down; its writing stays readable.
+    const g = els[0]?.group;
+    return !!g && els.every((e) => e.group === g && (e.type === 'path' || e.type === 'text' || e.type === 'table'));
   }
 
   private handles(r: Rect): { grips: Handle[]; rot: [number, number] } {
