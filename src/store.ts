@@ -11,6 +11,8 @@ export interface Settings {
   allowZoom: boolean;
   /** Where the toolbars sit. */
   tbPos: 'bottom' | 'top' | 'left' | 'right';
+  /** Toolbar buttons the teacher switched off (Menu → Edit toolbar). */
+  tbHidden: string[];
 }
 
 export interface ToolState {
@@ -53,6 +55,7 @@ function loadSettings(): Settings {
     multiWrite: false,
     allowZoom: false,
     tbPos: 'bottom',
+    tbHidden: [],
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

@@ -132,7 +132,8 @@ export type ShapeKind =
   | 'axes3'
   | 'arc';
 
-export type EraserMode = 'stroke' | 'point';
+/** point: erase part · stroke: the whole object touched · area: everything inside a loop */
+export type EraserMode = 'stroke' | 'point' | 'area';
 
 export interface Rect {
   x: number;

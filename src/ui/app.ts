@@ -53,7 +53,8 @@ const PEN_TYPES: [ToolState['penStyle'], string][] = [
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
 const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#e2e8f0', '#1e293b', '#ef4444', '#2563eb', '#22c55e'];
 /** Board colours: dark boards first (default black), then light ones. */
-const BOARDS = ['#000000', '#1f2937', '#0f1e3d', '#123524', '#14532d', '#3b0d14', '#2e1065', '#ffffff', '#fdf6e3', '#e5e7eb', '#dbeafe', '#dcfce7'];
+/** Board colours: black (default), white, light green — plus “any colour”. */
+const BOARDS = ['#000000', '#ffffff', '#cdebd3'];
 const PATTERNS: [BgPattern, string][] = [
   ['none', 'Plain'],
   ['grid', 'Grid'],
@@ -90,6 +91,27 @@ const SHAPES: [ShapeKind, string, string][] = [
 ];
 
 type PropSection = 'color' | 'width' | 'fill' | null;
+
+/** Toolbar buttons the teacher can show or hide (Menu → Edit toolbar). Menu itself always stays. */
+const TB_ITEMS: [string, string, 'left' | 'right'][] = [
+  ['select', 'Select', 'left'],
+  ['slide', 'Slide (move the board)', 'left'],
+  ['pen', 'Pen', 'left'],
+  ['eraser', 'Eraser', 'left'],
+  ['shape', 'Shapes', 'left'],
+  ['fill', 'Fill colour', 'left'],
+  ['text', 'Text', 'left'],
+  ['tape', 'Tape', 'left'],
+  ['laser', 'Laser pointer', 'left'],
+  ['undo', 'Undo', 'right'],
+  ['redo', 'Redo', 'right'],
+  ['insert', 'Insert (picture, PDF, slides…)', 'right'],
+  ['tools', 'Tools (ruler, compass…)', 'right'],
+  ['timer', 'Timer', 'right'],
+  ['graph', 'Graph', 'right'],
+  ['pagenav', 'Page arrows', 'right'],
+  ['pages', 'All pages', 'right'],
+];
 
 const RECENT_KEY = 'teachly.recentColors';
 function recentColors(): string[] {
@@ -212,14 +234,14 @@ export class App {
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && window.setTimeout(relayout, 200));
     window.setTimeout(relayout, 600);
     // Only a new button size needs a re-layout (other settings keep the menu open).
-    let layout = store.settings.tbPos;
+    let layout = store.settings.tbHidden.join();
     store.on('settings', () => {
-      const now = store.settings.tbPos;
+      const now = store.settings.tbHidden.join();
       if (now === layout) return;
       layout = now;
-      this.applyScale();
+      this.renderToolbar();
+      this.applyScale(true);
     });
-    this.bindGrip();
     // Never lose work when the app is closed or hidden.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
@@ -247,32 +269,33 @@ export class App {
       `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 22)}${extra}</button>`;
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
+    const hide = new Set(store.settings.tbHidden);
+    const show = (k: string, html: string) => (hide.has(k) ? '' : html);
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
-      <button class="tb-grip" data-grip title="Drag to move the toolbar to any edge" aria-label="Move toolbar"><svg viewBox="0 0 12 20" width="10" height="18" fill="currentColor"><circle cx="3" cy="4" r="1.6"/><circle cx="9" cy="4" r="1.6"/><circle cx="3" cy="10" r="1.6"/><circle cx="9" cy="10" r="1.6"/><circle cx="3" cy="16" r="1.6"/><circle cx="9" cy="16" r="1.6"/></svg></button>
-      ${tool('select', 'select', 'Select')}
-      <button class="tb-btn tb-toggle ${t.slide ? 'on' : ''}" data-act="slide" title="Slide mode — move the board while you write" aria-pressed="${t.slide}">${icon('pan', 22)}</button>
-      ${tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`)}
-      ${tool('eraser', 'eraser', 'Eraser')}
-      ${tool('shape', 'shapes', 'Shapes')}
-      ${tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`)}
-      ${tool('text', 'text', 'Text')}
-      <i class="tb-sep" aria-hidden="true"></i>
-      ${tool('tape', 'tape', 'Tape — hide answers, tap to show', `<span class="swatch-dot" style="background:${t.tapeColor}"></span>`)}
-      ${tool('laser', 'laser', 'Laser pointer')}`;
+      ${show('select', tool('select', 'select', 'Select'))}
+      ${show('slide', `<button class="tb-btn tb-toggle ${t.slide ? 'on' : ''}" data-act="slide" title="Slide mode — move the board while you write" aria-pressed="${t.slide}">${icon('pan', 22)}</button>`)}
+      ${show('pen', tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`))}
+      ${show('eraser', tool('eraser', 'eraser', 'Eraser'))}
+      ${show('shape', tool('shape', 'shapes', 'Shapes'))}
+      ${show('fill', tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`))}
+      ${show('text', tool('text', 'text', 'Text'))}
+      ${hide.has('tape') && hide.has('laser') ? '' : '<i class="tb-sep" aria-hidden="true"></i>'}
+      ${show('tape', tool('tape', 'tape', 'Tape — hide answers, tap to show', `<span class="swatch-dot" style="background:${t.tapeColor}"></span>`))}
+      ${show('laser', tool('laser', 'laser', 'Laser pointer'))}`;
     right.innerHTML = `
-      <button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 22)}</button>
-      <button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 22)}</button>
-      <button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 22)}</button>
-      <button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 22)}</button>
-      <button class="tb-btn" data-act="timer" title="Timer for a question">${icon('timer', 22)}</button>
-      <button class="tb-btn" data-act="graph" title="Graph from an equation (y = …)">${icon('graph', 22)}</button>
-      <div class="tb-pagenav">
+      ${show('undo', `<button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 22)}</button>`)}
+      ${show('redo', `<button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 22)}</button>`)}
+      ${show('insert', `<button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 22)}</button>`)}
+      ${show('tools', `<button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 22)}</button>`)}
+      ${show('timer', `<button class="tb-btn" data-act="timer" title="Timer for a question">${icon('timer', 22)}</button>`)}
+      ${show('graph', `<button class="tb-btn" data-act="graph" title="Graph from an equation (y = …)">${icon('graph', 22)}</button>`)}
+      ${show('pagenav', `<div class="tb-pagenav">
         <button class="icon-btn" data-act="prev" title="Previous page" aria-label="Previous page">${icon('prev')}</button>
         <span class="page-label">${store.index + 1} / ${store.doc.pages.length}</span>
         <button class="icon-btn" data-act="next" title="Next page" aria-label="Next page">${icon('next')}</button>
-      </div>
-      <button class="tb-btn ${this.pages.open ? 'open' : ''}" data-act="pages" title="All pages">${icon('pages', 22)}</button>
-      <button class="tb-btn ${this.popFor === 'menu' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 22)}</button>`;
+      </div>`)}
+      ${show('pages', `<button class="tb-btn ${this.pages.open ? 'open' : ''}" data-act="pages" title="All pages">${icon('pages', 22)}</button>`)}
+      <button class="tb-btn ${this.popFor === 'menu' || this.popFor === 'tbedit' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 22)}</button>`;
     this.updateUndo();
     this.moveIndicator(left);
     if (this.popover) {
@@ -432,7 +455,7 @@ export class App {
         break;
       case 'eraser':
         pop.innerHTML = `
-          <div class="seg"><button class="${t.eraserMode === 'point' ? 'on' : ''}" data-emode="point">Erase part</button><button class="${t.eraserMode === 'stroke' ? 'on' : ''}" data-emode="stroke">Erase whole line</button></div>
+          <div class="seg"><button class="${t.eraserMode === 'point' ? 'on' : ''}" data-emode="point" title="Rub out just a part">Part</button><button class="${t.eraserMode === 'stroke' ? 'on' : ''}" data-emode="stroke" title="Touch any object (line, shape, text, graph) to erase all of it">Object</button><button class="${t.eraserMode === 'area' ? 'on' : ''}" data-emode="area" title="Draw a loop: everything inside is erased">Area</button></div>
           <div class="slider-row">
             <span class="slider-label">Size</span>
             <input type="range" id="eraser-size" min="10" max="160" value="${t.eraserSize}" data-erasersize>
@@ -484,6 +507,27 @@ export class App {
           ${this.gridBtn('multi', 'pen', 'Group writing', store.settings.multiWrite)}</div>`;
         break;
       }
+      case 'tbedit': {
+        const hide = new Set(store.settings.tbHidden);
+        const group = (side: 'left' | 'right') =>
+          TB_ITEMS.filter(([, , sd]) => sd === side)
+            .map(([k, n]) => `<label class="check tbe-item"><input type="checkbox" data-tbitem="${k}" ${hide.has(k) ? '' : 'checked'}> ${n}</label>`)
+            .join('');
+        pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
+          <div class="muted small">Tick the buttons you want on the toolbar.</div>
+          <div class="tbe-cols"><div><div class="pop-title">Left</div>${group('left')}</div><div><div class="pop-title">Right</div>${group('right')}</div></div>
+          <button class="btn wide" data-tbreset>Show all buttons</button>`;
+        pop.onchange = (e) => {
+          const el = e.target as HTMLInputElement;
+          const k = el.dataset.tbitem;
+          if (!k) return;
+          const next = new Set(store.settings.tbHidden);
+          if (el.checked) next.delete(k);
+          else next.add(k);
+          store.setSettings({ tbHidden: [...next] });
+        };
+        break;
+      }
       case 'menu': {
         const p = store.page;
         const s = store.settings;
@@ -507,8 +551,7 @@ export class App {
             ${isInstalled() ? '' : `<button class="menu-item" data-act="install">${icon('download', 20)}Install app</button>`}
             <button class="menu-item" data-act="share-app">${icon('share', 20)}Share Teachly</button>
           </div>
-          <div class="pop-title">Toolbar position</div>
-          <div class="seg">${(['bottom', 'top', 'left', 'right'] as const).map((z) => `<button class="${s.tbPos === z ? 'on' : ''}" data-tbpos="${z}">${z[0].toUpperCase() + z.slice(1)}</button>`).join('')}</div>
+          <button class="menu-item wide-item" data-act="tbedit">${icon('settings', 20)}Edit toolbar — choose its buttons</button>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers and palm don't draw)</label>
           <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>`;
         pop.onchange = (e) => {
@@ -550,6 +593,10 @@ export class App {
       store.setTool({ tool: 'select' });
       store.select([tbl.id]);
       this.tableEditor.open(tbl, 0, 0);
+      return;
+    } else if (d.tbreset !== undefined) {
+      store.setSettings({ tbHidden: [] });
+      this.fillPopover();
       return;
     } else if (d.tbpos) {
       this.closePopover();
@@ -707,6 +754,8 @@ export class App {
         if (this.pages.open) this.pages.toggle();
         void this.library.show();
         return;
+      case 'tbedit':
+        return this.togglePopover('tbedit', this.toolbar.querySelector('[data-pop=menu]') as HTMLElement);
       case 'record':
         void toggleRecording(this.board, this.root);
         return;
@@ -941,8 +990,9 @@ export class App {
   }
 
   /** Size the toolbar and panels for this screen (phone → 86" panel). */
-  private applyScale(): void {
-    const pos = store.settings.tbPos;
+  private applyScale(keepPopover = false): void {
+    // The toolbar always sits at the bottom.
+    const pos: string = 'bottom';
     this.root.dataset.tb = pos;
     const vertical = pos === 'left' || pos === 'right';
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
@@ -961,7 +1011,11 @@ export class App {
     // The page fills the whole screen; the toolbars float on top of it.
     this.board.insets = { top: 0, right: 0, bottom: 0, left: 0 };
     this.board.resize();
-    this.closePopover();
+    if (!keepPopover) this.closePopover();
+    else if (this.popover) {
+      const anchor = this.toolbar.querySelector('[data-pop=menu]') as HTMLElement | null;
+      if (anchor) this.positionPopover(anchor);
+    }
     this.indAt = null;
     this.moveIndicator(left);
     this.positionProps();
@@ -974,52 +1028,6 @@ export class App {
     for (const bar of this.toolbar.querySelectorAll<HTMLElement>('.toolbar')) {
       bar.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
     }
-  }
-
-  /** Drag the grip: the bars follow the finger and snap to the nearest edge. */
-  private bindGrip(): void {
-    let drag: { id: number; sx: number; sy: number; moved: boolean } | null = null;
-    const zones = document.createElement('div');
-    zones.className = 'tb-zones';
-    zones.innerHTML = '<i data-z="top"></i><i data-z="bottom"></i><i data-z="left"></i><i data-z="right"></i>';
-    this.root.appendChild(zones);
-    const nearest = (x: number, y: number) => {
-      const d = { top: y, bottom: window.innerHeight - y, left: x, right: window.innerWidth - x };
-      return (Object.keys(d) as (keyof typeof d)[]).reduce((a, b) => (d[b] < d[a] ? b : a));
-    };
-    this.toolbar.addEventListener('pointerdown', (e) => {
-      const g = (e.target as HTMLElement).closest('[data-grip]') as HTMLElement | null;
-      if (!g) return;
-      e.preventDefault();
-      g.setPointerCapture(e.pointerId);
-      drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
-    });
-    this.toolbar.addEventListener('pointermove', (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
-      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
-      if (!drag.moved) {
-        drag.moved = true;
-        this.closePopover();
-        this.root.classList.add('tb-dragging');
-      }
-      this.root.style.setProperty('--dx', `${dx}px`);
-      this.root.style.setProperty('--dy', `${dy}px`);
-      const z = nearest(e.clientX, e.clientY);
-      zones.querySelectorAll<HTMLElement>('[data-z]').forEach((el) => el.classList.toggle('on', el.dataset.z === z));
-    });
-    const end = (e: PointerEvent) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      const moved = drag.moved;
-      drag = null;
-      this.root.classList.remove('tb-dragging');
-      this.root.style.removeProperty('--dx');
-      this.root.style.removeProperty('--dy');
-      if (moved) this.setToolbarPos(nearest(e.clientX, e.clientY));
-      else toast('Drag this handle to move the toolbar to the top, bottom, left or right', 3000);
-    };
-    this.toolbar.addEventListener('pointerup', end);
-    this.toolbar.addEventListener('pointercancel', end);
   }
 
   /** Logo and clock switch to light text on green / black boards. */

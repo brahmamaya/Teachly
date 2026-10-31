@@ -15,6 +15,8 @@ import { mathKeyboard } from './mathkeys';
 // see as one piece (with a futuristic panel, neon curves and bold labels).
 
 const CURVES = ['#22d3ee', '#f472b6', '#facc15', '#4ade80', '#a78bfa', '#fb923c'];
+/** Deeper versions of the same colours, readable on a white background. */
+const CURVES_LIGHT = ['#0284c7', '#db2777', '#ca8a04', '#16a34a', '#7c3aed', '#ea580c'];
 const MAX = 6;
 const KEY = 'teachly.graph2';
 
@@ -32,8 +34,9 @@ interface Spec {
 
 type Theme = 'dark' | 'light';
 const THEMES = {
-  dark: { bg: '#050a14', edge: '#1b3354', grid: '#38bdf8', axis: '#e2e8f0', tick: '#9fb3c8', label: 'rgba(5,10,20,0.88)' },
-  light: { bg: '#ffffff', edge: '#cbd5e1', grid: '#64748b', axis: '#0f172a', tick: '#475569', label: 'rgba(255,255,255,0.92)' },
+  // Pure black or pure white background — the teacher's choice.
+  dark: { bg: '#000000', edge: '#2a2a2a', grid: '#9ca3af', axis: '#f1f5f9', tick: '#a3a3a3', label: 'rgba(0,0,0,0.88)' },
+  light: { bg: '#ffffff', edge: '#d4d4d4', grid: '#64748b', axis: '#0f172a', tick: '#475569', label: 'rgba(255,255,255,0.92)' },
 };
 
 const EXAMPLES: [string, string][] = [
@@ -206,7 +209,7 @@ export function buildGraph(spec: Spec, box: Rect, theme: Theme): El[] {
   const fs: { f: Fn; label: string; color: string }[] = [];
   spec.fns.forEach((src, i) => {
     if (!src.trim() || spec.hidden[i]) return;
-    fs.push({ f: compile(src, { params: spec.params }), label: `y = ${prettyExpr(tidy(withValues(src.trim(), spec.params)))}`, color: CURVES[i % CURVES.length] });
+    fs.push({ f: compile(src, { params: spec.params }), label: `y = ${prettyExpr(tidy(withValues(src.trim(), spec.params)))}`, color: (theme === 'light' ? CURVES_LIGHT : CURVES)[i % CURVES.length] });
   });
   const { x0, x1, y0, y1 } = spec;
   const X = (x: number) => box.x + ((x - x0) / (x1 - x0)) * box.w;
@@ -350,7 +353,16 @@ export function openGraph(host: HTMLElement, board: Board): void {
   let hidden = fns.map((_, i) => !!s.hidden[i]);
   let grid = s.grid, marks = s.marks;
   let active = 0;
-  const theme: Theme = isDarkColor(store.page.bg) ? 'dark' : 'light';
+  // Background: black or white (starts matching the board, remembered after).
+  let theme: Theme = (() => {
+    try {
+      const v = localStorage.getItem('teachly.graphBg');
+      if (v === 'dark' || v === 'light') return v;
+    } catch {
+      /* ignore */
+    }
+    return isDarkColor(store.page.bg) ? 'dark' : 'light';
+  })();
 
   body.innerHTML = `
     <div class="gx-side">
@@ -373,6 +385,10 @@ export function openGraph(host: HTMLElement, board: Board): void {
       <div class="gx-bar">
         <button class="gx-chip ${grid ? 'on' : ''}" data-tog="grid">Grid</button>
         <button class="gx-chip ${marks ? 'on' : ''}" data-tog="marks">Points</button>
+        <span class="gx-bgpick" role="group" aria-label="Background">
+          <button class="gx-bg ${theme === 'dark' ? 'on' : ''}" data-gbg="dark" title="Black background" aria-label="Black background"></button>
+          <button class="gx-bg ${theme === 'light' ? 'on' : ''}" data-gbg="light" title="White background" aria-label="White background"></button>
+        </span>
         <span class="gx-err"></span>
         <button class="gx-put" data-put>Put on board</button>
       </div>
@@ -671,6 +687,15 @@ export function openGraph(host: HTMLElement, board: Board): void {
         redraw();
         save();
       } else zoom(d.z === 'in' ? 0.7 : 1 / 0.7);
+    } else if (d.gbg) {
+      theme = d.gbg as Theme;
+      body.querySelectorAll<HTMLElement>('[data-gbg]').forEach((x) => x.classList.toggle('on', x.dataset.gbg === theme));
+      try {
+        localStorage.setItem('teachly.graphBg', theme);
+      } catch {
+        /* ignore */
+      }
+      redraw();
     } else if (d.tog) {
       if (d.tog === 'grid') grid = !grid;
       else marks = !marks;

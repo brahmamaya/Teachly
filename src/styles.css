@@ -3315,3 +3315,65 @@ button:focus-visible {
   display: block;
   box-shadow: 0 0 0 1px rgba(127, 127, 127, 0.4);
 }
+
+/* Board colours: small, round, smooth. */
+.board-palette {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 2px 2px 4px;
+}
+.board-palette .swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  box-shadow: 0 0 0 1.5px rgba(127, 127, 127, 0.45);
+  transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.2s;
+}
+.board-palette .swatch:active {
+  transform: scale(0.9);
+}
+.board-palette .swatch.on {
+  box-shadow: 0 0 0 2px var(--bar-solid, #141414), 0 0 0 4px var(--accent);
+}
+.board-palette .swatch.custom {
+  border-radius: 50%;
+}
+.wide-item {
+  grid-column: 1 / -1;
+}
+.tbe-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 18px;
+}
+.tbe-item {
+  padding: 4px 0;
+}
+
+/* Graph background choice: black or white. */
+.gx-bgpick {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 4px;
+}
+.gx-bg {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(148, 163, 184, 0.5);
+  padding: 0;
+}
+.gx-bg[data-gbg='dark'] {
+  background: #000;
+}
+.gx-bg[data-gbg='light'] {
+  background: #fff;
+}
+.gx-bg.on {
+  box-shadow: 0 0 0 2px #070b14, 0 0 0 4px #22d3ee;
+}
+.gx-stage {
+  background: #000;
+}

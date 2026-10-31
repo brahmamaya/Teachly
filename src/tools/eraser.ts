@@ -1,5 +1,5 @@
 import type { Board, Ptr, Tool } from '../board';
-import { bbox, distToSegment, uid } from '../geometry';
+import { bbox, distToSegment, insideLasso, pointInPolygon, uid } from '../geometry';
 import { drawEl } from '../renderer';
 import { store } from '../store';
 import { ui } from '../ui/scale';
@@ -51,6 +51,8 @@ export class EraserTool implements Tool {
   /** id → replacement pieces ([] = deleted) */
   private changes = new Map<string, El[]>();
   private pos: { x: number; y: number; r: number } | null = null;
+  /** Area mode: the loop being drawn. */
+  private lasso: number[] | null = null;
 
   constructor(private board: Board) {}
 
@@ -67,6 +69,12 @@ export class EraserTool implements Tool {
   down(p: Ptr): void {
     if (this.active) return;
     this.changes.clear();
+    if (this.mode() === 'area') {
+      this.active = { id: p.id, lx: p.x, ly: p.y, r: 0 };
+      this.lasso = [p.x, p.y];
+      this.board.invalidate('overlay');
+      return;
+    }
     const r = this.radius(p);
     this.active = { id: p.id, lx: p.x, ly: p.y, r };
     this.pos = { x: p.x, y: p.y, r };
@@ -77,6 +85,11 @@ export class EraserTool implements Tool {
   move(p: Ptr): void {
     const a = this.active;
     if (!a || a.id !== p.id) return;
+    if (this.lasso) {
+      for (const [x, y] of p.samples) this.lasso.push(x, y);
+      this.board.invalidate('overlay');
+      return;
+    }
     if (this.palm) a.r = Math.max(a.r, this.radius(p));
     this.pos = { x: p.x, y: p.y, r: a.r };
     for (const [x, y] of p.samples) {
@@ -125,8 +138,16 @@ export class EraserTool implements Tool {
           changed = true;
         } else next.push(el);
       }
-      if (changed) this.changes.set(orig.id, next);
+      if (changed) {
+        this.changes.set(orig.id, next);
+        // Object mode: a graph or 3-D shape goes as one piece.
+        if (mode !== 'point' && orig.group) this.removeGroup(orig.group);
+      }
     }
+  }
+
+  private removeGroup(group: string): void {
+    for (const e of store.page.els) if (e.group === group && !e.locked) this.changes.set(e.id, []);
   }
 
   private segmentHits(el: El, ax: number, ay: number, bx: number, by: number, r: number): boolean {
@@ -144,6 +165,8 @@ export class EraserTool implements Tool {
     const p = el.pts;
     const rr = r + el.size / 2;
     if (p.length === 3) return distToSegment(p[0], p[1], ax, ay, bx, by) <= rr;
+    // Touching anywhere inside a closed or filled shape counts too.
+    if ((el.closed || el.fill) && p.length >= 9 && (pointInPolygon(ax, ay, p, 3) || pointInPolygon(bx, by, p, 3))) return true;
     const pts = el.style === 'shape' ? densify(el.closed ? p.concat([p[0], p[1], p[2]]) : p, Math.max(1, r)) : p;
     for (let i = 0; i < pts.length; i += 3) {
       if (distToSegment(pts[i], pts[i + 1], ax, ay, bx, by) <= rr) return true;
@@ -153,6 +176,18 @@ export class EraserTool implements Tool {
 
   up(p: Ptr): void {
     if (!this.active || this.active.id !== p.id) return;
+    if (this.lasso) {
+      // Area mode: everything (mostly) inside the loop goes.
+      const loop = this.lasso;
+      this.lasso = null;
+      if (loop.length > 6) {
+        for (const e of store.page.els) {
+          if (e.locked || !insideLasso(e, loop)) continue;
+          this.changes.set(e.id, []);
+          if (e.group) this.removeGroup(e.group);
+        }
+      }
+    }
     if (this.changes.size) {
       store.setEls(this.working());
     }
@@ -165,6 +200,7 @@ export class EraserTool implements Tool {
 
   private reset(): void {
     this.active = null;
+    this.lasso = null;
     this.changes.clear();
     if (this.palm) this.pos = null;
     this.board.invalidate('ink', 'overlay');
@@ -185,7 +221,22 @@ export class EraserTool implements Tool {
   drawOverlay(ctx: CanvasRenderingContext2D): void {
     const px = this.board.px;
     const active = store.tool.tool === 'eraser' || this.palm;
-    if (this.pos && active) {
+    if (this.lasso && this.lasso.length > 2) {
+      const l = this.lasso;
+      ctx.beginPath();
+      ctx.moveTo(l[0], l[1]);
+      for (let i = 2; i < l.length; i += 2) ctx.lineTo(l[i], l[i + 1]);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(239,68,68,0.12)';
+      ctx.fill();
+      ctx.setLineDash([6 * px, 5 * px]);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2 * px;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      return;
+    }
+    if (this.pos && active && this.mode() !== 'area') {
       ctx.beginPath();
       ctx.arc(this.pos.x, this.pos.y, this.pos.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
