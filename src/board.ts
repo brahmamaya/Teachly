@@ -75,7 +75,13 @@ export class Board {
 
   // Gesture state
   private pointers = new Map<number, Ptr>();
-  private routed = new Map<number, 'tool' | 'gesture' | 'pan' | 'instrument' | 'override'>();
+  private routed = new Map<number, 'tool' | 'gesture' | 'pan' | 'instrument' | 'override' | 'ignore'>();
+  /** When each pointer was last heard from, where it started, and when. */
+  private lastSeen = new Map<number, number>();
+  private downAt = new Map<number, number>();
+  private startPos = new Map<number, [number, number]>();
+  /** Typical finger contact size on this screen (for palm detection). */
+  private touchSizes: number[] = [];
   private gesture: { ids: [number, number]; startDist: number; startAngle: number; cam: Camera; wx: number; wy: number } | null = null;
   private panStart: { sx: number; sy: number; cam: Camera } | null = null;
   spaceDown = false;
@@ -237,7 +243,12 @@ export class Board {
     // Sharp on retina phones, but cap the pixel count so 4K / 86" panels
     // (three full-screen layers) stay fast.
     const area = Math.max(1, r.width * r.height);
-    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(9_000_000 / area)));
+    // Pixel budget per layer: full 4K on strong devices; lighter on modest
+    // classroom boards (few cores / little memory) so writing never lags.
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    const modest = (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 3;
+    const budget = modest ? 3_800_000 : 8_400_000;
+    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
     for (const c of [this.bg, this.ink, this.overlay]) {
       c.width = Math.round(r.width * this.dpr);
       c.height = Math.round(r.height * this.dpr);
@@ -385,8 +396,34 @@ export class Board {
     return 0.5;
   }
 
+  /** A finger, pen or mouse is on the board right now. */
+  get busyInput(): boolean {
+    return this.pointers.size > 0;
+  }
+
+  /** Remember finger sizes: some boards report every touch as large. */
+  private learnTouchSize(p: Ptr): void {
+    if (p.type !== 'touch') return;
+    this.startPos.set(p.id, [p.sx, p.sy]);
+    const sz = Math.max(p.width, p.height);
+    if (sz > 0) {
+      this.touchSizes.push(sz);
+      if (this.touchSizes.length > 40) this.touchSizes.shift();
+    }
+  }
+
+  private travel(id: number): number {
+    const a = this.startPos.get(id), b = this.pointers.get(id);
+    return a && b ? Math.hypot(b.sx - a[0], b.sy - a[1]) : 0;
+  }
+
+  /** A palm is clearly bigger than this screen's usual finger touch. */
   private isPalm(p: Ptr): boolean {
-    return store.settings.palmErase && p.type === 'touch' && Math.max(p.width, p.height) >= 45;
+    if (!store.settings.palmErase || p.type !== 'touch') return false;
+    const sz = Math.max(p.width, p.height);
+    const sorted = [...this.touchSizes].sort((a, b) => a - b);
+    const typical = sorted.length >= 5 ? sorted[Math.floor(sorted.length / 2)] : 20;
+    return sz >= Math.max(45, typical * 2.4);
   }
 
   private bindEvents(): void {
@@ -407,6 +444,9 @@ export class Board {
     }
     el.addEventListener('pointerup', (e) => this.onUp(e, false));
     el.addEventListener('pointercancel', (e) => this.onUp(e, true));
+    el.addEventListener('lostpointercapture', (e) => {
+      if (this.routed.has(e.pointerId)) this.onUp(e, true);
+    });
     el.addEventListener('pointerleave', () => {
       this.lastHover = null;
       this.tool.hover?.(null);
@@ -443,9 +483,47 @@ export class Board {
     const p = this.makePtr(e);
     this.pointers.set(p.id, p);
 
-    // Two-finger gesture (pinch / pan / rotate-free zoom).
+    // Touch frames on classroom boards sometimes lose a finger's "up":
+    // forget pointers that have been silent for a while.
+    const now = performance.now();
+    for (const [id, seen] of this.lastSeen) {
+      if (id !== p.id && now - seen > 1500) {
+        const lost = this.pointers.get(id);
+        const r = this.routed.get(id);
+        this.lastSeen.delete(id);
+        this.pointers.delete(id);
+        this.routed.delete(id);
+        if (r === 'gesture') this.gesture = null;
+        if (r === 'pan') this.panStart = null;
+        // Finish (keep) whatever that lost touch was writing.
+        if ((r === 'tool' || r === 'override') && lost) {
+          this.tool.up(lost);
+          if (r === 'override') {
+            (this.override as unknown as { palm?: boolean }).palm = false;
+            this.override = null;
+          }
+        }
+      }
+    }
+    this.lastSeen.set(p.id, now);
+    this.learnTouchSize(p);
+
+    // Two-finger gesture (pinch / pan / zoom) — only in slide mode, because
+    // otherwise the board is fixed. A second touch that lands while a line
+    // is already being written (or a "ghost" touch from the board's frame)
+    // never cancels that line.
     // (Off in "many writers" mode: every finger draws, like Note 3's group writing.)
     const multi = store.settings.multiWrite;
+    if (!multi && p.type === 'touch' && this.touchCount() >= 2) {
+      const drawing = [...this.routed.entries()].find(([id, r]) => id !== p.id && (r === 'tool' || r === 'override'));
+      const started = drawing ? this.downAt.get(drawing[0]) : undefined;
+      const writing = !!drawing && (now - (started ?? now) > 250 || this.travel(drawing[0]) > 30);
+      if (!store.tool.slide || writing) {
+        this.routed.set(p.id, 'ignore');
+        return;
+      }
+    }
+    this.downAt.set(p.id, now);
     if (!multi && p.type === 'touch' && this.touchCount() === 2) {
       const ids = [...this.pointers.values()].filter((q) => q.type === 'touch').map((q) => q.id) as [number, number];
       for (const id of ids) {
@@ -529,6 +607,7 @@ export class Board {
   }
 
   private onMove(e: PointerEvent): void {
+    this.lastSeen.set(e.pointerId, performance.now());
     const p = this.makePtr(e);
     const route = this.routed.get(p.id);
     if (!route) {
@@ -557,11 +636,14 @@ export class Board {
     }
   }
 
-  private onUp(e: PointerEvent, cancelled: boolean): void {
+  private onUp(e: PointerEvent, _cancelled: boolean): void {
     const p = this.makePtr(e);
     const route = this.routed.get(p.id);
     this.pointers.delete(p.id);
     this.routed.delete(p.id);
+    this.lastSeen.delete(p.id);
+    this.downAt.delete(p.id);
+    this.startPos.delete(p.id);
     switch (route) {
       case 'gesture':
         this.gesture = null;
@@ -575,8 +657,8 @@ export class Board {
         break;
       case 'tool':
       case 'override':
-        if (cancelled) this.tool.cancel();
-        else this.tool.up(p);
+        // A cancel from the browser (or a lost touch) keeps what was written.
+        this.tool.up(p);
         if (route === 'override' && ![...this.routed.values()].includes('override')) {
           (this.override as unknown as { palm?: boolean }).palm = false;
           this.override = null;

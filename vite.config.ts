@@ -21,7 +21,8 @@ export default defineConfig({
   base: './',
   plugins: [precacheList()],
   build: {
-    target: 'es2022',
+    // Older Android boards run older browsers: translate newer syntax.
+    target: ['es2019', 'chrome80', 'safari14'],
     chunkSizeWarningLimit: 1500,
   },
 });

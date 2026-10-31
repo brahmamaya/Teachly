@@ -217,6 +217,13 @@ export class App {
       this.applyScale();
     });
     this.bindGrip();
+    // Never lose work when the app is closed or hidden.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        clearTimeout(this.saveTimer);
+        void saveNotebook(store.doc).catch(() => {});
+      }
+    });
     void loadLastNotebook().then((doc) => doc && store.loadDoc(doc));
   }
 
@@ -1140,8 +1147,17 @@ export class App {
   private saveTimer = 0;
 
   private scheduleSave(): void {
+    // Save once the teacher pauses (and never while a finger or pen is
+    // on the board), so saving never interrupts writing on slow boards.
     clearTimeout(this.saveTimer);
-    this.saveTimer = window.setTimeout(saveLocalSafe, 700);
+    const attempt = () => {
+      if (this.board.busyInput) {
+        this.saveTimer = window.setTimeout(attempt, 1200);
+        return;
+      }
+      saveLocalSafe();
+    };
+    this.saveTimer = window.setTimeout(attempt, 2000);
   }
 }
 

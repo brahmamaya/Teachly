@@ -80,9 +80,37 @@ function calligraphyPath(pts: number[], size: number): Path2D {
 
 export function freehandPath(pts: number[], el: Pick<PathEl, 'style' | 'size' | 'sim'>, last: boolean): Path2D {
   if (el.style === 'calligraphy') return calligraphyPath(pts, el.size);
-  const input: number[][] = [];
-  for (let i = 0; i < pts.length; i += 3) input.push([pts[i], pts[i + 1], pts[i + 2]]);
-  return outlineToPath(getStroke(input, freehandOptions(el, last)));
+  return outlineToPath(getStroke(upsample(pts, Math.max(1.5, el.size * 0.7)), freehandOptions(el, last)));
+}
+
+/**
+ * Fill in points along a smooth (Catmull-Rom) curve where the input is
+ * sparse. Touch frames on boards report few points, so fast writing would
+ * otherwise come out with corners; this keeps every letter round.
+ */
+function upsample(pts: number[], step: number): number[][] {
+  const n = pts.length / 3;
+  const out: number[][] = [];
+  const P = (i: number) => {
+    const k = Math.max(0, Math.min(n - 1, i)) * 3;
+    return [pts[k], pts[k + 1], pts[k + 2]];
+  };
+  for (let i = 0; i < n; i++) {
+    const p1 = P(i);
+    out.push(p1);
+    if (i === n - 1) break;
+    const p2 = P(i + 1);
+    const d = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+    const m = Math.min(12, Math.floor(d / step));
+    if (m < 1) continue;
+    const p0 = P(i - 1), p3 = P(i + 2);
+    for (let j = 1; j <= m; j++) {
+      const t = j / (m + 1), t2 = t * t, t3 = t2 * t;
+      const cr = (a: number, b: number, c: number, e: number) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - e) * t2 + (-a + 3 * b - 3 * c + e) * t3);
+      out.push([cr(p0[0], p1[0], p2[0], p3[0]), cr(p0[1], p1[1], p2[1], p3[1]), p1[2] + (p2[2] - p1[2]) * t]);
+    }
+  }
+  return out;
 }
 
 const pathCache = new WeakMap<PathEl, Path2D>();

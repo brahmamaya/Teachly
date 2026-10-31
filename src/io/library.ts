@@ -65,9 +65,16 @@ export async function listNotebooks(): Promise<NotebookMeta[]> {
   }
 }
 
+// Covers are only redrawn when the first page actually changed.
+const covers = new WeakMap<object, string>();
 function cover(doc: Doc): string {
+  const first = doc.pages[0];
+  const known = covers.get(first);
+  if (known !== undefined) return known;
   try {
-    return renderRegion(doc.pages[0], pageRegion(doc.pages[0].els), 240, 135).toDataURL('image/jpeg', 0.7);
+    const img = renderRegion(first, pageRegion(first.els), 240, 135).toDataURL('image/jpeg', 0.7);
+    covers.set(first, img);
+    return img;
   } catch {
     return '';
   }

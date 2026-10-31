@@ -27,9 +27,11 @@ APKSIG="$(ls "$TOOLS"/lib/apksig-*.jar | head -1)"
 
 rm -rf "$OUT" && mkdir -p "$OUT/assets/www" "$OUT/classes" "$OUT/tools"
 
-# 1. The web app, as one offline file.
-(cd "$ROOT" && npm run -s build:single)
-cp "$ROOT/dist-single/Teachly.html" "$OUT/assets/www/index.html"
+# 1. The web app. Split into files so the board only loads what is used
+# (PDF, PowerPoint, graph code load on demand) — much faster start-up.
+(cd "$ROOT" && npx vite build >/dev/null)
+cp -r "$ROOT/dist/." "$OUT/assets/www/"
+rm -f "$OUT/assets/www/Teachly.html" "$OUT/assets/www/Teachly.apk" "$OUT/assets/www/"*.mp4 "$OUT/assets/www/sw.js"
 
 # 2. Resources + manifest.
 "$AAPT2" compile --dir "$HERE/res" -o "$OUT/res.zip"
