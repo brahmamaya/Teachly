@@ -3645,3 +3645,214 @@ button:focus-visible {
   background: #0f172a;
   border-color: #0f172a;
 }
+
+/* ---------- My notebooks: side list + small notebook cards + trash ---------- */
+.library {
+  flex-direction: row;
+}
+.lib-side {
+  flex: none;
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 12px 16px;
+  overflow-y: auto;
+  background: rgba(127, 127, 127, 0.1);
+  border-right: 1px solid rgba(127, 127, 127, 0.2);
+}
+.ls-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.ls-item:hover {
+  background: rgba(127, 127, 127, 0.14);
+}
+.ls-item.on {
+  background: rgba(127, 127, 127, 0.24);
+}
+.ls-l {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ls-n {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.55;
+}
+.ls-item[data-v^='f:'] svg {
+  color: #f59e0b;
+}
+.ls-item[data-v='trash'] svg {
+  color: #ef4444;
+}
+.ls-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 4px 2px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.ls-head .icon-btn {
+  width: 34px;
+  height: 34px;
+  color: inherit;
+}
+.ls-empty {
+  margin: 4px 12px;
+  font-size: 13px;
+  opacity: 0.5;
+}
+.ls-sep {
+  height: 1px;
+  margin: 10px 8px;
+  background: rgba(127, 127, 127, 0.25);
+}
+.lib-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.lib-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+.lib-bar:empty {
+  display: none;
+}
+.lib-bar p {
+  margin: 0;
+  flex: 1 1 260px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+.lib-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  background: rgba(127, 127, 127, 0.12);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lib-chip.danger,
+.lib-chip.armed {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.lib-chip.armed {
+  background: rgba(239, 68, 68, 0.15);
+}
+/* Small cards: many notebooks at a glance. */
+.library .lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 26px 18px;
+  padding-top: 14px;
+}
+.library .nb-card {
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+.library .nb-cover {
+  position: relative;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+.nb-age {
+  position: absolute;
+  left: 6px;
+  bottom: 5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.library .nb-title {
+  max-width: 100%;
+  margin-top: 6px;
+  font-size: 14px;
+}
+.library .nb-meta {
+  font-size: 12px;
+  font-style: italic;
+}
+.library .nb-actions .icon-btn {
+  width: 32px;
+  height: 32px;
+}
+.nb-actions .icon-btn.armed {
+  color: #ef4444;
+  opacity: 1;
+}
+/* Phones: the list sits on top as a row of tabs. */
+@media (max-width: 700px) {
+  .library {
+    flex-direction: column;
+  }
+  .lib-side {
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 10px 8px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.2);
+  }
+  .ls-item {
+    flex: none;
+    min-height: 40px;
+  }
+  .ls-head,
+  .ls-empty,
+  .ls-sep {
+    display: none;
+  }
+  .lib-head {
+    padding-top: 10px;
+  }
+  .lib-head {
+    flex-wrap: wrap;
+  }
+  .lib-search {
+    order: 5;
+    flex: 1 1 100%;
+    width: auto;
+    min-width: 0;
+  }
+  .library .lib-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}

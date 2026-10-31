@@ -16,6 +16,8 @@ export interface NotebookMeta {
   thumb: string;
   /** Folder id ('' or missing = not in a folder). */
   folder?: string;
+  /** When it was put in the trash (missing = not in the trash). */
+  trashed?: number;
 }
 
 export interface Folder {
@@ -65,10 +67,11 @@ async function put(entries: [string, unknown][], remove: string[] = []): Promise
   });
 }
 
-export async function listNotebooks(): Promise<NotebookMeta[]> {
+/** Notebooks, newest first. Ones in the trash only when asked for. */
+export async function listNotebooks(withTrash = false): Promise<NotebookMeta[]> {
   try {
     const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
-    return list.slice().sort((a, b) => b.updated - a.updated);
+    return list.filter((m) => withTrash || !m.trashed).sort((a, b) => b.updated - a.updated);
   } catch {
     return [];
   }
@@ -96,8 +99,9 @@ function cover(doc: Doc): string {
 export async function saveNotebook(doc: Doc, folder?: string): Promise<Doc> {
   if (!doc.id) doc = { ...doc, id: uid() };
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
-  const was = list.find((m) => m.id === doc.id)?.folder ?? '';
-  const meta: NotebookMeta = { id: doc.id!, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: cover(doc), folder: folder ?? was };
+  const prev = list.find((m) => m.id === doc.id);
+  const meta: NotebookMeta = { id: doc.id!, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: cover(doc), folder: folder ?? prev?.folder ?? '' };
+  if (prev?.trashed) meta.trashed = prev.trashed;
   const next = [meta, ...list.filter((m) => m.id !== doc.id)];
   await put([[`nb:${doc.id}`, doc], [INDEX, next]]);
   try {
@@ -126,7 +130,7 @@ export async function loadLastNotebook(): Promise<Doc | null> {
     } catch {
       /* ignore */
     }
-    if (id) {
+    if (id && (await listNotebooks()).some((m) => m.id === id)) {
       const doc = await loadNotebook(id);
       if (doc) return doc;
     }
@@ -143,9 +147,40 @@ export async function loadLastNotebook(): Promise<Doc | null> {
   }
 }
 
+/** Delete = move to the trash (nothing is lost until the trash is emptied). */
+export async function trashNotebook(id: string): Promise<void> {
+  const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+  await put([[INDEX, list.map((m) => (m.id === id ? { ...m, trashed: Date.now() } : m))]]);
+}
+
+/** Take a notebook out of the trash (back into its folder if that still exists). */
+export async function restoreNotebook(id: string): Promise<void> {
+  const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+  const folders = new Set(((await get<Folder[]>(FOLDERS)) ?? []).map((f) => f.id));
+  await put([
+    [
+      INDEX,
+      list.map((m) => {
+        if (m.id !== id) return m;
+        const { trashed: _t, ...rest } = m;
+        return { ...rest, folder: m.folder && folders.has(m.folder) ? m.folder : '' };
+      }),
+    ],
+  ]);
+}
+
+/** Remove a notebook for good. */
 export async function deleteNotebook(id: string): Promise<void> {
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
   await put([[INDEX, list.filter((m) => m.id !== id)]], [`nb:${id}`]);
+}
+
+/** Empty the trash: every notebook in it is removed for good. */
+export async function emptyTrash(): Promise<number> {
+  const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+  const gone = list.filter((m) => m.trashed);
+  await put([[INDEX, list.filter((m) => !m.trashed)]], gone.map((m) => `nb:${m.id}`));
+  return gone.length;
 }
 
 export async function renameNotebook(id: string, title: string): Promise<void> {
