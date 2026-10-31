@@ -824,6 +824,10 @@ export class App {
     try {
       await fn((d, t) => (el.textContent = `${label}… ${d}/${t}`));
     } catch (e) {
+      // Teachly was updated while this page stayed open: the part that opens
+      // PDF / PowerPoint / files is a newer file now. Save, reload once (the
+      // lesson comes back as it was), then ask to open the file again.
+      if (isStaleCode(e) && reloadForUpdate()) return;
       toast(`Could not finish: ${(e as Error).message}`, 4000);
     } finally {
       el.remove();
@@ -1211,6 +1215,32 @@ export class App {
     // Short pause: if the power goes, at most the last second is lost.
     this.saveTimer = window.setTimeout(attempt, 1200);
   }
+}
+
+/** A lazily loaded part of the app could not be loaded (an older version is still open). */
+function isStaleCode(e: unknown): boolean {
+  return /Importing a module script failed|dynamically imported module|Unable to preload|module script|Loading chunk/i.test(String((e as Error)?.message ?? e));
+}
+
+/** Save, then reload once to get the current version. False if that was just tried. */
+function reloadForUpdate(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem('teachly.updateReload') || 0);
+    if (Date.now() - last < 60_000) return false;
+    sessionStorage.setItem('teachly.updateReload', String(Date.now()));
+    sessionStorage.setItem('teachly.quickStart', '1');
+    sessionStorage.setItem('teachly.afterUpdate', '1');
+  } catch {
+    return false;
+  }
+  toast('Teachly was updated: reloading…', 3000);
+  // Save first (not on idle), then reload.
+  void saveNotebook(store.doc)
+    .catch(() => {
+      /* storage full or unavailable: the session copy still restores the lesson */
+    })
+    .finally(() => location.reload());
+  return true;
 }
 
 function saveLocalSafe(): void {

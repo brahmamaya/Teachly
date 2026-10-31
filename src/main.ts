@@ -1,6 +1,7 @@
 import './polyfills';
 import './styles.css';
 import { App } from './ui/app';
+import { toast } from './ui/panel';
 import { liteDevice } from './board';
 import './ui/install';
 
@@ -17,6 +18,10 @@ let quick = false;
 try {
   quick = sessionStorage.getItem('teachly.quickStart') === '1';
   sessionStorage.removeItem('teachly.quickStart');
+  if (sessionStorage.getItem('teachly.afterUpdate') === '1') {
+    sessionStorage.removeItem('teachly.afterUpdate');
+    window.setTimeout(() => toast('Teachly is up to date. Please open the file again.', 5000), 400);
+  }
 } catch {
   /* ignore */
 }
