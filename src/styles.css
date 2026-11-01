@@ -4175,3 +4175,107 @@ button:active:not(:disabled) {
 .lg-short ul {
   margin: 6px 0 0;
 }
+
+/* ---------- Trash: lively Empty-trash button, confirm box, cards leaving ---------- */
+.trash-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 8px 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f87171, #dc2626);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: translate 0.18s ease, box-shadow 0.18s ease, scale 0.12s ease;
+}
+.trash-btn:hover {
+  translate: 0 -1px;
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.trash-btn:hover svg {
+  animation: lid-shake 0.5s ease;
+}
+.trash-btn:active {
+  scale: 0.95;
+}
+.trash-n {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #dc2626;
+  font-size: 14px;
+}
+@keyframes lid-shake {
+  25% {
+    rotate: -12deg;
+  }
+  60% {
+    rotate: 9deg;
+  }
+}
+.cf-covers {
+  position: relative;
+  height: 92px;
+  margin: 4px auto 0;
+  width: 200px;
+}
+.cf-cover {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 128px;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1e293b;
+  border: 2px solid #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+  translate: calc(-50% + (var(--i) - 1.5) * 18px) calc(var(--i) * -3px);
+  rotate: calc((var(--i) - 1.5) * 5deg);
+  animation: box-in 0.3s cubic-bezier(0.34, 1.36, 0.64, 1) both;
+  animation-delay: calc(var(--i) * 50ms);
+}
+.cf-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sv-box h3 {
+  text-align: center;
+}
+.sv-box .btn.danger-solid {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  background: #dc2626;
+  border-color: #dc2626;
+}
+.nb-card.nb-out {
+  animation: card-out 0.26s cubic-bezier(0.4, 0, 1, 1) forwards;
+  pointer-events: none;
+}
+@keyframes card-out {
+  to {
+    opacity: 0;
+    scale: 0.8;
+    translate: 0 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trash-btn:hover svg,
+  .cf-cover {
+    animation: none;
+  }
+}

@@ -95,6 +95,24 @@ async function chooseFolder(host: HTMLElement, current: string): Promise<string 
   return name ? (await createFolder(name)).id : null;
 }
 
+/** Ask before deleting notebooks for good: shows their covers. */
+async function confirmForever(host: HTMLElement, items: NotebookMeta[]): Promise<boolean> {
+  const n = items.length;
+  const covers = items
+    .slice(0, 4)
+    .map((m, i) => `<span class="cf-cover" style="--i:${i}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</span>`)
+    .join('');
+  const v = await modal<string>(
+    host,
+    `<div class="cf-covers" aria-hidden="true">${covers}</div>
+     <h3>${n === 1 ? `Delete "${esc(items[0].title)}" for good?` : `Delete ${n} notebooks for good?`}</h3>
+     <p class="sv-note">${n === 1 ? 'It' : 'They'} will be removed from this device and cannot be brought back.</p>
+     <div class="sv-row"><button type="button" class="btn" data-sv="cancel">Cancel</button><button type="button" class="btn danger-solid" data-sv="pick" data-v="yes">${icon('trash', 18)} Delete forever</button></div>`,
+    () => null,
+  );
+  return v === 'yes';
+}
+
 /**
  * Menu → Save notebook: give it a name (and a folder) and it is kept in
  * My notebooks on this device.
@@ -222,7 +240,7 @@ export class Library {
     const bar = el.querySelector('.lib-bar') as HTMLElement;
     if (this.view === 'trash')
       bar.innerHTML = trash.length
-        ? `<p>Deleted notebooks wait here. Restore them, or empty the trash to remove them for good.</p><button class="lib-chip danger ${this.armed === 'empty' ? 'armed' : ''}" data-lib="empty">${icon('trash', 18)}Empty trash</button>`
+        ? `<p>Deleted notebooks wait here. Restore them, or empty the trash to remove them for good.</p><button class="trash-btn" data-lib="empty">${icon('trash', 20)}<span>Empty trash</span><b class="trash-n">${trash.length}</b></button>`
         : '<p>The trash is empty.</p>';
     else if (folder)
       bar.innerHTML = `<button class="lib-chip" data-lib="rename-folder">${icon('text', 18)}Rename folder</button><button class="lib-chip ${this.armed === folder.id ? 'armed' : ''}" data-lib="delete-folder">${icon('trash', 18)}Delete folder</button>`;
@@ -259,6 +277,19 @@ export class Library {
         </div>`;
         })
         .join('');
+  }
+
+  /** Cards shrink and fade away one after another before the list changes. */
+  private animateOut(ids: string[]): Promise<void> {
+    if (!this.el || matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
+    let i = 0;
+    for (const id of ids) {
+      const card = this.el.querySelector(`.nb-card[data-id="${id}"]`) as HTMLElement | null;
+      if (!card) continue;
+      card.style.animationDelay = `${Math.min(i++, 8) * 45}ms`;
+      card.classList.add('nb-out');
+    }
+    return new Promise((r) => window.setTimeout(r, 260 + Math.min(i, 8) * 45));
   }
 
   private async onClick(e: MouseEvent): Promise<void> {
@@ -335,6 +366,7 @@ export class Library {
         await duplicateNotebook(id);
         return this.refresh();
       case 'delete': {
+        await this.animateOut([id]);
         await trashNotebook(id);
         if (id === store.doc.id) {
           // The open notebook went to the trash: open the newest other one.
@@ -346,23 +378,22 @@ export class Library {
         return this.refresh();
       }
       case 'restore':
+        await this.animateOut([id]);
         await restoreNotebook(id);
         toast('Notebook restored');
         return this.refresh();
-      case 'purge':
-        if (wasArmed !== id) {
-          this.armed = id;
-          this.render();
-          return toast('Tap again to delete this notebook for good', 3000);
-        }
+      case 'purge': {
+        const m = this.list.find((x) => x.id === id);
+        if (!m || !(await confirmForever(this.el, [m]))) return;
+        await this.animateOut([id]);
         await deleteNotebook(id);
+        toast('Deleted for good');
         return this.refresh();
+      }
       case 'empty': {
-        if (wasArmed !== 'empty') {
-          this.armed = 'empty';
-          this.render();
-          return toast('Tap Empty trash again to remove these notebooks for good', 3000);
-        }
+        const trash = this.list.filter((m) => m.trashed);
+        if (!trash.length || !(await confirmForever(this.el, trash))) return;
+        await this.animateOut(trash.map((m) => m.id));
         const n = await emptyTrash();
         toast(`${n} notebook${n === 1 ? '' : 's'} removed for good`);
         return this.refresh();
