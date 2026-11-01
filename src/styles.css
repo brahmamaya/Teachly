@@ -4279,3 +4279,34 @@ button:active:not(:disabled) {
     animation: none;
   }
 }
+/* Short, easy-to-scan legal pages. */
+.lg-body {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.lg-body h1 {
+  font-size: 24px;
+}
+.lg-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lg-list li {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+.lg-list b {
+  color: #0f172a;
+}
+.lg-contact {
+  margin-top: 16px;
+}
+.lg-body .lg-list {
+  padding-left: 0;
+}
