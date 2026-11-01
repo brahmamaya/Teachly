@@ -81,7 +81,7 @@ public class MainActivity extends Activity {
         hideSystemBars();
 
         web = new WebView(this);
-        web.setBackgroundColor(Color.BLACK);
+        web.setBackgroundColor(Color.WHITE); // the opening screen is white: no dark flash at start
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         WebSettings s = web.getSettings();

@@ -22,7 +22,7 @@
         android:usesCleartextTraffic="false"
         android:hardwareAccelerated="true"
         android:largeHeap="true"
-        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        android:theme="@android:style/Theme.Light.NoTitleBar.Fullscreen">
 
         <activity
             android:name=".MainActivity"

@@ -11,7 +11,7 @@ if (liteDevice()) document.documentElement.classList.add('lite');
 const root = document.getElementById('app')!;
 const app = new App(root);
 
-// Keep the opening screen up for three seconds from page start, then fade it out.
+// Keep the opening screen up for 1.5 seconds from page start, then fade it out softly.
 const splash = document.getElementById('splash');
 // After an automatic refresh, skip the opening screen: straight back to work.
 let quick = false;
@@ -29,9 +29,9 @@ if (splash) {
   window.setTimeout(
     () => {
       splash.classList.add('hide');
-      window.setTimeout(() => splash.remove(), 600);
+      window.setTimeout(() => splash.remove(), 350);
     },
-    quick ? 0 : Math.max(0, 3000 - performance.now()),
+    quick ? 0 : Math.max(0, 1500 - performance.now()),
   );
 }
 (window as unknown as { teachly: App }).teachly = app;
