@@ -34,7 +34,7 @@ const PRIVACY = `
 
 <h2>3. When Teachly uses the internet</h2>
 <ul>
-  <li><b>Website version:</b> your browser downloads Teachly's files from the website host (currently GitHub Pages). Like every website host, it receives the technical details needed to send the files (such as your IP address, browser type and time) and may keep them in its own logs under its own privacy policy. Teachly adds nothing to this. After the first visit Teachly also works without internet.</li>
+  <li><b>Website version:</b> your browser downloads Teachly's files from the website host. Like every website host, it receives the technical details needed to send the files (such as your IP address, browser type and time) and may keep them in its own logs under its own privacy policy. Teachly adds nothing to this. After the first visit Teachly also works without internet.</li>
   <li><b>Android app:</b> when the device is online, the app checks the same website for a newer version and downloads Teachly's own updated files. Nothing about you or your lessons is sent; the website host sees the same technical details as above.</li>
   <li><b>Share Teachly:</b> only when you tap it, your device's share menu opens with a link to physica.in.</li>
   <li><b>Links:</b> a web link you open from Teachly opens in your browser.</li>
