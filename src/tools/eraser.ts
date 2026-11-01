@@ -242,16 +242,21 @@ export class EraserTool implements Tool {
     const px = this.board.px;
     const active = store.tool.tool === 'eraser' || this.palm;
     if (this.lasso && this.lasso.length > 2) {
-      const l = this.lasso;
+      // Shown smoothed and evenly spaced, so the dotted line has equal dashes
+      // and gaps (finger wobble would otherwise chop it up). Erasing still
+      // uses the exact loop.
+      const l = evenLoop(this.lasso, 3 * px);
       ctx.beginPath();
       ctx.moveTo(l[0], l[1]);
       for (let i = 2; i < l.length; i += 2) ctx.lineTo(l[i], l[i + 1]);
       ctx.closePath();
       ctx.fillStyle = 'rgba(239,68,68,0.12)';
       ctx.fill();
-      ctx.setLineDash([6 * px, 5 * px]);
+      ctx.setLineDash([7 * px, 6 * px]);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 2 * px;
+      ctx.lineWidth = 2.2 * px;
       ctx.stroke();
       ctx.setLineDash([]);
       return;
@@ -266,4 +271,36 @@ export class EraserTool implements Tool {
       ctx.stroke();
     }
   }
+}
+
+/** Smooth a hand-drawn loop and resample it at an even spacing (for display). */
+function evenLoop(src: number[], step: number): number[] {
+  let a = src;
+  if (a.length >= 8) {
+    for (let pass = 0; pass < 3; pass++) {
+      const b = a.slice();
+      for (let i = 2; i < a.length - 2; i += 2) {
+        b[i] = (a[i - 2] + a[i] * 2 + a[i + 2]) / 4;
+        b[i + 1] = (a[i - 1] + a[i + 1] * 2 + a[i + 3]) / 4;
+      }
+      a = b;
+    }
+  }
+  const out = [a[0], a[1]];
+  let carry = 0;
+  for (let i = 2; i < a.length; i += 2) {
+    let x0 = a[i - 2], y0 = a[i - 1];
+    const x1 = a[i], y1 = a[i + 1];
+    let seg = Math.hypot(x1 - x0, y1 - y0);
+    while (carry + seg >= step) {
+      const t = (step - carry) / seg;
+      x0 += (x1 - x0) * t;
+      y0 += (y1 - y0) * t;
+      out.push(x0, y0);
+      seg = Math.hypot(x1 - x0, y1 - y0);
+      carry = 0;
+    }
+    carry += seg;
+  }
+  return out.length >= 4 ? out : src;
 }
