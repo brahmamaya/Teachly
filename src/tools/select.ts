@@ -233,13 +233,46 @@ export class SelectTool implements Tool {
         break;
       }
     }
+    if (m.k === 'lasso') return this.board.invalidate('overlay');
+    if (m.k === 'move' || m.k === 'resize' || m.k === 'rotate') {
+      // Redraw only where the selection was and is now (not the whole page).
+      const now = this.movedRect();
+      if (now) {
+        const was = this.inkRect ?? this.movedRect(IDENTITY);
+        this.inkRect = now;
+        if (was) {
+          this.board.markInk({ x: Math.min(was.x, now.x), y: Math.min(was.y, now.y), w: Math.max(was.x + was.w, now.x + now.w) - Math.min(was.x, now.x), h: Math.max(was.y + was.h, now.y + now.h) - Math.min(was.y, now.y) });
+          return this.board.invalidate('overlay');
+        }
+      }
+    }
     this.board.invalidate('ink', 'overlay');
+  }
+
+  /** Where the dragged selection is drawn right now (with room for line widths). */
+  private inkRect: Rect | null = null;
+  private movedRect(mat: Mat = this.mat): Rect | null {
+    const r = this.bounds();
+    if (!r) return null;
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (const [x, y] of [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.h], [r.x + r.w, r.y + r.h]]) {
+      const [tx, ty] = applyMat(mat, x, y);
+      x1 = Math.min(x1, tx);
+      y1 = Math.min(y1, ty);
+      x2 = Math.max(x2, tx);
+      y2 = Math.max(y2, ty);
+    }
+    let size = 0;
+    for (const e of store.selectedEls()) if (e.type === 'path') size = Math.max(size, e.size);
+    const pad = size + 6 * this.board.px;
+    return { x: x1 - pad, y: y1 - pad, w: x2 - x1 + pad * 2, h: y2 - y1 + pad * 2 };
   }
 
   up(p: Ptr): void {
     const m = this.mode;
     if (!m || p.id !== this.pid) return;
     this.mode = null;
+    this.inkRect = null;
     if (m.k === 'bend') {
       const pv = m.preview;
       if (pv) store.mapEls(new Set([m.el.id]), () => pv);
@@ -280,6 +313,7 @@ export class SelectTool implements Tool {
 
   cancel(): void {
     this.mode = null;
+    this.inkRect = null;
     this.mat = IDENTITY;
     this.resizeArgs = null;
     this.guides = [];

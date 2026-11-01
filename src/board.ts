@@ -297,6 +297,28 @@ export class Board {
 
   invalidate(...layers: Layer[]): void {
     for (const l of layers) this.dirty.add(l);
+    if (layers.includes('ink')) this.inkFull = true;
+    if (!this.raf) this.raf = requestAnimationFrame(() => this.frame());
+  }
+
+  /** Part of the ink layer that a tool changed (world units); null = none. */
+  private inkDirty: Rect | null = null;
+  /** The whole ink layer must be drawn again this frame. */
+  private inkFull = false;
+  /** What the last full ink drawing was made from (to allow redrawing just a part). */
+  private inkView: { els: El[]; cam: Camera; w: number; h: number; dpr: number } | null = null;
+
+  /**
+   * A tool changed only this area of the ink layer (eraser, moving a
+   * selection): redraw just that part instead of the whole page. On a full
+   * page of writing this keeps erasing and dragging smooth on slow boards.
+   */
+  markInk(r: Rect): void {
+    const d = this.inkDirty;
+    this.inkDirty = d
+      ? { x: Math.min(d.x, r.x), y: Math.min(d.y, r.y), w: Math.max(d.x + d.w, r.x + r.w) - Math.min(d.x, r.x), h: Math.max(d.y + d.h, r.y + r.h) - Math.min(d.y, r.y) }
+      : r;
+    this.dirty.add('ink');
     if (!this.raf) this.raf = requestAnimationFrame(() => this.frame());
   }
 
@@ -364,6 +386,31 @@ export class Board {
     const skip = this.hiddenIds.size ? new Set([...(hidden ?? []), ...this.hiddenIds]) : hidden ?? undefined;
     const els = store.page.els;
     const cam = this.cam;
+    const dirty = this.inkDirty, full = this.inkFull;
+    this.inkDirty = null;
+    this.inkFull = false;
+    // Only a tool's area changed (page, view and size as before): redraw just that part.
+    const v = this.inkView;
+    if (dirty && !full && v && v.els === els && v.cam === cam && v.w === this.ink.width && v.h === this.ink.height && v.dpr === this.dpr) {
+      const k = cam.z * this.dpr;
+      const x0 = Math.max(0, Math.floor((dirty.x - cam.x) * k) - 2), y0 = Math.max(0, Math.floor((dirty.y - cam.y) * k) - 2);
+      const x1 = Math.min(this.ink.width, Math.ceil((dirty.x + dirty.w - cam.x) * k) + 2), y1 = Math.min(this.ink.height, Math.ceil((dirty.y + dirty.h - cam.y) * k) + 2);
+      if (x1 <= x0 || y1 <= y0) return;
+      if ((x1 - x0) * (y1 - y0) < this.ink.width * this.ink.height * 0.6) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.beginPath();
+        ctx.rect(x0, y0, x1 - x0, y1 - y0);
+        ctx.clip();
+        ctx.clearRect(x0, y0, x1 - x0, y1 - y0);
+        this.worldTransform(ctx);
+        drawEls(ctx, els, { x: x0 / k + cam.x, y: y0 / k + cam.y, w: (x1 - x0) / k, h: (y1 - y0) / k }, skip);
+        tool.drawInk?.(ctx);
+        ctx.restore();
+        this.inkState = null;
+        return;
+      }
+    }
     // Fast path: when strokes were only added (the usual case while writing),
     // draw just the new ones on top instead of the whole page again.
     const prev = this.inkState;
@@ -389,6 +436,7 @@ export class Board {
     tool.drawInk?.(ctx);
     ctx.restore();
     this.inkState = skip ? null : { els, cam, w: this.ink.width, h: this.ink.height, dpr: this.dpr };
+    this.inkView = { els, cam, w: this.ink.width, h: this.ink.height, dpr: this.dpr };
   }
 
   private renderOverlay(): void {

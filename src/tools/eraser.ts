@@ -3,7 +3,7 @@ import { bbox, distToSegment, insideLasso, pointInPolygon, uid } from '../geomet
 import { drawEl } from '../renderer';
 import { store } from '../store';
 import { ui } from '../ui/scale';
-import type { El, PathEl } from '../types';
+import type { El, PathEl, Rect } from '../types';
 
 /** Densify a polyline so no segment is longer than `step`. */
 function densify(pts: number[], step: number): number[] {
@@ -94,12 +94,15 @@ export class EraserTool implements Tool {
     }
     if (this.palm) a.r = Math.max(a.r, this.radius(p));
     this.pos = { x: p.x, y: p.y, r: a.r };
+    this.dirtyRect = null;
     for (const [x, y] of p.samples) {
       this.eraseSegment(a.lx, a.ly, x, y, a.r);
       a.lx = x;
       a.ly = y;
     }
-    this.board.invalidate('ink', 'overlay');
+    // Redraw only what this move changed (a full page of writing stays smooth).
+    if (this.dirtyRect) this.board.markInk(this.dirtyRect);
+    this.board.invalidate('overlay');
   }
 
   /** Current working list of elements (original minus changes plus pieces). */
@@ -141,6 +144,7 @@ export class EraserTool implements Tool {
         } else next.push(el);
       }
       if (changed) {
+        this.touch(orig);
         this.changes.set(orig.id, next);
         // Object mode: a graph or 3-D shape goes as one piece.
         if (mode !== 'point' && orig.group) this.removeGroup(orig.group);
@@ -149,7 +153,21 @@ export class EraserTool implements Tool {
   }
 
   private removeGroup(group: string): void {
-    for (const e of store.page.els) if (e.group === group && !e.locked) this.changes.set(e.id, []);
+    for (const e of store.page.els)
+      if (e.group === group && !e.locked) {
+        this.touch(e);
+        this.changes.set(e.id, []);
+      }
+  }
+
+  /** Area of the ink layer changed by this move (redrawn alone, not the whole page). */
+  private dirtyRect: Rect | null = null;
+  private touch(e: El): void {
+    const b = bbox(e);
+    const pad = (e.type === 'path' ? e.size : 4) + 4 * this.board.px;
+    const r = { x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 };
+    const d = this.dirtyRect;
+    this.dirtyRect = d ? { x: Math.min(d.x, r.x), y: Math.min(d.y, r.y), w: Math.max(d.x + d.w, r.x + r.w) - Math.min(d.x, r.x), h: Math.max(d.y + d.h, r.y + r.h) - Math.min(d.y, r.y) } : r;
   }
 
   private segmentHits(el: El, ax: number, ay: number, bx: number, by: number, r: number): boolean {
