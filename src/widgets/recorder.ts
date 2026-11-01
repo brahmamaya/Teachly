@@ -1,4 +1,4 @@
-import type { Board } from '../board';
+import { type Board, liteDevice } from '../board';
 import { download } from '../io/files';
 import { icon } from '../ui/icons';
 import { fadeOut, toast } from '../ui/panel';
@@ -18,6 +18,7 @@ interface Rec {
   type: string;
   board: Board;
   ui: UIShots | null;
+  touches: Touches;
 }
 
 let cur: Rec | null = null;
@@ -40,10 +41,10 @@ function pickType(): string {
 
 /** Video sizes offered before recording (the board's shape is kept inside this box). */
 const QUALITIES = [
-  { id: '720', label: '720p', sub: 'HD · small file', w: 1280, h: 720, bps: 5_000_000 },
-  { id: '1080', label: '1080p', sub: 'Full HD', w: 1920, h: 1080, bps: 8_000_000 },
-  { id: '1440', label: '2K', sub: '1440p · sharper', w: 2560, h: 1440, bps: 16_000_000 },
-  { id: '2160', label: '4K', sub: 'Ultra HD · big file', w: 3840, h: 2160, bps: 35_000_000 },
+  { id: '720', label: '720p', sub: 'HD · small file', w: 1280, h: 720, bps: 6_000_000 },
+  { id: '1080', label: '1080p', sub: 'Full HD', w: 1920, h: 1080, bps: 12_000_000 },
+  { id: '1440', label: '2K', sub: '1440p · sharper', w: 2560, h: 1440, bps: 20_000_000 },
+  { id: '2160', label: '4K', sub: 'Ultra HD · big file', w: 3840, h: 2160, bps: 40_000_000 },
 ] as const;
 type Quality = (typeof QUALITIES)[number];
 const QKEY = 'teachly.recQuality';
@@ -51,8 +52,17 @@ const QKEY = 'teachly.recQuality';
 /** Ask which quality to record in (remembers the last choice). */
 const UIKEY = 'teachly.recToolbar';
 
-function chooseQuality(host: HTMLElement): Promise<{ q: Quality; ui: boolean } | null> {
-  let last = '1080';
+/** The quality that matches this screen (classroom boards: Full HD, so writing stays smooth). */
+function bestQuality(board: Board): string {
+  if (liteDevice()) return '1080';
+  const dpr = window.devicePixelRatio || 1;
+  for (const q of QUALITIES) if (Math.min(q.w / board.w, q.h / board.h) * board.w >= board.w * dpr * 0.95) return q.id;
+  return '2160';
+}
+
+function chooseQuality(host: HTMLElement, board: Board): Promise<{ q: Quality; ui: boolean } | null> {
+  const best = bestQuality(board);
+  let last = best;
   let showUI = false;
   try {
     last = localStorage.getItem(QKEY) || last;
@@ -66,7 +76,7 @@ function chooseQuality(host: HTMLElement): Promise<{ q: Quality; ui: boolean } |
     back.innerHTML = `<div class="sv-box" role="dialog" aria-label="Record lesson">
       <h3>Record lesson</h3>
       <p class="sv-note">Your board and your voice are saved as a video on this device.</p>
-      <div class="rq-grid">${QUALITIES.map((q) => `<button type="button" class="rq-opt ${q.id === last ? 'on' : ''}" data-q="${q.id}"><b>${q.label}</b><span>${q.sub}</span></button>`).join('')}</div>
+      <div class="rq-grid">${QUALITIES.map((q) => `<button type="button" class="rq-opt ${q.id === last ? 'on' : ''}" data-q="${q.id}"><b>${q.label}</b><span>${q.sub}</span>${q.id === best ? '<i class="rq-best">Best for this screen</i>' : ''}</button>`).join('')}</div>
       <label class="rq-check"><input type="checkbox" data-ui ${showUI ? 'checked' : ''}><span><b>Show the toolbar in the video</b><small>Buttons, menus and what is selected are recorded too</small></span></label>
       <p class="sv-note small">Higher quality is sharper but needs a faster device and more space.</p>
       <div class="sv-row"><button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary rq-start" data-go>${icon('record', 18)} Start recording</button></div>
@@ -106,7 +116,7 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
     toast('Recording is not available in this browser', 4000);
     return;
   }
-  const choice = await chooseQuality(host);
+  const choice = await chooseQuality(host, board);
   if (!choice) return;
   const q = choice.q;
   // The board's shape, as large as fits the chosen quality.
@@ -120,12 +130,14 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
   const ctx = out.getContext('2d', { alpha: false })!;
   ctx.imageSmoothingQuality = 'high';
   const ui = choice.ui ? new UIShots(host, board, out.width / board.w) : null;
+  const touches = new Touches(host, board, out.width / board.w);
   const paint = () => {
     ctx.drawImage(board.bg, 0, 0, out.width, out.height);
     ctx.drawImage(board.ink, 0, 0, out.width, out.height);
     ctx.drawImage(board.wet, 0, 0, out.width, out.height);
     ctx.drawImage(board.overlay, 0, 0, out.width, out.height);
     ui?.draw(ctx);
+    touches.draw(ctx);
   };
   paint();
 
@@ -144,6 +156,7 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
   } catch {
     mic?.getTracks().forEach((t) => t.stop());
     ui?.stop();
+    touches.stop();
     board.recordPixels = null;
     board.resize();
     toast('Recording is not available on this device', 4000);
@@ -155,7 +168,7 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
   pill.querySelector('button')!.addEventListener('click', () => stop());
   host.appendChild(pill);
 
-  const r: Rec = { rec, chunks: [], mic, timer: 0, raf: 0, pill, start: Date.now(), type: rec.mimeType || type || 'video/webm', board, ui };
+  const r: Rec = { rec, chunks: [], mic, timer: 0, raf: 0, pill, start: Date.now(), type: rec.mimeType || type || 'video/webm', board, ui, touches };
   rec.ondataavailable = (e) => e.data.size && r.chunks.push(e.data);
   rec.onstop = () => save(r);
   rec.start(1000);
@@ -189,6 +202,7 @@ function stop(): void {
   if (r.rec.state !== 'inactive') r.rec.stop();
   r.mic?.getTracks().forEach((t) => t.stop());
   r.ui?.stop();
+  r.touches.stop();
   // Back to the normal (lighter) drawing size.
   r.board.recordPixels = null;
   r.board.resize();
@@ -241,7 +255,16 @@ class UIShots {
   ) {
     this.obs = new MutationObserver((list) => {
       // The recording bar's clock and the board canvases do not count.
-      if (list.every((m) => m.target === host || (m.target as Element).closest?.('.rec-pill, #board') || m.target.parentElement?.closest('.rec-pill'))) return;
+      if (
+        list.every(
+          (m) =>
+            m.attributeName === 'data-rec-shot' ||
+            m.target === host ||
+            (m.target as Element).closest?.('.rec-pill, #board') ||
+            m.target.parentElement?.closest('.rec-pill'),
+        )
+      )
+        return;
       this.soon();
     });
     this.obs.observe(host, { subtree: true, childList: true, attributes: true, characterData: true });
@@ -269,15 +292,28 @@ class UIShots {
       const next: typeof this.shots = [];
       for (const el of els) {
         const r = el.getBoundingClientRect();
-        if (r.width < 2 || r.height < 2) continue;
+        if (r.width < 2 || r.height < 2 || !el.offsetWidth) continue;
+        // Bars are shown scaled on screen; picture them unscaled at the
+        // video's sharpness, then place them exactly where they are seen.
+        const onScreen = r.width / el.offsetWidth;
+        el.dataset.recShot = '1';
         const img = await html2canvas(el, {
           backgroundColor: null,
-          scale: this.scale,
+          scale: this.scale * onScreen,
           logging: false,
           // Never copy the big board canvases (slow): the video has them already.
           ignoreElements: (n) => n.tagName === 'CANVAS' && !!n.closest('#board'),
           // Picture the bars at full strength; the video fades them while writing.
           onclone: (doc) => {
+            const still = doc.createElement('style');
+            still.textContent = '*,*::before,*::after{animation:none!important;transition:none!important;scale:none!important}';
+            doc.head.appendChild(still);
+            const me = doc.querySelector<HTMLElement>('[data-rec-shot]');
+            if (me) {
+              me.style.transform = 'none';
+              me.style.translate = 'none';
+              me.style.rotate = 'none';
+            }
             doc.querySelectorAll('.drawing').forEach((n) => n.classList.remove('drawing'));
             doc.querySelectorAll<HTMLElement>('.toolbar').forEach((n) => {
               n.style.opacity = '1';
@@ -286,11 +322,13 @@ class UIShots {
             });
           },
         });
+        delete el.dataset.recShot;
         next.push({ img, x: r.left - b.left, y: r.top - b.top, w: r.width, h: r.height, bar: el.classList.contains('toolbar') });
       }
       if (!this.stopped) this.shots = next;
     } catch {
       /* a picture could not be made: the video still has the board */
+      this.host.querySelectorAll<HTMLElement>('[data-rec-shot]').forEach((n) => delete n.dataset.recShot);
     } finally {
       this.busy = false;
       if (this.again) {
@@ -316,5 +354,69 @@ class UIShots {
     clearTimeout(this.timer);
     this.obs.disconnect();
     this.shots = [];
+  }
+}
+
+/**
+ * In the video only: a soft see-through circle wherever a finger, pen or
+ * pressed mouse touches, so viewers can follow the teacher's hand. It fades
+ * out gently after lifting.
+ */
+class Touches {
+  private pts = new Map<number, { x: number; y: number; up: number }>();
+  private onDown = (e: PointerEvent) => this.set(e, 0);
+  private onMove = (e: PointerEvent) => {
+    if (this.pts.has(e.pointerId) && !this.pts.get(e.pointerId)!.up) this.set(e, 0);
+  };
+  private onUp = (e: PointerEvent) => {
+    const p = this.pts.get(e.pointerId);
+    if (p) p.up = performance.now();
+  };
+
+  constructor(
+    private host: HTMLElement,
+    private board: Board,
+    private scale: number,
+  ) {
+    const o = { capture: true, passive: true } as const;
+    host.addEventListener('pointerdown', this.onDown, o);
+    host.addEventListener('pointermove', this.onMove, o);
+    host.addEventListener('pointerup', this.onUp, o);
+    host.addEventListener('pointercancel', this.onUp, o);
+  }
+
+  private set(e: PointerEvent, up: number): void {
+    const b = this.board.el.getBoundingClientRect();
+    this.pts.set(e.pointerId, { x: e.clientX - b.left, y: e.clientY - b.top, up });
+  }
+
+  draw(ctx: CanvasRenderingContext2D): void {
+    if (!this.pts.size) return;
+    const k = this.scale, now = performance.now(), FADE = 250;
+    for (const [id, p] of this.pts) {
+      const a = p.up ? 1 - (now - p.up) / FADE : 1;
+      if (a <= 0) {
+        this.pts.delete(id);
+        continue;
+      }
+      ctx.globalAlpha = a;
+      ctx.beginPath();
+      ctx.arc(p.x * k, p.y * k, 17 * k, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(128, 128, 128, 0.35)';
+      ctx.fill();
+      ctx.lineWidth = 1.5 * k;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  stop(): void {
+    const o = { capture: true } as const;
+    this.host.removeEventListener('pointerdown', this.onDown, o);
+    this.host.removeEventListener('pointermove', this.onMove, o);
+    this.host.removeEventListener('pointerup', this.onUp, o);
+    this.host.removeEventListener('pointercancel', this.onUp, o);
+    this.pts.clear();
   }
 }

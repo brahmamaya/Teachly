@@ -4383,3 +4383,18 @@ button:active:not(:disabled) {
   opacity: 0;
   transition: none;
 }
+.rq-opt {
+  position: relative;
+}
+.rq-best {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 800;
+}
