@@ -597,6 +597,7 @@ export class App {
           <button class="menu-item wide-item" data-act="tbedit">${icon('settings', 20)}Edit toolbar — choose its buttons</button>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers and palm don't draw)</label>
           <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>
+          <label class="check"><input type="checkbox" id="opt-holdshape" data-set="holdShapes" ${s.holdShapes ? 'checked' : ''}> Hold pen to make a shape</label>
           <div class="app-version">Version ${BUILD_TIME}</div>`;
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;

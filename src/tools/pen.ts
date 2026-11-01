@@ -78,7 +78,9 @@ export class PenTool implements Tool {
 
   private armHold(id: number, l: Live): void {
     clearTimeout(l.holdTimer);
-    if (l.snapper) return;
+    // Off unless chosen in the menu: on big boards touch events can pause
+    // mid-line, and the writing must stay exactly as written.
+    if (l.snapper || !store.settings.holdShapes) return;
     l.holdTimer = window.setTimeout(() => {
       if (this.live.get(id) !== l || l.snapped) return;
       // Ignore small marks (letters, dots) so handwriting is never turned into shapes.
