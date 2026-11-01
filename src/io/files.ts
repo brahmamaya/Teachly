@@ -1,4 +1,4 @@
-import type { Board } from '../board';
+import { type Board, liteDevice } from '../board';
 import { regroup, uid } from '../geometry';
 import { fitInPage, PAGE } from '../page';
 import { pageRegion, renderRegion } from '../renderer';
@@ -158,8 +158,10 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     const base = page.getViewport({ scale: 1 });
     // Each PDF page sits exactly on the board page (whole page visible).
     const rect = fitInPage(base.width, base.height);
-    // Sharp enough for a 4K panel showing the page full screen.
-    const scale = Math.min(4, (rect.w * 2.2) / base.width);
+    // Crisp when zoomed in (3x the page; classroom boards 2.2x to save
+    // memory), at most ~12 million pixels per page.
+    const want = (rect.w * (liteDevice() ? 2.2 : 3)) / base.width;
+    const scale = Math.min(5, want, Math.sqrt(12_000_000 / (base.width * base.height)));
     const vp = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(vp.width);
@@ -168,7 +170,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport: vp, canvas } as Parameters<typeof page.render>[0]).promise;
-    const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.88), ...rect, rot: 0, locked: true };
+    const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.92), ...rect, rot: 0, locked: true };
     const p = newPage(store.page.bg, 'none');
     p.els = [img];
     pages.push(p);

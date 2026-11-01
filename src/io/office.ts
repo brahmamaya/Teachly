@@ -1,4 +1,4 @@
-import type { Board } from '../board';
+import { type Board, liteDevice } from '../board';
 import { uid } from '../geometry';
 import { fitInPage } from '../page';
 import { newPage, store } from '../store';
@@ -25,7 +25,7 @@ export async function importPptx(board: Board, file: File, onProgress?: (done: n
     const pages: Page[] = [];
     for (let i = 0; i < slides.length; i++) {
       const el = slides[i];
-      const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 2, logging: false, useCORS: true });
+      const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: liteDevice() ? 2 : 3, logging: false, useCORS: true });
       // Each slide fills the board page (16:9 slides fit it exactly).
       const rect = fitInPage(canvas.width, canvas.height);
       const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.9), ...rect, rot: 0, locked: true };

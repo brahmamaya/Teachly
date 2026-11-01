@@ -315,6 +315,15 @@ class UIShots {
               me.style.rotate = 'none';
             }
             doc.querySelectorAll('.drawing').forEach((n) => n.classList.remove('drawing'));
+            // The sliding highlight is placed by a transform the picture tool
+            // gets wrong: show the same highlight on the chosen button itself.
+            doc.querySelectorAll<HTMLElement>('.tb-ind').forEach((n) => (n.style.display = 'none'));
+            doc.querySelectorAll<HTMLElement>('.toolbar .tb-btn.active').forEach((n) => {
+              n.style.background = '#e4ecff';
+              n.style.boxShadow = 'none';
+              n.style.border = '1.5px solid #9db5ec';
+              n.style.borderRadius = '12px';
+            });
             doc.querySelectorAll<HTMLElement>('.toolbar').forEach((n) => {
               n.style.opacity = '1';
               n.style.translate = 'none';
