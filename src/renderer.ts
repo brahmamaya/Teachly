@@ -233,7 +233,7 @@ export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
       ctx.fill(fillPath(el));
     }
     if (isMarker(el)) {
-      // Finger / board-touch pen: an even line exactly along the hand.
+      // Pen (finger, board touch or stylus): an even line exactly along the hand.
       ctx.strokeStyle = el.color;
       ctx.lineWidth = el.size;
       ctx.lineCap = 'round';
@@ -247,9 +247,14 @@ export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
   ctx.globalAlpha = 1;
 }
 
-/** Pen written with a finger, mouse or board touch (no real pressure). */
+/**
+ * The pen draws a clean, even line exactly along the hand, with a finger,
+ * mouse, board touch or a stylus (Apple Pencil): crisp like a fine pen
+ * instead of a paint-like pressure blob, and drawn bit by bit while
+ * writing (smooth on every device).
+ */
 export function isMarker(el: Pick<PathEl, 'style' | 'sim'>): boolean {
-  return el.style === 'pen' && !!el.sim;
+  return el.style === 'pen';
 }
 
 /**
