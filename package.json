@@ -1,0 +1,28 @@
+{
+  "name": "teachly",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Teachly \u2014 a smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build:single": "vite build --mode single --config vite.single.config.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "pdfjs-dist": "^6.4.299",
+    "perfect-freehand": "^1.2.3",
+    "pptx-preview": "^1.0.7"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
+  }
+}

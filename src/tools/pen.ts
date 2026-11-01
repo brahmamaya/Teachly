@@ -1,0 +1,313 @@
+import type { Board, Ptr, Tool } from '../board';
+import { dist, pathFromPoints, uid } from '../geometry';
+import type { Snapper } from '../instruments';
+import { freehandPath, isMarker, markerPath } from '../renderer';
+import { recognize } from '../shapes';
+import { store } from '../store';
+import { inkScale } from '../ui/scale';
+import { tapeAt, toggleTape } from './tape';
+import type { PathEl, PathStyle } from '../types';
+
+interface Live {
+  pts: number[];
+  style: PathStyle;
+  color: string;
+  size: number;
+  sim: boolean;
+  snapper: Snapper | null;
+  /** When set, the stroke was converted to a clean shape by holding still. */
+  snapped: PathEl | null;
+  holdTimer: number;
+  lastX: number;
+  lastY: number;
+  predicted: number[];
+  t0: number;
+  /** Finger / board-touch pen: drawn bit by bit on the wet-ink layer. */
+  marker: boolean;
+  /** Where the wet line has been drawn up to (midpoint of the last two samples). */
+  midX: number;
+  midY: number;
+  drawnTo: number;
+}
+
+// Hold still this long at the end of a drawing to snap it into a shape.
+const HOLD_MS = 800;
+
+export class PenTool implements Tool {
+  cursor = 'crosshair';
+  private live = new Map<number, Live>();
+
+  constructor(private board: Board) {}
+
+  down(p: Ptr): void {
+    if (this.live.size && p.type !== 'pen' && !store.settings.multiWrite) return;
+    const t = store.tool;
+    const style: PathStyle = t.penStyle;
+    const hl = style === 'highlighter';
+    const snapper = this.board.instruments.snapAt(p.x, p.y);
+    const [x, y] = snapper ? snapper.project(p.x, p.y) : [p.x, p.y];
+    const l: Live = {
+      pts: [x, y, p.p],
+      style,
+      color: hl ? t.hlColor : t.color,
+      size: (hl ? t.hlSize : t.size) * inkScale(),
+      sim: p.type !== 'pen',
+      snapper,
+      snapped: null,
+      holdTimer: 0,
+      lastX: x,
+      lastY: y,
+      predicted: [],
+      t0: performance.now(),
+      marker: !snapper && isMarker({ style, sim: p.type !== 'pen' }),
+      midX: x,
+      midY: y,
+      drawnTo: 0,
+    };
+    this.live.set(p.id, l);
+    if (l.marker) {
+      const ctx = this.wetStyle(l);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 0.01, y);
+      ctx.stroke();
+    }
+    this.armHold(p.id, l);
+    this.board.invalidate('overlay');
+  }
+
+  private armHold(id: number, l: Live): void {
+    clearTimeout(l.holdTimer);
+    // Off unless chosen in the menu: on big boards touch events can pause
+    // mid-line, and the writing must stay exactly as written.
+    if (l.snapper || !store.settings.holdShapes) return;
+    l.holdTimer = window.setTimeout(() => {
+      if (this.live.get(id) !== l || l.snapped) return;
+      // Ignore small marks (letters, dots) so handwriting is never turned into shapes.
+      if (!this.bigEnough(l)) return;
+      const shape = this.toShape(l);
+      if (shape) {
+        l.snapped = shape;
+        if (l.marker) this.board.renderWet();
+        navigator.vibrate?.(10);
+        this.board.invalidate('overlay');
+      }
+    }, HOLD_MS);
+  }
+
+  private wetStyle(l: Live): CanvasRenderingContext2D {
+    const ctx = this.board.wetBegin();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = l.color;
+    ctx.lineWidth = l.size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    return ctx;
+  }
+
+  /** Add only the new part of a marker line to the wet layer (cheap per move). */
+  private drawWet(l: Live): void {
+    const n = l.pts.length / 3;
+    if (n - 1 <= l.drawnTo) return;
+    const ctx = this.wetStyle(l);
+    ctx.beginPath();
+    ctx.moveTo(l.midX, l.midY);
+    for (let k = Math.max(1, l.drawnTo + 1); k < n; k++) {
+      const px = l.pts[(k - 1) * 3], py = l.pts[(k - 1) * 3 + 1];
+      const x = l.pts[k * 3], y = l.pts[k * 3 + 1];
+      const mx = (px + x) / 2, my = (py + y) / 2;
+      if (k === 1) ctx.lineTo(mx, my);
+      else ctx.quadraticCurveTo(px, py, mx, my);
+      l.midX = mx;
+      l.midY = my;
+    }
+    // Reach the pen tip too (the next curve starts from the midpoint again).
+    ctx.lineTo(l.pts[(n - 1) * 3], l.pts[(n - 1) * 3 + 1]);
+    ctx.stroke();
+    l.drawnTo = n - 1;
+  }
+
+  /** The wet layer was cleared (a line finished, or the view moved): draw the lines still being written. */
+  redrawWet(ctx: CanvasRenderingContext2D): boolean {
+    let any = false;
+    for (const l of this.live.values()) {
+      if (!l.marker || l.snapped) continue;
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = l.color;
+      ctx.lineWidth = l.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke(markerPath(l.pts));
+      l.drawnTo = l.pts.length / 3 - 1;
+      const n = l.pts.length;
+      if (n >= 6) {
+        l.midX = (l.pts[n - 6] + l.pts[n - 3]) / 2;
+        l.midY = (l.pts[n - 5] + l.pts[n - 2]) / 2;
+      }
+      any = true;
+    }
+    return any;
+  }
+
+  private tiny(l: Live): boolean {
+    for (let i = 3; i < l.pts.length; i += 3) {
+      if (dist(l.pts[i], l.pts[i + 1], l.pts[0], l.pts[1]) > 8 * this.board.px) return false;
+    }
+    return true;
+  }
+
+  private bigEnough(l: Live): boolean {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (let i = 0; i < l.pts.length; i += 3) {
+      x1 = Math.min(x1, l.pts[i]);
+      x2 = Math.max(x2, l.pts[i]);
+      y1 = Math.min(y1, l.pts[i + 1]);
+      y2 = Math.max(y2, l.pts[i + 1]);
+    }
+    return Math.max(x2 - x1, y2 - y1) / this.board.px > 70;
+  }
+
+  private toShape(l: Live): PathEl | null {
+    const r = recognize(l.pts);
+    if (!r) return null;
+    return {
+      id: uid(),
+      type: 'path',
+      style: 'shape',
+      pts: pathFromPoints(r.pts, r.closed),
+      color: l.color,
+      size: l.style === 'highlighter' ? l.size : Math.max(2, l.size * 0.9),
+      opacity: l.style === 'highlighter' ? 0.4 : 1,
+      closed: r.closed,
+      fill: null,
+    };
+  }
+
+  move(p: Ptr): void {
+    const l = this.live.get(p.id);
+    if (!l || l.snapped) return;
+    const minD = 0.6 * this.board.px;
+    for (const [sx, sy, sp] of p.samples) {
+      const [x, y] = l.snapper ? l.snapper.project(sx, sy) : [sx, sy];
+      if (dist(x, y, l.lastX, l.lastY) < minD) continue;
+      l.pts.push(x, y, sp);
+      l.lastX = x;
+      l.lastY = y;
+    }
+    l.predicted = [];
+    if (l.marker) {
+      // Marker: the wet layer alone shows the line — no full-screen redraw per move.
+      this.drawWet(l);
+      const n2 = l.pts.length;
+      if (n2 >= 6 && dist(l.pts[n2 - 3], l.pts[n2 - 2], l.pts[n2 - 6], l.pts[n2 - 5]) > 2 * this.board.px) this.armHold(p.id, l);
+      return;
+    }
+    if (!l.snapper) for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
+    // Re-arm hold detection only when the pen actually moved noticeably.
+    const n = l.pts.length;
+    if (n >= 6 && dist(l.pts[n - 3], l.pts[n - 2], l.pts[n - 6], l.pts[n - 5]) > 2 * this.board.px) this.armHold(p.id, l);
+    this.board.invalidate('overlay');
+  }
+
+  up(p: Ptr): void {
+    const l = this.live.get(p.id);
+    if (!l) return;
+    this.live.delete(p.id);
+    clearTimeout(l.holdTimer);
+    // A quick tap on a tape strip reveals / hides it instead of making a dot.
+    if (!l.snapped && !l.snapper && performance.now() - l.t0 < 350 && this.tiny(l)) {
+      const t = tapeAt(store.page.els, l.pts[0], l.pts[1], 2 * this.board.px);
+      if (t) {
+        toggleTape(t);
+        if (l.marker) this.board.renderWet();
+        this.board.invalidate('overlay');
+        return;
+      }
+    }
+    let el: PathEl | null = l.snapped;
+    if (!el) {
+      el = {
+        id: uid(),
+        type: 'path',
+        style: l.snapper ? 'shape' : l.style,
+        // Pen: exactly where the hand went. Brush / calligraphy: lightly smoothed.
+        pts: l.snapper ? [l.pts[0], l.pts[1], 0.5, l.pts[l.pts.length - 3], l.pts[l.pts.length - 2], 0.5] : l.style === 'pen' || l.style === 'highlighter' ? l.pts : smoothPts(l.pts),
+        color: l.color,
+        size: l.size,
+        opacity: l.snapper && l.style === 'highlighter' ? 0.4 : 1,
+        sim: l.sim,
+      };
+      // Arcs along the protractor must keep every point.
+      if (l.snapper && !this.isStraight(l.pts)) el.pts = l.pts;
+    }
+    store.addEls([el]);
+    this.board.invalidate('overlay');
+  }
+
+  private isStraight(pts: number[]): boolean {
+    const n = pts.length;
+    if (n < 9) return true;
+    const ax = pts[0], ay = pts[1], bx = pts[n - 3], by = pts[n - 2];
+    const L = Math.hypot(bx - ax, by - ay) || 1;
+    for (let i = 3; i < n - 3; i += 3) {
+      const d = Math.abs((bx - ax) * (ay - pts[i + 1]) - (ax - pts[i]) * (by - ay)) / L;
+      if (d > 1) return false;
+    }
+    return true;
+  }
+
+  cancel(): void {
+    for (const l of this.live.values()) clearTimeout(l.holdTimer);
+    this.live.clear();
+    this.board.renderWet();
+    this.board.invalidate('overlay');
+  }
+
+  drawOverlay(ctx: CanvasRenderingContext2D): void {
+    for (const l of this.live.values()) {
+      if (l.snapped) {
+        ctx.globalAlpha = l.snapped.opacity;
+        ctx.strokeStyle = l.color;
+        ctx.lineWidth = l.snapped.size;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        const pts = l.snapped.pts;
+        ctx.beginPath();
+        ctx.moveTo(pts[0], pts[1]);
+        for (let i = 3; i < pts.length; i += 3) ctx.lineTo(pts[i], pts[i + 1]);
+        if (l.snapped.closed) ctx.closePath();
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      // Same smoothing as the finished stroke, so the line does not jump
+      // when the pen is lifted.
+      if (l.marker) continue; // drawn on the wet-ink layer
+      const raw = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
+      const pts = l.snapper || l.style === 'pen' || l.style === 'highlighter' ? raw : smoothPts(raw);
+      ctx.globalAlpha = l.style === 'highlighter' ? 0.38 : 1;
+      ctx.fillStyle = l.color;
+      ctx.fill(freehandPath(pts, { style: l.snapper ? 'highlighter' : l.style, size: l.size, sim: l.sim }, false));
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+/**
+ * Gentle smoothing of a finished stroke (two [1 2 1] passes). It irons out the
+ * small zig-zags touch screens add without rounding off real corners much;
+ * the end points stay exactly where the pen was.
+ */
+export function smoothPts(pts: number[]): number[] {
+  if (pts.length < 12) return pts;
+  let a = pts;
+  for (let pass = 0; pass < 2; pass++) {
+    const b = a.slice();
+    for (let i = 3; i < a.length - 3; i += 3) {
+      b[i] = (a[i - 3] + a[i] * 2 + a[i + 3]) / 4;
+      b[i + 1] = (a[i - 2] + a[i + 1] * 2 + a[i + 4]) / 4;
+    }
+    a = b;
+  }
+  return a;
+}

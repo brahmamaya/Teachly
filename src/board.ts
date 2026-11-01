@@ -1,0 +1,846 @@
+import { bbox } from './geometry';
+import { Instruments } from './instruments';
+import { PAGE, setPageSize } from './page';
+import { drawBackground, drawEls, setAssetLoadCallback } from './renderer';
+import { store } from './store';
+import { toast } from './ui/panel';
+import type { Camera, El, Rect, ToolId } from './types';
+
+export interface Ptr {
+  id: number;
+  /** World coordinates */
+  x: number;
+  y: number;
+  /** Screen (CSS px, relative to board) */
+  sx: number;
+  sy: number;
+  p: number;
+  type: string;
+  width: number;
+  height: number;
+  shift: boolean;
+  alt: boolean;
+  ctrl: boolean;
+  button: number;
+  /** Intermediate samples since the last event (world coords + pressure). */
+  samples: [number, number, number][];
+  /** Predicted future samples (for low-latency wet ink). */
+  predicted: [number, number, number][];
+  time: number;
+}
+
+export interface Tool {
+  cursor?: string;
+  down(p: Ptr): void;
+  move(p: Ptr): void;
+  up(p: Ptr): void;
+  cancel(): void;
+  hover?(p: Ptr | null): void;
+  /** Draw transient UI in world space. Return true to keep animating. */
+  drawOverlay?(ctx: CanvasRenderingContext2D): boolean | void;
+  /** Draw transient UI in screen space. */
+  drawScreen?(ctx: CanvasRenderingContext2D): boolean | void;
+  /** Elements to hide on the ink layer (e.g. during transform preview). */
+  hidden?(): Set<string> | null;
+  /** Redraw lines still being written on the wet-ink layer; true if any. */
+  redrawWet?(ctx: CanvasRenderingContext2D): boolean;
+  /** Extra world-space drawing on the ink layer (e.g. transform preview). */
+  drawInk?(ctx: CanvasRenderingContext2D): void;
+  onActivate?(): void;
+  onDeactivate?(): void;
+}
+
+type Layer = 'bg' | 'ink' | 'overlay';
+
+/**
+ * Android classroom boards (and devices with few cores / little memory)
+ * run in "lite" mode: fewer pixels per layer, no blur effects.
+ */
+export function liteDevice(): boolean {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const modest = (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 3;
+  const android = /Android/i.test(navigator.userAgent);
+  const bigScreen = Math.min(screen.width, screen.height) >= 700;
+  return modest || (android && bigScreen);
+}
+
+export class Board {
+  readonly el: HTMLElement;
+  readonly bg: HTMLCanvasElement;
+  readonly ink: HTMLCanvasElement;
+  readonly overlay: HTMLCanvasElement;
+  /** "Wet ink": the line being written, drawn bit by bit (no redraw per move). */
+  readonly wet: HTMLCanvasElement;
+  readonly wetCtx: CanvasRenderingContext2D;
+  /** Pixels of the video being recorded (null = not recording). */
+  recordPixels: number | null = null;
+  private wetDirty = false;
+  private bgCtx: CanvasRenderingContext2D;
+  private inkCtx: CanvasRenderingContext2D;
+  private ovCtx: CanvasRenderingContext2D;
+  w = 0;
+  h = 0;
+  dpr = 1;
+  tools = new Map<ToolId, Tool>();
+  /** Tool temporarily overriding the active one (palm eraser, space-pan). */
+  private override: Tool | null = null;
+  readonly instruments: Instruments;
+  /** Extra screen-space overlay painters (spotlight, etc.). */
+  /** Elements hidden from the ink layer (e.g. while being edited). */
+  hiddenIds = new Set<string>();
+  screenPainters = new Set<(ctx: CanvasRenderingContext2D) => boolean | void>();
+  private dirty = new Set<Layer>();
+  private raf = 0;
+  private animating = false;
+
+  // Gesture state
+  private pointers = new Map<number, Ptr>();
+  private routed = new Map<number, 'tool' | 'gesture' | 'pan' | 'instrument' | 'override' | 'ignore'>();
+  /** When each pointer was last heard from, where it started, and when. */
+  private lastSeen = new Map<number, number>();
+  private downAt = new Map<number, number>();
+  private startPos = new Map<number, [number, number]>();
+  /** Typical finger contact size on this screen (for palm detection). */
+  private touchSizes: number[] = [];
+  private gesture: { ids: [number, number]; startDist: number; startAngle: number; cam: Camera; wx: number; wy: number } | null = null;
+  private panStart: { sx: number; sy: number; cam: Camera } | null = null;
+  spaceDown = false;
+  /** A stylus has been used in this session. */
+  private sawPen = false;
+  private lastHover: Ptr | null = null;
+
+  constructor(container: HTMLElement) {
+    this.el = container;
+    const mk = (cls: string, desync: boolean) => {
+      const c = document.createElement('canvas');
+      c.className = `layer ${cls}`;
+      container.appendChild(c);
+      const ctx = c.getContext('2d', desync ? { desynchronized: true } : undefined)!;
+      return [c, ctx] as const;
+    };
+    [this.bg, this.bgCtx] = mk('bg', false);
+    [this.ink, this.inkCtx] = mk('ink', false);
+    [this.wet, this.wetCtx] = mk('wet', false);
+    // (No "desynchronized" canvases: on some Android boards they show wrong
+    // colours and stutter.)
+    [this.overlay, this.ovCtx] = mk('overlay', false);
+    this.instruments = new Instruments(this);
+
+    new ResizeObserver(() => this.resize()).observe(container);
+    this.resize();
+    setAssetLoadCallback(() => {
+      this.inkState = null;
+      this.invalidate('ink');
+    });
+    this.bindEvents();
+
+    store.on('doc', () => this.invalidate('bg', 'ink', 'overlay'));
+    store.on('page', () => {
+      this.cancelAll();
+      this.ensureCam();
+      this.invalidate('bg', 'ink', 'overlay');
+    });
+    store.on('doc', () => this.ensureCam());
+    store.on('camera', () => this.invalidate('bg', 'ink', 'overlay'));
+    store.on('selection', () => this.invalidate('overlay'));
+    store.on('tool', () => {
+      this.updateCursor();
+      this.invalidate('overlay');
+    });
+  }
+
+  get tool(): Tool {
+    return this.override ?? this.tools.get(store.tool.tool)!;
+  }
+
+  get cam(): Camera {
+    return store.camera;
+  }
+
+  // ---- coordinates ---------------------------------------------------------
+
+  toWorld(sx: number, sy: number): [number, number] {
+    const c = this.cam;
+    return [sx / c.z + c.x, sy / c.z + c.y];
+  }
+
+  toScreen(x: number, y: number): [number, number] {
+    const c = this.cam;
+    return [(x - c.x) * c.z, (y - c.y) * c.z];
+  }
+
+  viewRect(): Rect {
+    const c = this.cam;
+    return { x: c.x, y: c.y, w: this.w / c.z, h: this.h / c.z };
+  }
+
+  /** World units per screen pixel. */
+  get px(): number {
+    return 1 / this.cam.z;
+  }
+
+  // ---- camera ----------------------------------------------------------------
+
+  /** Screen space kept free around the page (toolbars, clock). Set by the app. */
+  insets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+  /** Zoom at which the whole page just fits on screen. */
+  get fitZ(): number {
+    const i = this.insets;
+    return Math.max(0.05, Math.min((this.w - i.left - i.right) / PAGE.w, (this.h - i.top - i.bottom) / PAGE.h));
+  }
+
+  /** Camera showing the whole page, centred in the free area. */
+  private fitCam(): Camera {
+    const z = this.fitZ, i = this.insets;
+    const cx = i.left + (this.w - i.left - i.right) / 2;
+    const cy = i.top + (this.h - i.top - i.bottom) / 2;
+    return { x: PAGE.x + PAGE.w / 2 - cx / z, y: PAGE.y + PAGE.h / 2 - cy / z, z };
+  }
+
+  get isFit(): boolean {
+    return Math.abs(this.cam.z - this.fitZ) < 1e-3;
+  }
+
+  /**
+   * The board never drifts: you cannot zoom out past the page, and when
+   * zoomed in you can only move around inside it.
+   */
+  private lastHandTap = { t: 0, x: 0, y: 0 };
+
+  /** May the view move / zoom right now? Only in slide mode (✋). */
+  private get free(): boolean {
+    return store.tool.slide;
+  }
+
+  setCam(c: Camera): void {
+    const fit = this.fitCam();
+    // Slide mode off: the board is completely fixed. Nothing a finger, pen,
+    // pinch or wheel does moves it (it stays wherever it was left).
+    if (!this.free) return;
+    // Free board: slide anywhere (the board goes on beyond the page),
+    // zoom from a wide overview up to 6× the page.
+    const z = Math.max(fit.z * 0.3, Math.min(fit.z * 6, c.z));
+    store.setCamera({ x: c.x, y: c.y, z });
+  }
+
+  /** Showing the starting view (the whole page)? */
+  get isHome(): boolean {
+    const f = this.fitCam(), c = this.cam;
+    return Math.abs(c.z - f.z) < 1e-3 && Math.abs(c.x - f.x) * c.z < 1 && Math.abs(c.y - f.y) * c.z < 1;
+  }
+
+  /** Give a page that has never been shown the fitted view. */
+  ensureCam(): void {
+    if (!store.cameras.has(store.page.id) || store.camera.z < this.fitZ * 0.3 - 1e-3) store.setCamera(this.fitCam());
+  }
+
+  panBy(dsx: number, dsy: number): void {
+    const c = this.cam;
+    this.setCam({ x: c.x - dsx / c.z, y: c.y - dsy / c.z, z: c.z });
+  }
+
+  zoomAt(sx: number, sy: number, factor: number): void {
+    const c = this.cam;
+    const z = c.z * factor;
+    const [wx, wy] = this.toWorld(sx, sy);
+    this.setCam({ x: wx - sx / z, y: wy - sy / z, z });
+  }
+
+  /** Back to the whole page. */
+  fitPage(): void {
+    store.setCamera(this.fitCam());
+  }
+
+  centerOn(r: Rect): void {
+    const c = this.cam;
+    this.setCam({ x: r.x + r.w / 2 - this.w / 2 / c.z, y: r.y + r.h / 2 - this.h / 2 / c.z, z: c.z });
+  }
+
+  // ---- rendering -------------------------------------------------------------
+
+  resize(): void {
+    const r = this.el.getBoundingClientRect();
+    this.rect = { left: r.left, top: r.top };
+    this.w = r.width;
+    this.h = r.height;
+    // Sharp on retina phones, but cap the pixel count so 4K / 86" panels
+    // (three full-screen layers) stay fast.
+    const area = Math.max(1, r.width * r.height);
+    // Pixel budget per layer: full 4K on strong devices; lighter on modest
+    // classroom boards (few cores / little memory) so writing never lags.
+    // Classroom boards (Android panels) and modest devices get a lighter
+    // budget so writing never lags; iPads, laptops and phones stay sharp.
+    const budget = liteDevice() ? 2_800_000 : 8_400_000;
+    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
+    // While a lesson video is recorded, draw at the video's size (up to 4K) so it is sharp.
+    if (this.recordPixels) this.dpr = Math.min(4, Math.max(this.dpr, Math.sqrt(this.recordPixels / area)));
+    for (const c of [this.bg, this.ink, this.wet, this.overlay]) {
+      c.width = Math.round(r.width * this.dpr);
+      c.height = Math.round(r.height * this.dpr);
+      c.style.width = `${r.width}px`;
+      c.style.height = `${r.height}px`;
+    }
+    setPageSize(this.w, this.h);
+    // Resizing a canvas wipes it: draw every layer from scratch.
+    this.inkState = null;
+    this.bgKey = '';
+    // A really new screen size: every page goes back to its fitted view.
+    const size = `${Math.round(this.w)}x${Math.round(this.h)}`;
+    if (size !== this.lastSize) {
+      if (this.lastSize) store.cameras.clear();
+      this.lastSize = size;
+    }
+    if (this.w && this.h) this.ensureCam();
+    this.invalidate('bg', 'ink', 'overlay');
+  }
+
+  invalidate(...layers: Layer[]): void {
+    for (const l of layers) this.dirty.add(l);
+    if (layers.includes('ink')) this.inkFull = true;
+    if (!this.raf) this.raf = requestAnimationFrame(() => this.frame());
+  }
+
+  /** Part of the ink layer that a tool changed (world units); null = none. */
+  private inkDirty: Rect | null = null;
+  /** The whole ink layer must be drawn again this frame. */
+  private inkFull = false;
+  /** What the last full ink drawing was made from (to allow redrawing just a part). */
+  private inkView: { els: El[]; cam: Camera; w: number; h: number; dpr: number } | null = null;
+
+  /**
+   * A tool changed only this area of the ink layer (eraser, moving a
+   * selection): redraw just that part instead of the whole page. On a full
+   * page of writing this keeps erasing and dragging smooth on slow boards.
+   */
+  markInk(r: Rect): void {
+    const d = this.inkDirty;
+    this.inkDirty = d
+      ? { x: Math.min(d.x, r.x), y: Math.min(d.y, r.y), w: Math.max(d.x + d.w, r.x + r.w) - Math.min(d.x, r.x), h: Math.max(d.y + d.h, r.y + r.h) - Math.min(d.y, r.y) }
+      : r;
+    this.dirty.add('ink');
+    if (!this.raf) this.raf = requestAnimationFrame(() => this.frame());
+  }
+
+  /** Render immediately (used for low-latency wet ink). */
+  flushOverlay(): void {
+    this.renderOverlay();
+    this.dirty.delete('overlay');
+  }
+
+  /** Set the wet-ink canvas up for drawing in board coordinates. */
+  wetBegin(): CanvasRenderingContext2D {
+    const ctx = this.wetCtx;
+    this.worldTransform(ctx);
+    this.wetDirty = true;
+    return ctx;
+  }
+
+  /** Clear the wet ink and let the tool redraw what is still being written. */
+  renderWet(): void {
+    const ctx = this.wetCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.wet.width, this.wet.height);
+    this.wetDirty = false;
+    this.worldTransform(ctx);
+    if (this.tool.redrawWet?.(ctx)) this.wetDirty = true;
+  }
+
+  private frame(): void {
+    this.raf = 0;
+    if (this.dirty.has('bg')) this.renderBg();
+    if (this.dirty.has('ink')) this.renderInk();
+    // Finished lines are now on the ink layer (or the view moved): refresh the wet layer.
+    if ((this.dirty.has('ink') || this.dirty.has('bg')) && this.wetDirty) this.renderWet();
+    if (this.dirty.has('overlay') || this.animating) this.renderOverlay();
+    this.dirty.clear();
+    if (this.animating) this.invalidate('overlay');
+  }
+
+  private worldTransform(ctx: CanvasRenderingContext2D): void {
+    const c = this.cam, d = this.dpr;
+    ctx.setTransform(d * c.z, 0, 0, d * c.z, -c.x * c.z * d, -c.y * c.z * d);
+  }
+
+  private bgKey = '';
+  /** What the ink layer currently shows, so new strokes can be added on top. */
+  private inkState: { els: El[]; cam: Camera; w: number; h: number; dpr: number } | null = null;
+
+  private renderBg(): void {
+    const p = store.page, c = this.cam;
+    // The background only changes with colour, pattern, view or size:
+    // skip the redraw (and its shadow blur) after every stroke.
+    const key = `${p.bg}|${p.pattern}|${c.x}|${c.y}|${c.z}|${this.w}|${this.h}|${this.dpr}`;
+    if (key === this.bgKey) return;
+    this.bgKey = key;
+    const ctx = this.bgCtx;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    // The board surface goes on beyond the page (slide it with the Hand).
+    drawBackground(ctx, p.bg, p.pattern, c, this.w, this.h);
+  }
+
+  renderInk(): void {
+    const ctx = this.inkCtx;
+    const tool = this.tool;
+    const hidden = tool.hidden?.() ?? null;
+    const skip = this.hiddenIds.size ? new Set([...(hidden ?? []), ...this.hiddenIds]) : hidden ?? undefined;
+    const els = store.page.els;
+    const cam = this.cam;
+    const dirty = this.inkDirty, full = this.inkFull;
+    this.inkDirty = null;
+    this.inkFull = false;
+    // Only a tool's area changed (page, view and size as before): redraw just that part.
+    const v = this.inkView;
+    if (dirty && !full && v && v.els === els && v.cam === cam && v.w === this.ink.width && v.h === this.ink.height && v.dpr === this.dpr) {
+      const k = cam.z * this.dpr;
+      const x0 = Math.max(0, Math.floor((dirty.x - cam.x) * k) - 2), y0 = Math.max(0, Math.floor((dirty.y - cam.y) * k) - 2);
+      const x1 = Math.min(this.ink.width, Math.ceil((dirty.x + dirty.w - cam.x) * k) + 2), y1 = Math.min(this.ink.height, Math.ceil((dirty.y + dirty.h - cam.y) * k) + 2);
+      if (x1 <= x0 || y1 <= y0) return;
+      if ((x1 - x0) * (y1 - y0) < this.ink.width * this.ink.height * 0.6) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.beginPath();
+        ctx.rect(x0, y0, x1 - x0, y1 - y0);
+        ctx.clip();
+        ctx.clearRect(x0, y0, x1 - x0, y1 - y0);
+        this.worldTransform(ctx);
+        drawEls(ctx, els, { x: x0 / k + cam.x, y: y0 / k + cam.y, w: (x1 - x0) / k, h: (y1 - y0) / k }, skip);
+        tool.drawInk?.(ctx);
+        ctx.restore();
+        this.inkState = null;
+        return;
+      }
+    }
+    // Fast path: when strokes were only added (the usual case while writing),
+    // draw just the new ones on top instead of the whole page again.
+    const prev = this.inkState;
+    let from = 0;
+    if (!skip && prev && prev.cam === cam && prev.w === this.ink.width && prev.h === this.ink.height && prev.dpr === this.dpr && els.length >= prev.els.length) {
+      from = prev.els.length;
+      for (let i = 0; i < from; i++) {
+        if (els[i] !== prev.els[i]) {
+          from = 0;
+          break;
+        }
+      }
+      if (from === 0 && prev.els.length) from = -1;
+    } else from = -1;
+    if (from <= 0) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.ink.width, this.ink.height);
+      from = 0;
+    }
+    this.worldTransform(ctx);
+    ctx.save();
+    drawEls(ctx, from ? els.slice(from) : els, this.viewRect(), skip);
+    tool.drawInk?.(ctx);
+    ctx.restore();
+    this.inkState = skip ? null : { els, cam, w: this.ink.width, h: this.ink.height, dpr: this.dpr };
+    this.inkView = { els, cam, w: this.ink.width, h: this.ink.height, dpr: this.dpr };
+  }
+
+  private renderOverlay(): void {
+    const ctx = this.ovCtx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
+    let anim = false;
+    this.worldTransform(ctx);
+    if (this.instruments.draw(ctx)) anim = true;
+    for (const t of new Set([...this.tools.values(), this.tool])) {
+      if (t.drawOverlay?.(ctx)) anim = true;
+    }
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    for (const t of new Set([...this.tools.values(), this.tool])) {
+      if (t.drawScreen?.(ctx)) anim = true;
+    }
+    for (const painter of this.screenPainters) if (painter(ctx)) anim = true;
+    this.animating = anim;
+  }
+
+  // ---- input -----------------------------------------------------------------
+
+  /** Board position on screen, measured on resize (not on every pointer event). */
+  private rect = { left: 0, top: 0 };
+
+  private makePtr(e: PointerEvent): Ptr {
+    const r = this.rect;
+    const conv = (ev: PointerEvent): [number, number, number] => {
+      const [x, y] = this.toWorld(ev.clientX - r.left, ev.clientY - r.top);
+      return [x, y, this.pressure(ev)];
+    };
+    const sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const [x, y] = this.toWorld(sx, sy);
+    const co = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+    const pr = typeof e.getPredictedEvents === 'function' ? e.getPredictedEvents() : [];
+    return {
+      id: e.pointerId,
+      x,
+      y,
+      sx,
+      sy,
+      p: this.pressure(e),
+      type: e.pointerType,
+      width: e.width,
+      height: e.height,
+      shift: e.shiftKey,
+      alt: e.altKey,
+      ctrl: e.ctrlKey || e.metaKey,
+      button: e.button,
+      samples: co.length ? co.map(conv) : [[x, y, this.pressure(e)]],
+      predicted: pr.map(conv),
+      time: e.timeStamp,
+    };
+  }
+
+  private pressure(e: PointerEvent): number {
+    if (e.pointerType === 'pen') return e.pressure || 0.5;
+    return 0.5;
+  }
+
+  private lastSize = '';
+  /** Last time the board was touched (housekeeping waits for a quiet moment). */
+  lastInput = performance.now();
+
+  /** A finger, pen or mouse is on the board right now. */
+  get busyInput(): boolean {
+    return this.pointers.size > 0;
+  }
+
+  /** Remember finger sizes: some boards report every touch as large. */
+  private learnTouchSize(p: Ptr): void {
+    if (p.type !== 'touch') return;
+    this.startPos.set(p.id, [p.sx, p.sy]);
+    const sz = Math.max(p.width, p.height);
+    if (sz > 0) {
+      this.touchSizes.push(sz);
+      if (this.touchSizes.length > 40) this.touchSizes.shift();
+    }
+  }
+
+  private travel(id: number): number {
+    const a = this.startPos.get(id), b = this.pointers.get(id);
+    return a && b ? Math.hypot(b.sx - a[0], b.sy - a[1]) : 0;
+  }
+
+  /** A palm is clearly bigger than this screen's usual finger touch. */
+  private isPalm(p: Ptr): boolean {
+    if (!store.settings.palmErase || p.type !== 'touch') return false;
+    const sz = Math.max(p.width, p.height);
+    const sorted = [...this.touchSizes].sort((a, b) => a - b);
+    const typical = sorted.length >= 5 ? sorted[Math.floor(sorted.length / 2)] : 20;
+    return sz >= Math.max(45, typical * 2.4);
+  }
+
+  private bindEvents(): void {
+    const el = this.overlay;
+    el.style.touchAction = 'none';
+    el.addEventListener('pointerdown', (e) => this.onDown(e));
+    // pointerrawupdate delivers pen samples as soon as they arrive instead of
+    // once per frame, which takes a few milliseconds off the ink latency.
+    const raw = 'onpointerrawupdate' in window;
+    el.addEventListener('pointermove', (e) => {
+      if (raw && this.routed.has(e.pointerId)) return;
+      this.onMove(e);
+    });
+    if (raw) {
+      el.addEventListener('pointerrawupdate' as 'pointermove', (e) => {
+        if (this.routed.has(e.pointerId)) this.onMove(e);
+      });
+    }
+    el.addEventListener('pointerup', (e) => this.onUp(e, false));
+    el.addEventListener('pointercancel', (e) => this.onUp(e, true));
+    el.addEventListener('lostpointercapture', (e) => {
+      if (this.routed.has(e.pointerId)) this.onUp(e, true);
+    });
+    el.addEventListener('pointerleave', () => {
+      this.lastHover = null;
+      this.tool.hover?.(null);
+      this.invalidate('overlay');
+    });
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        const r = this.el.getBoundingClientRect();
+        const sx = e.clientX - r.left, sy = e.clientY - r.top;
+        // Ctrl / pinch-to-zoom on a trackpad, or any scroll with the Hand tool: zoom.
+        if (e.ctrlKey || e.metaKey) {
+          this.zoomAt(sx, sy, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)));
+        } else {
+          const k = e.deltaMode ? 30 : 1;
+          this.panBy(-(e.shiftKey ? e.deltaY : e.deltaX) * k, -(e.shiftKey ? 0 : e.deltaY) * k);
+        }
+      },
+      { passive: false },
+    );
+  }
+
+  private touchCount(): number {
+    let n = 0;
+    for (const p of this.pointers.values()) if (p.type === 'touch') n++;
+    return n;
+  }
+
+  private onDown(e: PointerEvent): void {
+    e.preventDefault();
+    this.overlay.setPointerCapture(e.pointerId);
+    const p = this.makePtr(e);
+    this.pointers.set(p.id, p);
+
+    // Touch frames on classroom boards sometimes lose a finger's "up":
+    // forget pointers that have been silent for a while.
+    const now = performance.now();
+    for (const [id, seen] of this.lastSeen) {
+      if (id !== p.id && now - seen > 1500) {
+        const lost = this.pointers.get(id);
+        const r = this.routed.get(id);
+        this.lastSeen.delete(id);
+        this.pointers.delete(id);
+        this.routed.delete(id);
+        if (r === 'gesture') this.gesture = null;
+        if (r === 'pan') this.panStart = null;
+        // Finish (keep) whatever that lost touch was writing.
+        if ((r === 'tool' || r === 'override') && lost) {
+          this.tool.up(lost);
+          if (r === 'override') {
+            (this.override as unknown as { palm?: boolean }).palm = false;
+            this.override = null;
+          }
+        }
+      }
+    }
+    this.lastSeen.set(p.id, now);
+    this.lastInput = now;
+    this.learnTouchSize(p);
+
+    // Two-finger gesture (pinch / pan / zoom) — only in slide mode, because
+    // otherwise the board is fixed. A second touch that lands while a line
+    // is already being written (or a "ghost" touch from the board's frame)
+    // never cancels that line.
+    // (Off in "many writers" mode: every finger draws, like Note 3's group writing.)
+    const multi = store.settings.multiWrite;
+    if (!multi && p.type === 'touch' && this.touchCount() >= 2) {
+      const drawing = [...this.routed.entries()].find(([id, r]) => id !== p.id && (r === 'tool' || r === 'override'));
+      const started = drawing ? this.downAt.get(drawing[0]) : undefined;
+      const writing = !!drawing && (now - (started ?? now) > 250 || this.travel(drawing[0]) > 30);
+      if (!store.tool.slide || writing) {
+        this.routed.set(p.id, 'ignore');
+        return;
+      }
+    }
+    this.downAt.set(p.id, now);
+    if (!multi && p.type === 'touch' && this.touchCount() === 2) {
+      const ids = [...this.pointers.values()].filter((q) => q.type === 'touch').map((q) => q.id) as [number, number];
+      for (const id of ids) {
+        const r = this.routed.get(id);
+        if (r === 'tool' || r === 'override') this.cancelTool();
+        this.routed.set(id, 'gesture');
+      }
+      this.startGesture(ids);
+      return;
+    }
+    if (this.gesture && p.type === 'touch') {
+      this.routed.set(p.id, 'gesture');
+      return;
+    }
+
+    // Middle button, space+drag, or finger when pen-only → pan.
+    // Once a stylus has been used, fingers and palms only move the board
+    // (palm rejection, like a real tablet).
+    if (p.type === 'pen') {
+      // First stylus on this device: from now on fingers and palms don't
+      // draw ("Write with stylus only" in the menu, which can turn it off).
+      if (!this.sawPen && !store.settings.penOnly) {
+        store.setSettings({ penOnly: true });
+        toast('Stylus found — now only the pen writes (change it in Menu)', 3500);
+      }
+      this.sawPen = true;
+      // The palm usually lands a moment before the pen: drop what it was drawing.
+      let palmDrawing = false;
+      for (const [id, r] of this.routed) {
+        if (id !== p.id && (r === 'tool' || r === 'override') && this.pointers.get(id)?.type === 'touch') {
+          this.routed.set(id, 'pan');
+          palmDrawing = true;
+        }
+      }
+      if (palmDrawing) this.cancelTool();
+    }
+    // Slide mode (✋): the pen keeps writing while fingers (once a stylus is
+    // in use) or the right mouse button slide the board; on boards without
+    // a stylus one finger writes and two fingers slide.
+    const slide = store.tool.slide;
+    // The laser pointer works with anything — finger, pen or mouse — whatever
+    // the "stylus only" setting (it writes nothing, so nothing to reject).
+    const laser = store.tool.tool === 'laser';
+    const fingerRest = !laser && !multi && store.settings.penOnly && p.type === 'touch';
+    const slidePan = slide && (p.button === 2 || fingerRest);
+    if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
+      if (slide) {
+        // Double-tap: zoom in 2× there, or back to the whole page.
+        const now = performance.now(), lt = this.lastHandTap;
+        if (now - lt.t < 320 && Math.hypot(p.sx - lt.x, p.sy - lt.y) < 40) {
+          if (this.isHome) this.zoomAt(p.sx, p.sy, 2);
+          else this.fitPage();
+          this.lastHandTap = { t: 0, x: 0, y: 0 };
+        } else this.lastHandTap = { t: now, x: p.sx, y: p.sy };
+      }
+      this.routed.set(p.id, 'pan');
+      this.panStart = { sx: p.sx, sy: p.sy, cam: { ...this.cam } };
+      this.el.classList.add('panning');
+      return;
+    }
+
+    if (this.instruments.down(p)) {
+      this.routed.set(p.id, 'instrument');
+      return;
+    }
+
+    if (this.isPalm(p) && store.tool.tool !== 'eraser' && store.tool.tool !== 'laser') {
+      this.override = this.tools.get('eraser')!;
+      (this.override as unknown as { palm: boolean }).palm = true;
+      this.routed.set(p.id, 'override');
+      this.override.down(p);
+      return;
+    }
+    // Pen eraser end / barrel button → eraser.
+    if (p.type === 'pen' && (e.button === 5 || e.buttons === 32)) {
+      this.override = this.tools.get('eraser')!;
+      this.routed.set(p.id, 'override');
+      this.override.down(p);
+      return;
+    }
+
+    this.routed.set(p.id, 'tool');
+    this.tool.down(p);
+    this.invalidate('overlay');
+  }
+
+  private onMove(e: PointerEvent): void {
+    this.lastSeen.set(e.pointerId, performance.now());
+    const p = this.makePtr(e);
+    const route = this.routed.get(p.id);
+    if (!route) {
+      this.lastHover = p;
+      this.instruments.hover(p);
+      this.tool.hover?.(p);
+      this.invalidate('overlay');
+      return;
+    }
+    this.pointers.set(p.id, p);
+    switch (route) {
+      case 'gesture':
+        this.updateGesture();
+        break;
+      case 'pan':
+        if (this.panStart) {
+          const c = this.panStart.cam;
+          this.setCam({ x: c.x - (p.sx - this.panStart.sx) / c.z, y: c.y - (p.sy - this.panStart.sy) / c.z, z: c.z });
+        }
+        break;
+      case 'instrument':
+        this.instruments.move(p);
+        break;
+      default:
+        this.tool.move(p);
+    }
+  }
+
+  private onUp(e: PointerEvent, _cancelled: boolean): void {
+    const p = this.makePtr(e);
+    const route = this.routed.get(p.id);
+    this.pointers.delete(p.id);
+    this.routed.delete(p.id);
+    this.lastSeen.delete(p.id);
+    this.downAt.delete(p.id);
+    this.startPos.delete(p.id);
+    switch (route) {
+      case 'gesture':
+        this.gesture = null;
+        break;
+      case 'pan':
+        this.panStart = null;
+        this.el.classList.remove('panning');
+        break;
+      case 'instrument':
+        this.instruments.up(p);
+        break;
+      case 'tool':
+      case 'override':
+        // A cancel from the browser (or a lost touch) keeps what was written.
+        this.tool.up(p);
+        if (route === 'override' && ![...this.routed.values()].includes('override')) {
+          (this.override as unknown as { palm?: boolean }).palm = false;
+          this.override = null;
+        }
+        break;
+    }
+    this.invalidate('overlay');
+  }
+
+  private startGesture(ids: [number, number]): void {
+    const a = this.pointers.get(ids[0])!, b = this.pointers.get(ids[1])!;
+    const mx = (a.sx + b.sx) / 2, my = (a.sy + b.sy) / 2;
+    const [wx, wy] = this.toWorld(mx, my);
+    this.gesture = {
+      ids,
+      startDist: Math.hypot(b.sx - a.sx, b.sy - a.sy) || 1,
+      startAngle: Math.atan2(b.sy - a.sy, b.sx - a.sx),
+      cam: { ...this.cam },
+      wx,
+      wy,
+    };
+  }
+
+  private updateGesture(): void {
+    const g = this.gesture;
+    if (!g) return;
+    const a = this.pointers.get(g.ids[0]), b = this.pointers.get(g.ids[1]);
+    if (!a || !b) return;
+    const d = Math.hypot(b.sx - a.sx, b.sy - a.sy) || 1;
+    const z = Math.max(0.1, Math.min(8, g.cam.z * (d / g.startDist)));
+    const mx = (a.sx + b.sx) / 2, my = (a.sy + b.sy) / 2;
+    this.setCam({ x: g.wx - mx / z, y: g.wy - my / z, z });
+  }
+
+  private cancelTool(): void {
+    this.tool.cancel();
+    if (this.override) {
+      (this.override as unknown as { palm?: boolean }).palm = false;
+      this.override = null;
+    }
+  }
+
+  cancelAll(): void {
+    this.cancelTool();
+    this.pointers.clear();
+    this.routed.clear();
+    this.gesture = null;
+    this.panStart = null;
+  }
+
+  updateCursor(): void {
+    const t = store.tool.tool;
+    this.el.dataset.activeTool = t;
+    this.overlay.style.cursor = this.spaceDown ? 'grab' : this.tool.cursor ?? 'crosshair';
+  }
+
+  get hoverPtr(): Ptr | null {
+    return this.lastHover;
+  }
+
+  /** World-space selection bounds of the current selection. */
+  selectionBounds(): Rect | null {
+    const els = store.selectedEls();
+    if (!els.length) return null;
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (const e of els) {
+      const b = bbox(e);
+      x1 = Math.min(x1, b.x);
+      y1 = Math.min(y1, b.y);
+      x2 = Math.max(x2, b.x + b.w);
+      y2 = Math.max(y2, b.y + b.h);
+    }
+    return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  }
+}
