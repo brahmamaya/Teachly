@@ -2,12 +2,18 @@ import type { Board, Ptr, Tool } from '../board';
 import { store } from '../store';
 
 // Laser pen (red by default): draw to point things out. The drawing stays
-// while you keep pointing, then disappears by itself 3 seconds after the
-// last stroke. Nothing is written on the page.
+// while you keep pointing, then fades away by itself after you lift.
+// Nothing is written on the page.
 
-// After lifting: a short pause, then a smooth fade — gone in 1.5 s.
-const HOLD_MS = 300;
-const FADE_MS = 1200;
+// Timing and look measured from the owner's reference recording:
+// after lifting, the line stays fully bright for 0.8 s, then the whole line
+// fades evenly (linear) over 0.7 s, gone 1.5 s after lifting.
+const HOLD_MS = 800;
+const FADE_MS = 700;
+/** The reference red (default laser colour is drawn in exactly this red). */
+const REF_RED = '#e00812';
+/** Soft white-pink core in the middle of the line. */
+const CORE = '#fff6f2';
 
 interface Trail {
   pts: number[];
@@ -73,16 +79,16 @@ export class LaserTool implements Tool {
 
   drawOverlay(ctx: CanvasRenderingContext2D): boolean {
     const px = this.board.px;
-    const color = store.tool.laserColor;
+    const chosen = store.tool.laserColor;
+    const color = chosen.toLowerCase() === '#ef4444' ? REF_RED : chosen;
     let alpha = 1;
     let fading = false;
     if (this.trails.length && !this.cur.size) {
       const since = performance.now() - this.lastUp;
       if (since > HOLD_MS + FADE_MS) this.trails = [];
       else if (since > HOLD_MS) {
-        // Ease-out fade: dims gently, no sudden drop.
-        const k = (since - HOLD_MS) / FADE_MS;
-        alpha = 1 - k * k * (3 - 2 * k);
+        // Even (linear) fade of the whole line, as in the reference.
+        alpha = 1 - (since - HOLD_MS) / FADE_MS;
         fading = true;
       }
     }
@@ -97,32 +103,45 @@ export class LaserTool implements Tool {
       // Smooth curve through the midpoints.
       for (let i = 2; i < p.length - 2; i += 2) ctx.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2);
       if (p.length > 2) ctx.lineTo(p[p.length - 2], p[p.length - 1]);
-      // Thin and clean: a soft halo, a slim coloured line, a bright core.
-      ctx.globalAlpha = alpha * 0.25;
+      // Measured from the reference (screen points): a 2.9 pt white-pink core,
+      // a 1.5 pt coloured rim on each side, and a glow ~4 pt on each side
+      // (three light layers, cheaper than a blur).
       ctx.strokeStyle = color;
-      ctx.lineWidth = 9 * px;
-      ctx.stroke();
+      for (const [w, a] of [
+        [15.5, 0.12],
+        [11, 0.2],
+        [8.5, 0.32],
+      ] as const) {
+        ctx.globalAlpha = alpha * a;
+        ctx.lineWidth = w * px;
+        ctx.stroke();
+      }
       ctx.globalAlpha = alpha;
-      ctx.lineWidth = 3.4 * px;
+      ctx.lineWidth = 6 * px;
       ctx.stroke();
-      ctx.strokeStyle = '#fff5f5';
-      ctx.lineWidth = 1.2 * px;
+      ctx.strokeStyle = CORE;
+      ctx.lineWidth = 2.9 * px;
       ctx.stroke();
     }
     if (this.tip) {
       const [x, y] = this.tip;
-      ctx.globalAlpha = 0.28;
+      // The tip: same glow, red dot and white-pink core as the line.
       ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(x, y, 9 * px, 0, Math.PI * 2);
-      ctx.fill();
+      for (const [r, a] of [
+        [7, 0.12],
+        [5.5, 0.2],
+        [4.25, 0.32],
+        [3, 1],
+      ] as const) {
+        ctx.globalAlpha = a;
+        ctx.beginPath();
+        ctx.arc(x, y, r * px, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.globalAlpha = 1;
+      ctx.fillStyle = CORE;
       ctx.beginPath();
-      ctx.arc(x, y, 4 * px, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(x, y, 1.6 * px, 0, Math.PI * 2);
+      ctx.arc(x, y, 1.45 * px, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
