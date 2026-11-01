@@ -4310,3 +4310,21 @@ button:active:not(:disabled) {
 .lg-body .lg-list {
   padding-left: 0;
 }
+/* Legal pages: the full text, in a smaller font. */
+.lg-body {
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.lg-body h1 {
+  font-size: 22px;
+}
+.lg-body h2 {
+  margin: 20px 0 4px;
+  font-size: 15px;
+}
+.lg-date {
+  font-size: 12.5px;
+}
+.lg-short {
+  padding: 12px 16px;
+}
