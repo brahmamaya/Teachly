@@ -4092,3 +4092,86 @@ button:active:not(:disabled) {
 .pop-pen .swatches {
   grid-template-columns: repeat(6, 30px);
 }
+
+/* ---------- Privacy policy / Terms of use ---------- */
+.legal {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #0f172a;
+  font-family: var(--font, system-ui), sans-serif;
+  animation: box-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.lg-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.lg-head .icon-btn {
+  color: #0f172a;
+}
+.lg-tabs {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+.lg-tab {
+  flex: none;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lg-tab.on {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #fff;
+}
+.lg-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px max(20px, calc((100% - 720px) / 2)) calc(40px + env(safe-area-inset-bottom, 0px));
+  font-size: 16px;
+  line-height: 1.6;
+}
+.lg-body h1 {
+  margin: 0;
+  font-size: 28px;
+}
+.lg-body h2 {
+  margin: 26px 0 6px;
+  font-size: 18px;
+}
+.lg-body p,
+.lg-body li {
+  color: #334155;
+}
+.lg-body ul {
+  padding-left: 22px;
+}
+.lg-date {
+  margin: 4px 0 16px;
+  font-size: 14px;
+  color: #64748b !important;
+}
+.lg-short {
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.lg-short ul {
+  margin: 6px 0 0;
+}

@@ -14,6 +14,9 @@ Every change, big or small, must keep all of these:
    share text, pages). Share links point to physica.in.
 6. **Never commit the signing key** (it lives outside the repo).
 7. Toolbar stays at the bottom, touching the screen edge.
+8. **Privacy policy / Terms of use** (`src/ui/legal.ts`) must stay true: when a change affects what is stored, sent,
+   or which permission is used, update those texts and their date in the same commit. Never invent legal facts
+   (company names, addresses); a lawyer should review them.
 
 Before pushing: `npx tsc --noEmit -p .`, `npx vitest run`, a browser check of what changed, then build the APK
 and deploy (old `assets/` are kept on gh-pages so an open older version still loads its parts).

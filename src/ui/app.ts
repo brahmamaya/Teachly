@@ -38,6 +38,7 @@ import { installApp, isInstalled, shareApp } from './install';
 import { Library, saveNotebookDialog } from './library';
 import { PAGE_DRAG, PagesPanel } from './pages';
 import { fadeOut, toast } from './panel';
+import { showLegal } from './legal';
 import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 
 // The owner's pen colours, exactly as chosen (row by row: red, orange,
@@ -572,6 +573,8 @@ export class App {
             <button class="menu-item" data-act="fullscreen">${icon('fullscreen', 20)}Full screen</button>
             ${isInstalled() ? '' : `<button class="menu-item" data-act="install">${icon('download', 20)}Install app</button>`}
             <button class="menu-item" data-act="share-app">${icon('share', 20)}Share Teachly</button>
+            <button class="menu-item" data-act="privacy">${icon('shield', 20)}Privacy policy</button>
+            <button class="menu-item" data-act="terms">${icon('terms', 20)}Terms of use</button>
           </div>
           <button class="menu-item wide-item" data-act="tbedit">${icon('settings', 20)}Edit toolbar — choose its buttons</button>
           <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers and palm don't draw)</label>
@@ -803,6 +806,11 @@ export class App {
         return;
       case 'export':
         void this.withProgress('Making PDF', () => exportPdf(b));
+        return;
+      case 'privacy':
+      case 'terms':
+        this.closePopover();
+        showLegal(this.root, act);
         return;
       case 'share-app':
         void shareApp();
