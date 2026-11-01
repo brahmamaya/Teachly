@@ -9,6 +9,7 @@ import './ui/install';
 if (liteDevice()) document.documentElement.classList.add('lite');
 
 const root = document.getElementById('app')!;
+if (document.getElementById('splash')) root.classList.add('starting');
 const app = new App(root);
 
 // Keep the opening screen up for 1.5 seconds from page start, then fade it out softly.
@@ -29,7 +30,12 @@ if (splash) {
   window.setTimeout(
     () => {
       splash.classList.add('hide');
-      window.setTimeout(() => splash.remove(), 350);
+      window.setTimeout(() => {
+        splash.remove();
+        // The small "Teachly by Physica" in the corner appears only now, so the
+        // name never seems to jump from the middle to the corner.
+        root.classList.remove('starting');
+      }, 350);
     },
     quick ? 0 : Math.max(0, 1500 - performance.now()),
   );

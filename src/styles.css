@@ -4378,3 +4378,8 @@ button:active:not(:disabled) {
     animation: none;
   }
 }
+/* While the opening screen is up, the corner name waits (then fades in). */
+#app.starting .corner {
+  opacity: 0;
+  transition: none;
+}
