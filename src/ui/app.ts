@@ -29,7 +29,7 @@ import { TextEditor, TextTool } from '../tools/text';
 import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types';
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openTimer } from '../widgets/timer';
-import { toggleRecording } from '../widgets/recorder';
+import { isRecording, onRecordingChange, toggleRecording } from '../widgets/recorder';
 import { openCalculator, openPicker, openScoreboard } from '../widgets/classroom';
 import { openGraph } from '../widgets/graph';
 import { toggleMagnifier } from '../widgets/magnifier';
@@ -98,6 +98,8 @@ const SHAPES: [ShapeKind, string, string][] = [
 type PropSection = 'color' | 'width' | 'fill' | null;
 
 /** Toolbar buttons the teacher can show or hide (Menu → Edit toolbar). Menu itself always stays. */
+/** Buttons that are off until the teacher ticks them in Edit toolbar. */
+const TB_OPT_IN = new Set(['record']);
 const TB_ITEMS: [string, string, 'left' | 'right'][] = [
   ['select', 'Select', 'left'],
   ['slide', 'Slide (move the board)', 'left'],
@@ -114,6 +116,7 @@ const TB_ITEMS: [string, string, 'left' | 'right'][] = [
   ['tools', 'Tools (ruler, compass…)', 'right'],
   ['timer', 'Timer', 'right'],
   ['graph', 'Graph', 'right'],
+  ['record', 'Record lesson', 'right'],
   ['pagenav', 'Page arrows', 'right'],
   ['pages', 'All pages', 'right'],
 ];
@@ -243,14 +246,17 @@ export class App {
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && window.setTimeout(relayout, 200));
     window.setTimeout(relayout, 600);
     // Only a new button size needs a re-layout (other settings keep the menu open).
-    let layout = store.settings.tbHidden.join();
+    const tbKey = () => `${store.settings.tbHidden.join()}|${(store.settings.tbShown ?? []).join()}`;
+    let layout = tbKey();
     store.on('settings', () => {
-      const now = store.settings.tbHidden.join();
+      const now = tbKey();
       if (now === layout) return;
       layout = now;
       this.renderToolbar();
       this.applyScale(true);
     });
+    // The Record button shows when a recording runs (it turns red and pulses).
+    onRecordingChange(() => this.renderToolbar());
     // Never lose work when the app is closed or hidden.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
@@ -279,7 +285,8 @@ export class App {
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
     const hide = new Set(store.settings.tbHidden);
-    const show = (k: string, html: string) => (hide.has(k) ? '' : html);
+    const on = new Set(store.settings.tbShown ?? []);
+    const show = (k: string, html: string) => ((TB_OPT_IN.has(k) ? !on.has(k) : hide.has(k)) ? '' : html);
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       ${show('select', tool('select', 'select', 'Select'))}
       ${show('slide', `<button class="tb-btn tb-toggle ${t.slide ? 'on' : ''}" data-act="slide" title="Slide mode — move the board while you write" aria-pressed="${t.slide}">${icon('pan', 22)}</button>`)}
@@ -298,6 +305,7 @@ export class App {
       ${show('tools', `<button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 22)}</button>`)}
       ${show('timer', `<button class="tb-btn" data-act="timer" title="Timer for a question">${icon('timer', 22)}</button>`)}
       ${show('graph', `<button class="tb-btn" data-act="graph" title="Graph from an equation (y = …)">${icon('graph', 22)}</button>`)}
+      ${show('record', `<button class="tb-btn tb-rec ${isRecording() ? 'recording' : ''}" data-act="record" title="${isRecording() ? 'Stop recording' : 'Record lesson'}" aria-pressed="${isRecording()}">${icon('rec', 22)}<i class="tb-rec-ring" aria-hidden="true"></i></button>`)}
       ${show('pagenav', `<div class="tb-pagenav">
         <button class="icon-btn" data-act="prev" title="Previous page" aria-label="Previous page">${icon('prev')}</button>
         <span class="page-label">${store.index + 1} / ${store.doc.pages.length}</span>
@@ -534,7 +542,10 @@ export class App {
         const hide = new Set(store.settings.tbHidden);
         const group = (side: 'left' | 'right') =>
           TB_ITEMS.filter(([, , sd]) => sd === side)
-            .map(([k, n]) => `<label class="check tbe-item"><input type="checkbox" data-tbitem="${k}" ${hide.has(k) ? '' : 'checked'}> ${n}</label>`)
+            .map(([k, n]) => {
+              const shown = TB_OPT_IN.has(k) ? (store.settings.tbShown ?? []).includes(k) : !hide.has(k);
+              return `<label class="check tbe-item"><input type="checkbox" data-tbitem="${k}" ${shown ? 'checked' : ''}> ${n}</label>`;
+            })
             .join('');
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
@@ -544,10 +555,17 @@ export class App {
           const el = e.target as HTMLInputElement;
           const k = el.dataset.tbitem;
           if (!k) return;
-          const next = new Set(store.settings.tbHidden);
-          if (el.checked) next.delete(k);
-          else next.add(k);
-          store.setSettings({ tbHidden: [...next] });
+          if (TB_OPT_IN.has(k)) {
+            const shown = new Set(store.settings.tbShown ?? []);
+            if (el.checked) shown.add(k);
+            else shown.delete(k);
+            store.setSettings({ tbShown: [...shown] });
+          } else {
+            const next = new Set(store.settings.tbHidden);
+            if (el.checked) next.delete(k);
+            else next.add(k);
+            store.setSettings({ tbHidden: [...next] });
+          }
         };
         break;
       }
@@ -621,7 +639,7 @@ export class App {
       this.tableEditor.open(tbl, 0, 0);
       return;
     } else if (d.tbreset !== undefined) {
-      store.setSettings({ tbHidden: [] });
+      store.setSettings({ tbHidden: [], tbShown: [...TB_OPT_IN] });
       this.fillPopover();
       return;
     } else if (d.tbpos) {

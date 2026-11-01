@@ -13,6 +13,8 @@ export interface Settings {
   tbPos: 'bottom' | 'top' | 'left' | 'right';
   /** Toolbar buttons the teacher switched off (Menu → Edit toolbar). */
   tbHidden: string[];
+  /** Extra buttons the teacher switched on (off unless chosen, e.g. Record lesson). */
+  tbShown: string[];
 }
 
 export interface ToolState {
@@ -58,6 +60,7 @@ function loadSettings(): Settings {
     allowZoom: false,
     tbPos: 'bottom',
     tbHidden: [],
+    tbShown: [],
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

@@ -21,6 +21,16 @@ interface Rec {
 }
 
 let cur: Rec | null = null;
+const listeners = new Set<() => void>();
+/** True while a lesson is being recorded. */
+export function isRecording(): boolean {
+  return !!cur;
+}
+/** Called whenever recording starts or stops. */
+export function onRecordingChange(fn: () => void): void {
+  listeners.add(fn);
+}
+const changed = () => listeners.forEach((f) => f());
 let hostEl: HTMLElement | null = null;
 
 function pickType(): string {
@@ -164,6 +174,7 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
     (pill.querySelector('[data-t]') as HTMLElement).textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }, 500);
   cur = r;
+  changed();
   toast(`Recording in ${q.label}…`);
 }
 
@@ -171,6 +182,7 @@ function stop(): void {
   const r = cur;
   if (!r) return;
   cur = null;
+  changed();
   cancelAnimationFrame(r.raf);
   clearInterval(r.timer);
   r.pill.remove();

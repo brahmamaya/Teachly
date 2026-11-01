@@ -4328,3 +4328,53 @@ button:active:not(:disabled) {
 .lg-short {
   padding: 12px 16px;
 }
+
+/* ---------- Record button on the toolbar ---------- */
+#app .toolbar .tb-rec {
+  color: #0f172a;
+  overflow: visible;
+}
+.tb-rec .rec-led {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: scale 0.2s ease, filter 0.2s ease;
+}
+.tb-rec:hover .rec-led {
+  scale: 1.25;
+  filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.9));
+}
+.tb-rec-ring {
+  position: absolute;
+  inset: 3px;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+}
+/* While recording: red button, white camera, blinking light, pulsing ring. */
+#app .toolbar .tb-rec.recording {
+  color: #fff;
+  background: #dc2626;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+}
+.tb-rec.recording .rec-led {
+  fill: #fff;
+  animation: rec-blink 1.2s infinite;
+}
+.tb-rec.recording .tb-rec-ring {
+  opacity: 1;
+  animation: rec-ring 1.6s ease-out infinite;
+}
+@keyframes rec-ring {
+  from {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+  }
+  to {
+    box-shadow: 0 0 0 12px rgba(220, 38, 38, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tb-rec.recording .rec-led,
+  .tb-rec.recording .tb-rec-ring {
+    animation: none;
+  }
+}
