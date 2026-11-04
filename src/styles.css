@@ -4975,3 +4975,9 @@ button,
   padding: 4px 8px;
   font-size: 12px;
 }
+.popover.pop-menu {
+  max-height: calc((100vh - 110px) / var(--ui, 1));
+  max-height: calc((100dvh - 110px) / var(--ui, 1));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

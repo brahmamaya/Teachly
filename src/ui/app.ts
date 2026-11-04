@@ -412,7 +412,7 @@ export class App {
     dock.innerHTML = `<div class="hx hx-move" data-hexmove title="Drag to move"><span>Move</span></div>${cells}`;
     // While Edit toolbar is open (it covers the right side), the hexagon
     // waits on the left, in the middle, so the choices can be seen.
-    const editing = this.popFor === 'tbedit';
+    const editing = this.popFor === 'tbedit' || this.popFor === 'menu';
     const pos = editing ? { x: 0.16, y: 0.45 } : (store.settings.hexPos ?? { x: 0.88, y: 0.42 });
     dock.style.left = `${pos.x * 100}%`;
     dock.style.top = `${pos.y * 100}%`;
@@ -475,7 +475,7 @@ export class App {
     if (!this.popover) return;
     fadeOut(this.popover);
     this.popover = null;
-    const wasEdit = this.popFor === 'tbedit';
+    const wasEdit = this.popFor === 'tbedit' || this.popFor === 'menu';
     this.popFor = '';
     if (wasEdit) this.renderHex();
     this.toolbar.querySelectorAll('.open').forEach((x) => x.classList.remove('open'));
@@ -485,7 +485,7 @@ export class App {
     if (this.popFor === kind) return this.closePopover();
     this.closePopover();
     this.popFromHex = !!anchor.closest('.hexdock');
-    if (kind === 'tbedit') queueMicrotask(() => this.renderHex());
+    if (kind === 'tbedit' || kind === 'menu') queueMicrotask(() => this.renderHex());
     const pop = document.createElement('div');
     pop.className = 'popover';
     this.root.appendChild(pop);
@@ -758,7 +758,7 @@ export class App {
           <div class="mt-grid">
             ${tile('library', 'notebook', 'Notebooks')}
             ${tile('new', 'new', 'New')}
-            ${tile('save', 'save', 'Save')}
+            ${tile('save', 'save', 'Save notebook')}
             ${tile('open', 'open', 'Open file')}
             ${tile('open-pdf', 'pdf', 'PDF')}
             ${tile('open-pptx', 'slides', 'PowerPoint')}
@@ -770,7 +770,7 @@ export class App {
             ${isInstalled() ? tile('tbedit', 'settings', 'Toolbar') : tile('install', 'download', 'Install')}
           </div>
           ${isInstalled() ? '' : `<button class="mt-wide" data-act="tbedit">${icon('settings', 18)} Edit toolbar</button>`}
-          <details class="mt-settings">
+          <details class="mt-settings" data-resize>
             <summary>${icon('settings', 18)} Settings</summary>
             ${sw('penOnly', 'Stylus only (fingers do not draw)', s.penOnly)}
             ${sw('palmErase', 'Erase with palm', s.palmErase)}
@@ -778,6 +778,10 @@ export class App {
             ${sw('holdShapes', 'Hold pen to make a shape', s.holdShapes)}
           </details>
           <div class="mt-foot"><button data-act="privacy">Privacy</button>·<button data-act="terms">Terms</button><span>v ${BUILD_TIME}</span></div>`;
+        pop.querySelector('[data-resize]')?.addEventListener('toggle', () => {
+          const a = this.toolbar.querySelector('[data-pop=menu]') as HTMLElement | null;
+          if (a && this.popover === pop) this.positionPopover(a);
+        });
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
           if (el.dataset.set) store.setSettings({ [el.dataset.set]: el.checked });
