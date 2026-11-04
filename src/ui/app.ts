@@ -566,6 +566,7 @@ export class App {
               <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
             </div>
             <div class="n3-kinds">${PEN_TYPES.map(([k, n]) => `<button class="n3-kind ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 30)}<span>${n}</span></button>`).join('')}</div>
+            <div class="seg n3-smooth"><span>Smooth</span>${['Low', 'Medium', 'Ultra'].map((n, i) => `<button class="${(t.smooth ?? 2) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
           </div>
           <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>`;
         break;
@@ -772,6 +773,7 @@ export class App {
     else if (d.tapec) store.setTool({ tapeColor: d.tapec });
     else if (d.laserc) store.setTool({ laserColor: d.laserc });
     else if (d.lblink) store.setTool({ laserBlink: d.lblink === '1' });
+    else if (d.smooth) store.setTool({ smooth: Number(d.smooth) });
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();

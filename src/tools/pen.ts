@@ -195,9 +195,13 @@ export class PenTool implements Tool {
       // Finger / board touch: steady the hand (1-euro style). Slow, careful
       // movement is smoothed more (the touch panel's jitter goes away),
       // fast strokes follow the finger almost exactly (no lag).
-      if (l.sim && !l.snapper) {
+      const lvl = store.tool.smooth ?? 2;
+      if (!l.snapper && (l.sim || lvl === 2)) {
         const d = dist(x, y, l.lastX, l.lastY) / this.board.px;
-        const a = Math.min(1, 0.22 + d / 45);
+        // [floor, speed]: how much a slow move is smoothed, and how fast the
+        // line catches up when the hand moves quickly. Stylus: gentler.
+        const [f, k] = l.sim ? ([[0.35, 18], [0.22, 45], [0.12, 80]] as const)[lvl] : ([0.45, 30] as const);
+        const a = Math.min(1, f + d / k);
         x = l.lastX + (x - l.lastX) * a;
         y = l.lastY + (y - l.lastY) * a;
         l.rawX = sx;
@@ -239,7 +243,7 @@ export class PenTool implements Tool {
       }
     }
     // The steadied line ends exactly where the finger lifted.
-    if (l.sim && !l.snapper && !l.snapped && l.rawX !== undefined && l.rawY !== undefined && dist(l.rawX, l.rawY, l.lastX, l.lastY) > 0.5 * this.board.px) {
+    if (!l.snapper && !l.snapped && l.rawX !== undefined && l.rawY !== undefined && dist(l.rawX, l.rawY, l.lastX, l.lastY) > 0.5 * this.board.px) {
       l.pts.push(l.rawX, l.rawY, l.pts[l.pts.length - 1]);
       if (l.marker) this.drawWet(l);
     }

@@ -49,6 +49,8 @@ export interface ToolState {
   laserColor: string;
   /** Seconds the laser stays fully bright after lifting (then a 0.7 s fade). */
   laserStay: number;
+  /** Line smoothing while writing: 0 low, 1 medium, 2 ultra. */
+  smooth: number;
   /** The laser blinks (pulses) while it is shown. */
   laserBlink: boolean;
   tapeColor: string;
@@ -118,6 +120,7 @@ export class Store {
     fillOpacity: 1,
     laserColor: '#ef4444',
     laserStay: 0.8,
+    smooth: 2,
     laserBlink: false,
     tapeColor: '#f59e0b',
     slide: false,
