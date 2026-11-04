@@ -23,6 +23,8 @@ export interface Settings {
   hexItems: string[];
   /** Where the hexagon sits (centre, as fractions of the screen). */
   hexPos: { x: number; y: number } | null;
+  /** Hexagon size (radius in px). */
+  hexSize: number;
 }
 
 export interface ToolState {
@@ -77,6 +79,7 @@ function loadSettings(): Settings {
     tbShown: [],
     hexItems: [],
     hexPos: null,
+    hexSize: 28,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

@@ -398,9 +398,13 @@ export class App {
       })
       .join('');
     dock.innerHTML = `<div class="hx hx-move" data-hexmove title="Drag to move"><span>Move</span></div>${cells}`;
-    const pos = store.settings.hexPos ?? { x: 0.88, y: 0.42 };
+    // While Edit toolbar is open (it covers the right side), the hexagon
+    // waits on the left, in the middle, so the choices can be seen.
+    const editing = this.popFor === 'tbedit';
+    const pos = editing ? { x: 0.16, y: 0.45 } : (store.settings.hexPos ?? { x: 0.88, y: 0.42 });
     dock.style.left = `${pos.x * 100}%`;
     dock.style.top = `${pos.y * 100}%`;
+    dock.style.setProperty('--R', `${store.settings.hexSize ?? 28}px`);
     if (!dock.dataset.bound) {
       dock.dataset.bound = '1';
       let drag: { id: number; dx: number; dy: number } | null = null;
@@ -459,7 +463,9 @@ export class App {
     if (!this.popover) return;
     fadeOut(this.popover);
     this.popover = null;
+    const wasEdit = this.popFor === 'tbedit';
     this.popFor = '';
+    if (wasEdit) this.renderHex();
     this.toolbar.querySelectorAll('.open').forEach((x) => x.classList.remove('open'));
   }
 
@@ -467,6 +473,7 @@ export class App {
     if (this.popFor === kind) return this.closePopover();
     this.closePopover();
     this.popFromHex = !!anchor.closest('.hexdock');
+    if (kind === 'tbedit') queueMicrotask(() => this.renderHex());
     const pop = document.createElement('div');
     pop.className = 'popover';
     this.root.appendChild(pop);
@@ -667,6 +674,10 @@ export class App {
           <button class="btn wide" data-tbreset>Show all buttons</button>
           <div class="pop-title">Floating hexagon</div>
           <div class="muted small">Pick up to 6 buttons for a hexagon you can drag anywhere ("Move" in the middle). None = no hexagon.</div>
+          <div class="slider-row">
+            <span class="slider-label">Size</span>
+            <input type="range" min="20" max="44" step="1" value="${store.settings.hexSize ?? 28}" data-hexsize aria-label="Hexagon size">
+          </div>
           <div class="hexpick">${Object.keys(HEX_BUTTONS)
             .map((k) => {
               const on = (store.settings.hexItems ?? []).includes(k);
@@ -800,6 +811,10 @@ export class App {
       Object.assign(store.tool, store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
       const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
       if (prev) prev.style.width = prev.style.height = `${Math.min(26, v + 2)}px`;
+    } else if (el.dataset.hexsize !== undefined) {
+      store.settings.hexSize = v;
+      (this.toolbar.querySelector('.hexdock') as HTMLElement).style.setProperty('--R', `${v}px`);
+      store.setSettings({ hexSize: v });
     } else if (el.dataset.shapesize !== undefined) {
       store.tool.shapeSize = v;
       const prev = this.popover?.querySelector('[data-shapeprev]') as HTMLElement | null;

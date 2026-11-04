@@ -4417,7 +4417,7 @@ button,
 
 /* ---------- Floating hexagon ---------- */
 .hexdock {
-  --R: 34px; /* hexagon radius */
+  --R: 28px; /* hexagon radius (Menu > Edit toolbar > Size) */
   --W: calc(var(--R) * 1.732);
   --H: calc(var(--R) * 2);
   --g: 1.08;
@@ -4448,7 +4448,7 @@ button,
 .hx-move {
   background: #0f172a;
   color: #fff;
-  font-size: 13px;
+  font-size: calc(var(--R) * 0.36);
   font-weight: 800;
   letter-spacing: 0.04em;
   cursor: grab;
@@ -4466,6 +4466,10 @@ button,
 .hx-3 { translate: calc(var(--W) * -1 * var(--g)) 0; }
 .hx-4 { translate: calc(var(--W) * -0.5 * var(--g)) calc(var(--H) * -0.75 * var(--g)); }
 .hx-5 { translate: calc(var(--W) * 0.5 * var(--g)) calc(var(--H) * -0.75 * var(--g)); }
+.hx-btn svg {
+  width: calc(var(--R) * 0.75);
+  height: calc(var(--R) * 0.75);
+}
 .hx-btn {
   position: relative;
   width: 100%;
