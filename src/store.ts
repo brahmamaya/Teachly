@@ -6,6 +6,8 @@ export interface Settings {
   palmErase: boolean;
   /** Hold the pen still at the end of a line to turn it into a neat shape (off: ink stays exactly as written). */
   holdShapes: boolean;
+  /** A quick scribble over writing erases it. */
+  scribbleErase: boolean;
   uiSize: 'xsmall' | 'small' | 'normal' | 'large';
   /** Many students write at once: every touch draws (no pinch zoom). */
   multiWrite: boolean;
@@ -58,6 +60,7 @@ function loadSettings(): Settings {
     penOnly: false,
     palmErase: true,
     holdShapes: false,
+    scribbleErase: true,
     uiSize: 'normal',
     multiWrite: false,
     allowZoom: false,

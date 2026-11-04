@@ -126,9 +126,19 @@ export function insideLasso(el: El, lasso: number[]): boolean {
       total++;
       if (pointInPolygon(p[i], p[i + 1], lasso)) inside++;
     }
-    return total > 0 && inside / total >= 0.5;
+    // A stroke that is mostly or noticeably inside the loop comes along
+    // whole (a letter half-circled is still taken, never split).
+    return total > 0 && inside / total >= 0.2;
   }
-  return pointInPolygon(el.x + el.w / 2, el.y + el.h / 2, lasso);
+  const pts = [
+    [el.x + el.w / 2, el.y + el.h / 2],
+    [el.x, el.y],
+    [el.x + el.w, el.y],
+    [el.x, el.y + el.h],
+    [el.x + el.w, el.y + el.h],
+  ];
+  if (pointInPolygon(pts[0][0], pts[0][1], lasso)) return true;
+  return pts.slice(1).filter(([x, y]) => pointInPolygon(x, y, lasso)).length >= 2;
 }
 
 export function matMul(a: Mat, b: Mat): Mat {

@@ -82,7 +82,8 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         web.setBackgroundColor(Color.WHITE); // the opening screen is white: no dark flash at start
-        web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        // No extra View layer: the WebView already draws on the GPU; an extra
+        // hardware layer copies every frame once more (slower ink on boards).
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);

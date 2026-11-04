@@ -1,5 +1,5 @@
 import type { Board, Ptr, Tool } from '../board';
-import { dist, pathFromPoints, uid } from '../geometry';
+import { bbox, dist, hitTest, pathFromPoints, uid } from '../geometry';
 import type { Snapper } from '../instruments';
 import { freehandPath, isMarker, markerPath } from '../renderer';
 import { recognize } from '../shapes';
@@ -240,8 +240,74 @@ export class PenTool implements Tool {
       // Arcs along the protractor must keep every point.
       if (l.snapper && !this.isStraight(l.pts)) el.pts = l.pts;
     }
+    // Scribble to erase: a quick back-and-forth scribble over writing rubs
+    // that writing out (and leaves no ink of its own).
+    if (!l.snapped && !l.snapper && store.settings.scribbleErase !== false && this.scribbleErase(l)) {
+      if (l.marker) this.board.renderWet();
+      this.board.invalidate('overlay');
+      return;
+    }
     store.addEls([el]);
     this.board.invalidate('overlay');
+  }
+
+  /** Is this stroke a fast scribble? If it covers writing, erase that writing. */
+  private scribbleErase(l: Live): boolean {
+    const p = l.pts, n = p.length / 3;
+    if (n < 8) return false;
+    const ms = performance.now() - l.t0;
+    let len = 0, turns = 0, prevAng: number | null = null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    // Direction changes measured between points a few pixels apart, so
+    // jitter does not count.
+    const step = 6 * this.board.px;
+    let ax = p[0], ay = p[1];
+    for (let i = 0; i < n; i++) {
+      const x = p[i * 3], y = p[i * 3 + 1];
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+      if (i) len += dist(x, y, p[i * 3 - 3], p[i * 3 - 2]);
+      if (dist(x, y, ax, ay) < step) continue;
+      const a = Math.atan2(y - ay, x - ax);
+      if (prevAng !== null) {
+        let d = Math.abs(a - prevAng);
+        if (d > Math.PI) d = 2 * Math.PI - d;
+        if (d > 2.3) turns++;
+      }
+      prevAng = a;
+      ax = x;
+      ay = y;
+    }
+    const diag = Math.hypot(x1 - x0, y1 - y0);
+    // Several sharp reversals, much longer than wide, and quick.
+    if (turns < 5 || diag < 8 * this.board.px || len < diag * 3 || ms > 2000) return false;
+    const tol = Math.max(l.size, 4 * this.board.px);
+    const hits = new Set<string>();
+    for (const el of store.page.els) {
+      if (el.locked || el.type === 'tape') continue;
+      const b = bbox(el);
+      if (b.x > x1 + tol || b.x + b.w < x0 - tol || b.y > y1 + tol || b.y + b.h < y0 - tol) continue;
+      if (el.type !== 'path') {
+        // Boxes (text, pictures): only when the scribble covers their middle.
+        const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+        if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1 && b.w <= (x1 - x0) * 1.5 && b.h <= (y1 - y0) * 1.5) hits.add(el.id);
+        continue;
+      }
+      for (let i = 0; i < n; i += 2) {
+        if (hitTest(el, p[i * 3], p[i * 3 + 1], tol)) {
+          hits.add(el.id);
+          break;
+        }
+      }
+    }
+    if (!hits.size) return false;
+    // A graph or other group goes as a whole.
+    const groups = new Set(store.page.els.filter((e) => hits.has(e.id) && e.group).map((e) => e.group));
+    for (const e of store.page.els) if (e.group && groups.has(e.group)) hits.add(e.id);
+    store.replaceEls(hits, []);
+    return true;
   }
 
   private isStraight(pts: number[]): boolean {

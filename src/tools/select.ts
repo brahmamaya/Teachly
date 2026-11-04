@@ -165,6 +165,12 @@ export class SelectTool implements Tool {
         return;
       }
     }
+    // Inside the current selection: move all of it together (never just the
+    // one piece under the finger).
+    if (r && !p.shift && store.selection.size > 1 && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: null, r0: null, targets: null };
+      return;
+    }
     const hit = this.topHit(p.x, p.y);
     if (hit) {
       if (p.shift) {

@@ -12,6 +12,8 @@ interface Session {
   page: string;
   index: number;
   cam: { x: number; y: number; z: number } | null;
+  /** The same view, relative to the whole page (works on any screen size). */
+  view?: { rel: number; u: number; v: number } | null;
   size: string;
   tool: Partial<ToolState>;
   at: number;
@@ -39,6 +41,7 @@ export function saveSession(board: Board): void {
       page: store.page.id,
       index: store.index,
       cam: board.isHome ? null : { ...store.camera },
+      view: board.isHome ? null : board.viewOf(store.camera),
       size: `${Math.round(board.w)}x${Math.round(board.h)}`,
       tool,
       at: Date.now(),
@@ -62,8 +65,10 @@ export function restorePlace(board: Board): void {
   let i = store.doc.pages.findIndex((p) => p.id === s.page);
   if (i < 0) i = Math.min(s.index, store.doc.pages.length - 1);
   if (i !== store.index) store.goTo(i);
-  // Same screen: the very same spot on the board; otherwise the whole page.
+  // The same spot and zoom as when the app was closed.
   if (s.cam && s.size === `${Math.round(board.w)}x${Math.round(board.h)}`) store.setCamera(s.cam);
+  // Another screen size (e.g. full screen kicked in): the same part, same zoom.
+  else if (s.view) store.setCamera(board.camOf(s.view));
 }
 
 /** Keep the session note up to date (cheap: a small note in local storage). */

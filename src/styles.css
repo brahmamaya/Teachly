@@ -4398,3 +4398,19 @@ button:active:not(:disabled) {
   font-style: normal;
   font-weight: 800;
 }
+
+/* ---------- Lite (classroom boards): instant response ----------
+   No transitions or animations anywhere: every tap shows its result in the
+   very next frame, and nothing keeps the graphics chip busy while writing. */
+.lite *,
+.lite *::before,
+.lite *::after {
+  transition: none !important;
+  animation: none !important;
+}
+button,
+[role='button'],
+.swatch,
+.tb-btn {
+  touch-action: manipulation;
+}

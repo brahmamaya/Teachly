@@ -198,6 +198,29 @@ export class Board {
     return { x: PAGE.x + PAGE.w / 2 - cx / z, y: PAGE.y + PAGE.h / 2 - cy / z, z };
   }
 
+  /**
+   * A view described relative to the whole-page view: zoom as a multiple of
+   * the fitted zoom, centre as page fractions. Survives a new screen size or
+   * an app restart (the same part of the page, at the same zoom).
+   */
+  viewOf(c: Camera): { rel: number; u: number; v: number } {
+    const f = this.fitCam(), i = this.insets;
+    const cx = c.x + (i.left + (this.w - i.left - i.right) / 2) / c.z;
+    const cy = c.y + (i.top + (this.h - i.top - i.bottom) / 2) / c.z;
+    const fx = f.x + (i.left + (this.w - i.left - i.right) / 2) / f.z;
+    const fy = f.y + (i.top + (this.h - i.top - i.bottom) / 2) / f.z;
+    return { rel: c.z / f.z, u: (cx - fx) / PAGE.w, v: (cy - fy) / PAGE.h };
+  }
+
+  camOf(view: { rel: number; u: number; v: number }): Camera {
+    const f = this.fitCam(), i = this.insets;
+    const z = Math.max(0.05, view.rel * f.z);
+    const fx = f.x + (i.left + (this.w - i.left - i.right) / 2) / f.z;
+    const fy = f.y + (i.top + (this.h - i.top - i.bottom) / 2) / f.z;
+    const cx = fx + view.u * PAGE.w, cy = fy + view.v * PAGE.h;
+    return { x: cx - (i.left + (this.w - i.left - i.right) / 2) / z, y: cy - (i.top + (this.h - i.top - i.bottom) / 2) / z, z };
+  }
+
   get isFit(): boolean {
     return Math.abs(this.cam.z - this.fitZ) < 1e-3;
   }
@@ -260,6 +283,8 @@ export class Board {
   // ---- rendering -------------------------------------------------------------
 
   resize(): void {
+    // Keep every page's zoom and place across a new screen size.
+    const keep = this.w && this.h ? [...store.cameras].map(([id, c]) => [id, this.viewOf(c)] as const) : [];
     const r = this.el.getBoundingClientRect();
     this.rect = { left: r.left, top: r.top };
     this.w = r.width;
@@ -288,7 +313,7 @@ export class Board {
     // A really new screen size: every page goes back to its fitted view.
     const size = `${Math.round(this.w)}x${Math.round(this.h)}`;
     if (size !== this.lastSize) {
-      if (this.lastSize) store.cameras.clear();
+      if (this.lastSize) for (const [id, v] of keep) store.cameras.set(id, this.camOf(v));
       this.lastSize = size;
     }
     if (this.w && this.h) this.ensureCam();
