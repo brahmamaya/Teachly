@@ -43,6 +43,13 @@ const P: Record<string, string> = {
   save: '<path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8"/><rect x="7" y="13" width="10" height="8"/>',
   // Record lesson: a video camera with a red recording dot.
   rec: '<rect x="2.5" y="6" width="13.5" height="12" rx="3"/><path d="M16 10.5l5.5-3.2v9.4L16 13.5z"/><circle class="rec-led" cx="9.25" cy="12" r="2.7" fill="#ef4444" stroke="none"/>',
+  palette: '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1.2" fill="currentColor"/><circle cx="10" cy="7" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/>',
+  thick: '<path d="M4 6h16" stroke-width="1.2"/><path d="M4 11h16" stroke-width="2.2"/><path d="M4 17h16" stroke-width="3.6"/>',
+  bigger: '<path d="M4 14v6h6M20 10V4h-6M4 20l7-7M20 4l-7 7"/>',
+  smaller: '<path d="M10 4v6H4M14 20v-6h6M4 4l6 6M20 20l-6-6"/>',
+  erPart: '<path d="M14 4l6 6-8.5 8.5H7L4 15.5z"/><path d="M10 8l6 6"/><circle cx="5" cy="20.5" r="1" fill="currentColor"/>',
+  erObject: '<path d="M14 5l5 5-7 7H8l-3-3z"/><path d="M2.5 2.5h3M8.5 2.5h3M21.5 21.5h-3M15.5 21.5h-3M2.5 2.5v3M21.5 21.5v-3" stroke-dasharray="0"/>',
+  erArea: '<path d="M12 3c5 0 9 2.5 9 6s-4 6-9 6c-1.5 0-3 .3-3 2" stroke-dasharray="2.5 2.5"/><path d="M9 17c0 2 1.5 3 3 3" stroke-dasharray="2.5 2.5"/><path d="M12 15c-5 0-9-2.5-9-6" stroke-dasharray="2.5 2.5"/>',
   shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
   terms: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',

@@ -577,8 +577,8 @@ export class App {
               <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
               <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
             </div>
-            <div class="n3-kinds">${PEN_TYPES.map(([k, n]) => `<button class="n3-kind ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 30)}<span>${n}</span></button>`).join('')}</div>
-            <div class="seg n3-smooth"><span>Smooth</span>${['Low', 'Medium', 'Ultra'].map((n, i) => `<button class="${(t.smooth ?? 2) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
+            <div class="n3-kinds">${PEN_TYPES.map(([k, n]) => `<button class="n3-kind ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 24)}</button>`).join('')}</div>
+            <div class="seg n3-smooth"><span>Smooth</span>${['Low', 'Mid', 'Ultra'].map((n, i) => `<button class="${(t.smooth ?? 2) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
           </div>
           <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>`;
         break;
@@ -610,14 +610,31 @@ export class App {
           <div class="muted small center">Draw to point things out. It stays, then fades away smoothly.</div>`;
         break;
       case 'eraser':
+        // Note 3 style: three erasers as icons, size (for Part), slide to clear.
+        pop.className = 'popover pop-eraser';
         pop.innerHTML = `
-          <div class="seg"><button class="${t.eraserMode === 'point' ? 'on' : ''}" data-emode="point" title="Rub out just a part">Part</button><button class="${t.eraserMode === 'stroke' ? 'on' : ''}" data-emode="stroke" title="Touch any object (line, shape, text, graph) to erase all of it">Object</button><button class="${t.eraserMode === 'area' ? 'on' : ''}" data-emode="area" title="Draw a loop: everything inside is erased">Area</button></div>
-          <div class="slider-row">
-            <span class="slider-label">Size</span>
-            <input type="range" id="eraser-size" min="10" max="160" value="${t.eraserSize}" data-erasersize>
-            <span class="slider-preview"><i data-eraserprev class="eraser-prev" style="width:${Math.min(44, t.eraserSize / 3.5 + 6)}px;height:${Math.min(44, t.eraserSize / 3.5 + 6)}px"></i></span>
+          <div class="er-modes">
+            <button class="er-mode ${t.eraserMode === 'point' ? 'on' : ''}" data-emode="point" title="Part: rub out just a part" aria-label="Erase a part">${icon('erPart', 26)}</button>
+            <button class="er-mode ${t.eraserMode === 'stroke' ? 'on' : ''}" data-emode="stroke" title="Object: touch anything to erase all of it" aria-label="Erase whole objects">${icon('erObject', 26)}</button>
+            <button class="er-mode ${t.eraserMode === 'area' ? 'on' : ''}" data-emode="area" title="Area: draw a loop, everything inside goes" aria-label="Erase an area">${icon('erArea', 26)}</button>
+            <label class="er-clear" title="Slide to clear the page"><input type="range" min="0" max="100" value="0" data-sclear aria-label="Slide to clear the page"><span>Slide to clear page »</span></label>
           </div>
-          <button class="btn danger wide" data-act="clear">${icon('trash', 20)} Clear page</button>`;
+          ${
+            t.eraserMode === 'point'
+              ? `<div class="slider-row">
+            <input type="range" id="eraser-size" min="10" max="160" value="${t.eraserSize}" data-erasersize aria-label="Eraser size">
+            <span class="slider-preview"><i data-eraserprev class="eraser-prev" style="width:${Math.min(44, t.eraserSize / 3.5 + 6)}px;height:${Math.min(44, t.eraserSize / 3.5 + 6)}px"></i></span>
+          </div>`
+              : ''
+          }`;
+        pop.onchange = (e) => {
+          const el = e.target as HTMLInputElement;
+          if (el.dataset.sclear === undefined) return;
+          if (Number(el.value) >= 92) {
+            this.closePopover();
+            this.action('clear');
+          } else el.value = '0';
+        };
         break;
       case 'shape':
         // Note 3 style: line size on top, shapes below, colours on the right.
@@ -1083,24 +1100,27 @@ export class App {
     if (sec === 'fill')
       panel = this.swatches(FILLS, fill, 'pfill', `<button class="swatch none ${!fill ? 'on' : ''}" data-pfill="none" aria-label="No fill"></button>`);
 
+    // A slim vertical bar of icons beside the selection; its options open
+    // to the side.
     const btn = (s: PropSection, label: string, preview: string) =>
-      `<button class="prop-btn ${sec === s ? 'on' : ''}" data-sec="${s}">${preview}<span>${label}</span></button>`;
+      `<button class="pv-btn ${sec === s ? 'on' : ''}" data-sec="${s}" title="${label}" aria-label="${label}">${preview}</button>`;
+    const act = (attr: string, ic: string, label: string, cls = '') => `<button class="pv-btn ${cls}" ${attr} title="${label}" aria-label="${label}">${icon(ic, 22)}</button>`;
+    bar.classList.add('props-v');
     bar.innerHTML = `
       <div class="props-row">
-        ${colorable ? btn('color', 'Colour', `<i class="prop-color" style="background:${color}"></i>`) : ''}
-        ${paths.length ? btn('width', 'Thickness', `<i class="prop-width"><b style="height:${Math.max(2, Math.min(12, width))}px"></b></i>`) : ''}
-        ${fillable ? btn('fill', 'Fill', `<i class="prop-color ${fill ? '' : 'empty'}" style="background:${fill ?? 'transparent'}"></i>`) : ''}
+        ${act('data-pact="delete"', 'trash', 'Delete', 'danger')}
+        ${colorable ? btn('color', 'Colour', `${icon('palette', 22)}<i class="pv-dot" style="background:${color}"></i>`) : ''}
+        ${paths.length ? btn('width', 'Thickness', icon('thick', 22)) : ''}
+        ${fillable ? btn('fill', 'Fill', `${icon('bucket', 22)}<i class="pv-dot ${fill ? '' : 'empty'}" style="background:${fill ?? 'transparent'}"></i>`) : ''}
+        ${act('data-scale="1.18"', 'bigger', 'Bigger')}
+        ${act('data-scale="0.85"', 'smaller', 'Smaller')}
+        ${act('data-pact="dup"', 'copy', 'Copy')}
+        ${els.some((e) => e.group) ? act('data-pact="ungroup"', 'shapes', 'Ungroup') : ''}
         ${
           table
-            ? `<div class="prop-size"><button class="icon-btn" data-trows="-1" aria-label="Remove row">−</button><span>Rows ${table.rows}</span><button class="icon-btn" data-trows="1" aria-label="Add row">+</button></div>
-        <div class="prop-size"><button class="icon-btn" data-tcols="-1" aria-label="Remove column">−</button><span>Cols ${table.cols}</span><button class="icon-btn" data-tcols="1" aria-label="Add column">+</button></div>
-        <button class="prop-btn ${table.header ? 'on' : ''}" data-pact="header">${icon('table', 20)}<span>Header</span></button>`
+            ? `${act('data-trows="1"', 'plus', 'Add row')}${act('data-tcols="1"', 'next', 'Add column')}${act('data-trows="-1"', 'up', 'Remove row')}${act('data-tcols="-1"', 'prev', 'Remove column')}<button class="pv-btn ${table.header ? 'on' : ''}" data-pact="header" title="Header row" aria-label="Header row">${icon('table', 22)}</button>`
             : ''
         }
-        <div class="prop-size"><button class="icon-btn" data-scale="0.85" aria-label="Smaller">−</button><span>Size</span><button class="icon-btn" data-scale="1.18" aria-label="Bigger">+</button></div>
-        ${els.some((e) => e.group) ? `<button class="prop-btn" data-pact="ungroup">${icon('shapes', 20)}<span>Ungroup</span></button>` : ''}
-        <button class="prop-btn" data-pact="dup">${icon('copy', 20)}<span>Copy</span></button>
-        <button class="prop-btn danger" data-pact="delete">${icon('trash', 20)}<span>Delete</span></button>
       </div>
       ${panel ? `<div class="props-panel">${panel}</div>` : ''}`;
     bar.hidden = false;
@@ -1200,21 +1220,22 @@ export class App {
     const r = this.board.selectionBounds();
     if (!r) return;
     const [x1, y1] = this.board.toScreen(r.x, r.y);
-    const [x2, y2] = this.board.toScreen(r.x + r.w, r.y + r.h);
+    const [x2] = this.board.toScreen(r.x + r.w, r.y + r.h);
     scaleFloating(bar);
     const k = ui();
     const bw = bar.offsetWidth * k, bh = bar.offsetHeight * k;
-    // Keep clear of the toolbar edge.
-    const pos = store.settings.tbPos;
-    const minT = pos === 'top' ? 100 * k : 12, maxB = pos === 'bottom' ? 100 * k : 12;
-    const minL = pos === 'left' ? 90 * k : 8, maxR = pos === 'right' ? 90 * k : 8;
-    let top = y1 - bh - 56 * k;
-    if (top < minT) top = y2 + 24;
-    top = Math.max(minT, Math.min(this.board.h - bh - maxB, top));
-    const left = Math.max(minL, Math.min(this.board.w - bw - maxR, (x1 + x2) / 2 - bw / 2));
+    const W = this.board.w, H = this.board.h, gap = 26 * k;
+    // Beside the selection: right if there is room, else left, else inside.
+    let left = x2 + gap;
+    if (left + bw > W - 8) left = x1 - gap - bw;
+    if (left < 8) left = Math.max(8, Math.min(W - bw - 8, x2 - bw - 8));
+    const top = Math.max(12, Math.min(H - bh - 90 * k, y1));
     bar.style.left = `${left}px`;
     bar.style.top = `${top}px`;
+    // Options open towards the free side.
+    bar.classList.toggle('pv-left', left < x1);
   }
+
 
   // ---------------------------------------------------------------------------
   // Chrome, keyboard, drag & drop, autosave
