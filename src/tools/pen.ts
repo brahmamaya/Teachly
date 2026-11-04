@@ -304,27 +304,32 @@ export class PenTool implements Tool {
       ay = y;
     }
     const diag = Math.hypot(x1 - x0, y1 - y0);
-    // Several sharp reversals, much longer than wide, and quick.
-    if (turns < 5 || diag < 8 * this.board.px || len < diag * 3 || ms > 2000) return false;
+    // Rubbing on one spot: many back-and-forth turns, a lot of line packed
+    // into a small area, done quickly.
+    if (turns < 7 || diag < 8 * this.board.px || len < diag * 5 || ms > 1800) return false;
     const tol = Math.max(l.size, 4 * this.board.px);
-    const hits = new Set<string>();
-    for (const el of store.page.els) {
-      if (el.locked || el.type === 'tape') continue;
+    const near = store.page.els.filter((el) => {
+      if (el.locked || el.type === 'tape' || el.type === 'image') return false;
       const b = bbox(el);
-      if (b.x > x1 + tol || b.x + b.w < x0 - tol || b.y > y1 + tol || b.y + b.h < y0 - tol) continue;
-      if (el.type !== 'path') {
-        // Boxes (text, pictures): only when the scribble covers their middle.
-        const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-        if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1 && b.w <= (x1 - x0) * 1.5 && b.h <= (y1 - y0) * 1.5) hits.add(el.id);
-        continue;
+      return !(b.x > x1 + tol || b.x + b.w < x0 - tol || b.y > y1 + tol || b.y + b.h < y0 - tol);
+    });
+    if (!near.length) return false;
+    // Most of the scribble must lie over writing that is already there (new
+    // writing next to or across old writing is never taken for rubbing).
+    const hits = new Set<string>();
+    let onInk = 0, samples = 0;
+    for (let i = 0; i < n; i += 2) {
+      samples++;
+      const x = p[i * 3], y = p[i * 3 + 1];
+      let inArea = false;
+      for (const el of near) {
+        const b = bbox(el);
+        if (x >= b.x - tol && x <= b.x + b.w + tol && y >= b.y - tol && y <= b.y + b.h + tol) inArea = true;
+        if (el.type === 'path' ? hitTest(el, x, y, tol) : x >= el.x && x <= el.x + el.w && y >= el.y && y <= el.y + el.h) hits.add(el.id);
       }
-      for (let i = 0; i < n; i += 2) {
-        if (hitTest(el, p[i * 3], p[i * 3 + 1], tol)) {
-          hits.add(el.id);
-          break;
-        }
-      }
+      if (inArea) onInk++;
     }
+    if (onInk / Math.max(1, samples) < 0.35) return false;
     if (!hits.size) return false;
     // A graph or other group goes as a whole.
     const groups = new Set(store.page.els.filter((e) => hits.has(e.id) && e.group).map((e) => e.group));
