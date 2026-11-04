@@ -65,8 +65,21 @@ export const DOWNLOAD_URL = 'https://physica.in/';
 /** Share the download page: native share sheet when available, else copy. */
 export async function shareApp(): Promise<void> {
   if (navigator.share) {
+    const text = 'Teachly by Physica: smooth interactive whiteboard for teachers. Open physica.in → For teachers → Download Teachly.';
     try {
-      await navigator.share({ title: 'Teachly by Physica', text: 'Interactive whiteboard for teachers. Open physica.in → For teachers → Download Teachly (Android) or For iPad:', url: DOWNLOAD_URL });
+      // With the Teachly logo where the app allows a picture (e.g. WhatsApp).
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+      const blob = await (await fetch('./icon-512.png')).blob();
+      const logo = new File([blob], 'Teachly.png', { type: 'image/png' });
+      if (nav.canShare?.({ files: [logo] })) {
+        await navigator.share({ title: 'Teachly by Physica', text: `${text} ${DOWNLOAD_URL}`, files: [logo] });
+        return;
+      }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return;
+    }
+    try {
+      await navigator.share({ title: 'Teachly by Physica', text, url: DOWNLOAD_URL });
       return;
     } catch {
       /* cancelled — fall back to copying */

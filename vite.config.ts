@@ -11,11 +11,11 @@ function precacheList(): Plugin {
     apply: 'build',
     generateBundle(_opts, bundle) {
       const files = Object.keys(bundle).filter((f) => !f.endsWith('.map'));
-      const extra = ['./', 'index.html', 'download.html', 'qr.svg', 'fonts/orbitron.woff2', 'fonts/exo2.woff2', 'manifest.webmanifest', 'icon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
+      const extra = ['./', 'index.html', 'download.html', 'qr.svg', 'fonts/orbitron.woff2', 'fonts/exo2.woff2', 'manifest.webmanifest', 'favicon.png', 'og.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'];
       this.emitFile({ type: 'asset', fileName: 'precache.json', source: JSON.stringify([...new Set([...extra, ...files])]) });
       // app-update.json: what the Android app downloads to update itself
       // (only the app's own files; it never sends anything).
-      const appFiles = [...new Set(['index.html', 'fonts/orbitron.woff2', 'fonts/exo2.woff2', 'icon.svg', ...files])].filter((f) => f !== 'precache.json');
+      const appFiles = [...new Set(['index.html', 'fonts/orbitron.woff2', 'fonts/exo2.woff2', 'favicon.png', ...files])].filter((f) => f !== 'precache.json');
       this.emitFile({
         type: 'asset',
         fileName: 'app-update.json',
