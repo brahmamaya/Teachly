@@ -4981,3 +4981,9 @@ button,
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* Page number in the normal font (not the Orbitron display font). */
+#app .toolbar .page-label {
+  font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0;
+}
