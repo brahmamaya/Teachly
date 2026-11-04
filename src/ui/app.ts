@@ -60,6 +60,18 @@ const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff',
 /** Board colours: dark boards first (default black), then light ones. */
 /** Board colours: black (default), white, light green — plus “any colour”. */
 const BOARDS = ['#000000', '#ffffff', '#cdebd3'];
+/** Small sketches of each board pattern (menu). */
+const pat = (inner: string) => `<svg viewBox="0 0 28 20" width="28" height="20" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><rect x="1" y="1" width="26" height="18" rx="3" stroke-width="1.4"/>${inner}</svg>`;
+const PATTERN_ICONS: Record<BgPattern, string> = {
+  none: pat(''),
+  grid: pat('<path d="M8 1v18M14 1v18M20 1v18M1 7h26M1 13h26" opacity=".7"/>'),
+  lines: pat('<path d="M4 6h20M4 10h20M4 14h20" opacity=".8"/>'),
+  fourline: pat('<path d="M4 5h20M4 8h20M4 11h20M4 14h20" opacity=".8"/><path d="M4 8h20M4 11h20" stroke-width="1.8" opacity=".5"/>'),
+  dots: pat('<path d="M7 6h0M14 6h0M21 6h0M7 10h0M14 10h0M21 10h0M7 14h0M14 14h0M21 14h0" stroke-width="2"/>'),
+  graph: pat('<path d="M4 1v18M7 1v18M10 1v18M13 1v18M16 1v18M19 1v18M22 1v18M1 4h26M1 7h26M1 10h26M1 13h26M1 16h26" stroke-width=".6" opacity=".7"/>'),
+  music: pat('<path d="M4 5h20M4 7h20M4 9h20M4 11h20M4 13h20" stroke-width=".8"/>'),
+  cornell: pat('<path d="M9 1v14M1 15h26" opacity=".8"/>'),
+};
 const PATTERNS: [BgPattern, string][] = [
   ['none', 'Plain'],
   ['grid', 'Grid'],
@@ -715,34 +727,40 @@ export class App {
       case 'menu': {
         const p = store.page;
         const s = store.settings;
+        // Compact: board colour + pattern sketches, actions as icon tiles,
+        // switches tucked under Settings, legal links small at the bottom.
+        const tile = (act: string, ic: string, label: string, extra = '') => `<button class="mt-tile" data-act="${act}" title="${label}">${icon(ic, 22)}<span>${label}</span>${extra}</button>`;
+        const sw = (key: keyof typeof s, label: string, on: boolean) => `<label class="mt-switch"><span>${label}</span><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><i aria-hidden="true"></i></label>`;
+        pop.className = 'popover pop-menu';
         pop.innerHTML = `
-          <div class="pop-title">Board</div>
-          <div class="board-palette">${BOARDS.map((c) => `<button class="swatch ${p.bg === c ? 'on' : ''}" style="background:${c}" data-bg="${c}" aria-label="Board colour ${c}"></button>`).join('')}
-            <label class="swatch custom" title="Any colour"><input type="color" id="board-color" value="${p.bg}" data-bgpick aria-label="Pick any board colour"></label></div>
-          <div class="seg seg-wrap">${PATTERNS.map(([k, n]) => `<button class="${p.pattern === k ? 'on' : ''}" data-pattern="${k}">${n}</button>`).join('')}</div>
-          <div class="pop-title">Notebook</div>
-          <div class="menu-list">
-            <button class="menu-item" data-act="library">${icon('notebook', 20)}My notebooks</button>
-            <button class="menu-item" data-act="new">${icon('new', 20)}New notebook</button>
-            <button class="menu-item" data-act="open-pdf">${icon('pdf', 20)}Open PDF</button>
-            <button class="menu-item" data-act="open-pptx">${icon('slides', 20)}Open PowerPoint</button>
-            <button class="menu-item" data-act="record">${icon('record', 20)}Record lesson (video)</button>
-            <button class="menu-item" data-act="open">${icon('open', 20)}Open file</button>
-            <button class="menu-item" data-act="save">${icon('save', 20)}Save notebook</button>
-            <button class="menu-item" data-act="export">${icon('download', 20)}Save as PDF</button>
-            <button class="menu-item" data-act="delete-page">${icon('trash', 20)}Delete this page</button>
-            <button class="menu-item" data-act="fullscreen">${icon('fullscreen', 20)}Full screen</button>
-            ${isInstalled() ? '' : `<button class="menu-item" data-act="install">${icon('download', 20)}Install app</button>`}
-            <button class="menu-item" data-act="share-app">${icon('share', 20)}Share Teachly</button>
-            <button class="menu-item" data-act="privacy">${icon('shield', 20)}Privacy policy</button>
-            <button class="menu-item" data-act="terms">${icon('terms', 20)}Terms of use</button>
+          <div class="mt-row">
+            <div class="board-palette">${BOARDS.map((c) => `<button class="swatch ${p.bg === c ? 'on' : ''}" style="background:${c}" data-bg="${c}" aria-label="Board colour ${c}"></button>`).join('')}
+              <label class="swatch custom" title="Any colour"><input type="color" id="board-color" value="${p.bg}" data-bgpick aria-label="Pick any board colour"></label></div>
           </div>
-          <button class="menu-item wide-item" data-act="tbedit">${icon('settings', 20)}Edit toolbar — choose its buttons</button>
-          <label class="check"><input type="checkbox" id="opt-penonly" data-set="penOnly" ${s.penOnly ? 'checked' : ''}> Write with stylus only (fingers and palm don't draw)</label>
-          <label class="check"><input type="checkbox" id="opt-palm" data-set="palmErase" ${s.palmErase ? 'checked' : ''}> Erase with palm</label>
-          <label class="check"><input type="checkbox" id="opt-scribble" data-set="scribbleErase" ${s.scribbleErase !== false ? 'checked' : ''}> Scribble over writing to erase</label>
-          <label class="check"><input type="checkbox" id="opt-holdshape" data-set="holdShapes" ${s.holdShapes ? 'checked' : ''}> Hold pen to make a shape</label>
-          <div class="app-version">Version ${BUILD_TIME}</div>`;
+          <div class="mt-patterns">${PATTERNS.map(([k, n]) => `<button class="mt-pat ${p.pattern === k ? 'on' : ''}" data-pattern="${k}" title="${n}" aria-label="${n}">${PATTERN_ICONS[k]}</button>`).join('')}</div>
+          <div class="mt-grid">
+            ${tile('library', 'notebook', 'Notebooks')}
+            ${tile('new', 'new', 'New')}
+            ${tile('save', 'save', 'Save')}
+            ${tile('open', 'open', 'Open file')}
+            ${tile('open-pdf', 'pdf', 'PDF')}
+            ${tile('open-pptx', 'slides', 'PowerPoint')}
+            ${tile('export', 'download', 'Save PDF')}
+            ${tile('record', 'record', 'Record')}
+            ${tile('delete-page', 'trash', 'Delete page')}
+            ${tile('fullscreen', 'fullscreen', 'Full screen')}
+            ${tile('share-app', 'share', 'Share')}
+            ${isInstalled() ? tile('tbedit', 'settings', 'Toolbar') : tile('install', 'download', 'Install')}
+          </div>
+          ${isInstalled() ? '' : `<button class="mt-wide" data-act="tbedit">${icon('settings', 18)} Edit toolbar</button>`}
+          <details class="mt-settings">
+            <summary>${icon('settings', 18)} Settings</summary>
+            ${sw('penOnly', 'Stylus only (fingers do not draw)', s.penOnly)}
+            ${sw('palmErase', 'Erase with palm', s.palmErase)}
+            ${sw('scribbleErase', 'Scribble to erase', s.scribbleErase !== false)}
+            ${sw('holdShapes', 'Hold pen to make a shape', s.holdShapes)}
+          </details>
+          <div class="mt-foot"><button data-act="privacy">Privacy</button>·<button data-act="terms">Terms</button><span>v ${BUILD_TIME}</span></div>`;
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
           if (el.dataset.set) store.setSettings({ [el.dataset.set]: el.checked });
