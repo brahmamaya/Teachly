@@ -24,6 +24,9 @@ interface Live {
   t0: number;
   /** Finger / board-touch pen: drawn bit by bit on the wet-ink layer. */
   marker: boolean;
+  /** Last real finger position (the steadied line catches up to it on lift). */
+  rawX?: number;
+  rawY?: number;
   /** Where the wet line has been drawn up to (midpoint of the last two samples). */
   midX: number;
   midY: number;
@@ -188,7 +191,18 @@ export class PenTool implements Tool {
     if (!l || l.snapped) return;
     const minD = 0.6 * this.board.px;
     for (const [sx, sy, sp] of p.samples) {
-      const [x, y] = l.snapper ? l.snapper.project(sx, sy) : [sx, sy];
+      let [x, y] = l.snapper ? l.snapper.project(sx, sy) : [sx, sy];
+      // Finger / board touch: steady the hand (1-euro style). Slow, careful
+      // movement is smoothed more (the touch panel's jitter goes away),
+      // fast strokes follow the finger almost exactly (no lag).
+      if (l.sim && !l.snapper) {
+        const d = dist(x, y, l.lastX, l.lastY) / this.board.px;
+        const a = Math.min(1, 0.22 + d / 45);
+        x = l.lastX + (x - l.lastX) * a;
+        y = l.lastY + (y - l.lastY) * a;
+        l.rawX = sx;
+        l.rawY = sy;
+      }
       if (dist(x, y, l.lastX, l.lastY) < minD) continue;
       l.pts.push(x, y, sp);
       l.lastX = x;
@@ -223,6 +237,11 @@ export class PenTool implements Tool {
         this.board.invalidate('overlay');
         return;
       }
+    }
+    // The steadied line ends exactly where the finger lifted.
+    if (l.sim && !l.snapper && !l.snapped && l.rawX !== undefined && l.rawY !== undefined && dist(l.rawX, l.rawY, l.lastX, l.lastY) > 0.5 * this.board.px) {
+      l.pts.push(l.rawX, l.rawY, l.pts[l.pts.length - 1]);
+      if (l.marker) this.drawWet(l);
     }
     let el: PathEl | null = l.snapped;
     if (!el) {

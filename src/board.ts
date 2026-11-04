@@ -296,7 +296,9 @@ export class Board {
     // classroom boards (few cores / little memory) so writing never lags.
     // Classroom boards (Android panels) and modest devices get a lighter
     // budget so writing never lags; iPads, laptops and phones stay sharp.
-    const budget = liteDevice() ? 2_800_000 : 8_400_000;
+    // Boards: up to ~5 million pixels a layer (crisp ink on 4K panels; was
+    // 2.8 M, which drew the ink blocky and scaled it up).
+    const budget = liteDevice() ? 5_000_000 : 8_400_000;
     this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
     // While a lesson video is recorded, draw at the video's size (up to 4K) so it is sharp.
     if (this.recordPixels) this.dpr = Math.min(4, Math.max(this.dpr, Math.sqrt(this.recordPixels / area)));
