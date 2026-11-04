@@ -121,6 +121,36 @@ const TB_ITEMS: [string, string, 'left' | 'right'][] = [
   ['pages', 'All pages', 'right'],
 ];
 
+/** Buttons that can sit on the floating hexagon: html + whether it is active. */
+type HexBtn = (t: ToolState, app: App) => [string, boolean];
+const hb = (attr: string, ic: string, title: string, extra = '') => `<button class="hx-btn" ${attr} title="${title}" aria-label="${title}">${icon(ic, 26)}${extra}</button>`;
+const HEX_BUTTONS: Record<string, HexBtn> = {
+  select: (t) => [hb('data-tool="select"', 'select', 'Select'), t.tool === 'select'],
+  pen: (t) => [hb('data-tool="pen"', t.penStyle, 'Pen', `<i class="hx-dot" style="background:${t.penStyle === 'highlighter' ? t.hlColor : t.color}"></i>`), t.tool === 'pen'],
+  eraser: (t) => [hb('data-tool="eraser"', 'eraser', 'Eraser'), t.tool === 'eraser'],
+  shape: (t) => [hb('data-tool="shape"', 'shapes', 'Shapes'), t.tool === 'shape'],
+  fill: (t) => [hb('data-tool="fill"', 'bucket', 'Fill colour'), t.tool === 'fill'],
+  text: (t) => [hb('data-tool="text"', 'text', 'Text'), t.tool === 'text'],
+  tape: (t) => [hb('data-tool="tape"', 'tape', 'Tape'), t.tool === 'tape'],
+  laser: (t) => [hb('data-tool="laser"', 'laser', 'Laser'), t.tool === 'laser'],
+  slide: (t) => [hb('data-act="slide"', 'pan', 'Slide mode'), !!t.slide],
+  undo: () => [hb('data-act="undo"', 'undo', 'Undo'), false],
+  redo: () => [hb('data-act="redo"', 'redo', 'Redo'), false],
+  insert: () => [hb('data-pop="insert"', 'plus', 'Insert'), false],
+  tools: () => [hb('data-pop="tools"', 'ruler', 'Tools'), false],
+  timer: () => [hb('data-act="timer"', 'timer', 'Timer'), false],
+  graph: () => [hb('data-act="graph"', 'graph', 'Graph'), false],
+  record: () => [hb('data-act="record"', 'rec', isRecording() ? 'Stop recording' : 'Record lesson'), isRecording()],
+  next: () => [hb('data-act="next"', 'next', 'Next page'), false],
+  prev: () => [hb('data-act="prev"', 'prev', 'Previous page'), false],
+  pages: () => [hb('data-act="pages"', 'pages', 'All pages'), false],
+};
+const HEX_NAMES: Record<string, string> = {
+  select: 'Select', pen: 'Pen', eraser: 'Eraser', shape: 'Shapes', fill: 'Fill colour', text: 'Text', tape: 'Tape', laser: 'Laser',
+  slide: 'Slide mode', undo: 'Undo', redo: 'Redo', insert: 'Insert', tools: 'Tools', timer: 'Timer', graph: 'Graph',
+  record: 'Record lesson', next: 'Next page', prev: 'Previous page', pages: 'All pages',
+};
+
 /** When this version was built (shown in the menu, to check updates arrived). */
 declare const __BUILD__: string;
 const BUILD_TIME = typeof __BUILD__ === 'string' ? __BUILD__ : 'dev';
@@ -149,6 +179,8 @@ export class App {
   private props: HTMLElement;
   private popover: HTMLElement | null = null;
   private popFor = '';
+  /** The open menu belongs to a button on the floating hexagon. */
+  private popFromHex = false;
   private propSection: PropSection = null;
   private selectTool: SelectTool;
   private pages: PagesPanel;
@@ -164,7 +196,7 @@ export class App {
         <div class="brand"><b>Teachly</b> <small>by Physica</small></div>
       </div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
-      <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav></div>
+      <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav><div class="hexdock" hidden></div></div>
       <div class="props" hidden></div>
       <div class="drop-hint" hidden>Drop images or a PDF here</div>`;
 
@@ -313,10 +345,11 @@ export class App {
       </div>`)}
       ${show('pages', `<button class="tb-btn ${this.pages.open ? 'open' : ''}" data-act="pages" title="All pages">${icon('pages', 22)}</button>`)}
       <button class="tb-btn ${this.popFor === 'menu' || this.popFor === 'tbedit' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 22)}</button>`;
+    this.renderHex();
     this.updateUndo();
     this.moveIndicator(left);
     if (this.popover) {
-      const anchor = this.toolbar.querySelector(`[data-tool="${this.popFor}"],[data-pop="${this.popFor}"]`) as HTMLElement | null;
+      const anchor = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="${this.popFor}"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="${this.popFor}"]`) as HTMLElement | null;
       if (anchor) this.positionPopover(anchor);
     }
   }
@@ -347,9 +380,61 @@ export class App {
     this.indAt = to;
   }
 
+  /**
+   * The floating hexagon: "Move" in the middle (drag it anywhere), up to six
+   * chosen buttons around it. The same buttons stay on the toolbar too.
+   */
+  private renderHex(): void {
+    const dock = this.toolbar.querySelector('.hexdock') as HTMLElement;
+    const items = (store.settings.hexItems ?? []).filter((k) => HEX_BUTTONS[k]).slice(0, 6);
+    dock.hidden = !items.length;
+    if (!items.length) return;
+    const t = store.tool;
+    // Around a pointy-top hexagon: right, lower right, lower left, left, upper left, upper right.
+    const cells = items
+      .map((k, i) => {
+        const [html, active] = HEX_BUTTONS[k](t, this);
+        return `<div class="hx hx-${i}${active ? ' active' : ''}">${html}</div>`;
+      })
+      .join('');
+    dock.innerHTML = `<div class="hx hx-move" data-hexmove title="Drag to move"><span>Move</span></div>${cells}`;
+    const pos = store.settings.hexPos ?? { x: 0.88, y: 0.42 };
+    dock.style.left = `${pos.x * 100}%`;
+    dock.style.top = `${pos.y * 100}%`;
+    if (!dock.dataset.bound) {
+      dock.dataset.bound = '1';
+      let drag: { id: number; dx: number; dy: number } | null = null;
+      dock.addEventListener('pointerdown', (e) => {
+        if (!(e.target as HTMLElement).closest('[data-hexmove]')) return;
+        e.preventDefault();
+        const r = dock.getBoundingClientRect();
+        drag = { id: e.pointerId, dx: e.clientX - (r.left + r.width / 2), dy: e.clientY - (r.top + r.height / 2) };
+        dock.setPointerCapture(e.pointerId);
+        dock.classList.add('dragging');
+      });
+      dock.addEventListener('pointermove', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const W = window.innerWidth, H = window.innerHeight;
+        const x = Math.max(70, Math.min(W - 70, e.clientX - drag.dx)), y = Math.max(70, Math.min(H - 120, e.clientY - drag.dy));
+        dock.style.left = `${x}px`;
+        dock.style.top = `${y}px`;
+      });
+      const end = (e: PointerEvent) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        drag = null;
+        dock.classList.remove('dragging');
+        const r = dock.getBoundingClientRect();
+        store.settings.hexPos = { x: (r.left + r.width / 2) / window.innerWidth, y: (r.top + r.height / 2) / window.innerHeight };
+        store.setSettings({ hexPos: store.settings.hexPos });
+      };
+      dock.addEventListener('pointerup', end);
+      dock.addEventListener('pointercancel', end);
+    }
+  }
+
   private updateUndo(): void {
-    this.toolbar.querySelector('[data-act=undo]')?.toggleAttribute('disabled', !store.canUndo);
-    this.toolbar.querySelector('[data-act=redo]')?.toggleAttribute('disabled', !store.canRedo);
+    this.toolbar.querySelectorAll('[data-act=undo]').forEach((b) => b.toggleAttribute('disabled', !store.canUndo));
+    this.toolbar.querySelectorAll('[data-act=redo]').forEach((b) => b.toggleAttribute('disabled', !store.canRedo));
   }
 
   private onToolbarClick(b: HTMLElement): void {
@@ -361,7 +446,7 @@ export class App {
         this.closePopover();
         store.setTool({ tool: id });
         // Shapes: show the picker right away, a shape must be chosen first.
-        if (id === 'shape') this.togglePopover('shape', this.toolbar.querySelector('[data-tool=shape]') as HTMLElement);
+        if (id === 'shape') this.togglePopover('shape', b);
       }
     } else if (b.dataset.pop) this.togglePopover(b.dataset.pop, b);
     else if (b.dataset.act) this.action(b.dataset.act);
@@ -381,6 +466,7 @@ export class App {
   private togglePopover(kind: string, anchor: HTMLElement): void {
     if (this.popFor === kind) return this.closePopover();
     this.closePopover();
+    this.popFromHex = !!anchor.closest('.hexdock');
     const pop = document.createElement('div');
     pop.className = 'popover';
     this.root.appendChild(pop);
@@ -410,6 +496,17 @@ export class App {
     const r = anchor.getBoundingClientRect();
     const pw = pop.offsetWidth * k, ph = pop.offsetHeight * k;
     const W = window.innerWidth, H = window.innerHeight, gap = 12 * k;
+    // From the floating hexagon: open beside it, never over it.
+    const dock = anchor.closest('.hexdock');
+    if (dock) {
+      const d = dock.getBoundingClientRect();
+      const right = d.right + gap + pw <= W - 8;
+      const left = right ? d.right + gap : Math.max(8, d.left - gap - pw);
+      const top = Math.max(8, Math.min(H - ph - 8, d.top + d.height / 2 - ph / 2));
+      pop.style.left = `${left}px`;
+      pop.style.top = `${top}px`;
+      return;
+    }
     const cx = Math.max(8, Math.min(W - pw - 8, r.left + r.width / 2 - pw / 2));
     const cy = Math.max(8, Math.min(H - ph - 8, r.top + r.height / 2 - ph / 2));
     // Open away from the edge the toolbar sits on.
@@ -453,15 +550,17 @@ export class App {
         const hl = t.penStyle === 'highlighter';
         const color = hl ? t.hlColor : t.color;
         const size = hl ? t.hlSize : t.size;
-        // Compact: pen kinds as small icons, colours, one thin size slider.
-        pop.className = 'popover pop-pen';
+        // Note 3 style: size on top, pen kinds below, colours on the right.
+        pop.className = 'popover pop-n3';
         pop.innerHTML = `
-          <div class="pen-icons">${PEN_TYPES.map(([k, n]) => `<button class="pen-ico ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 22)}</button>`).join('')}</div>
-          ${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}
-          <div class="pen-size">
-            <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
-            <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
-          </div>`;
+          <div class="n3-left">
+            <div class="n3-size">
+              <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
+              <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
+            </div>
+            <div class="n3-kinds">${PEN_TYPES.map(([k, n]) => `<button class="n3-kind ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 30)}<span>${n}</span></button>`).join('')}</div>
+          </div>
+          <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>`;
         break;
       }
       case 'fill':
@@ -482,7 +581,13 @@ export class App {
       case 'laser':
         pop.innerHTML = `<div class="pop-title">Laser pointer</div>
           ${this.swatches(['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899'], t.laserColor, 'laserc')}
-          <div class="muted small center">Draw to point things out — it fades away 1.5 seconds after you lift.</div>`;
+          <div class="seg"><button class="${t.laserBlink ? '' : 'on'}" data-lblink="0">Steady</button><button class="${t.laserBlink ? 'on' : ''}" data-lblink="1">Blink</button></div>
+          <div class="slider-row">
+            <span class="slider-label">Stays for</span>
+            <input type="range" min="0.5" max="10" step="0.5" value="${t.laserStay ?? 0.8}" data-lstay aria-label="Seconds the laser stays after lifting">
+            <span class="slider-preview"><b data-lstayv>${(t.laserStay ?? 0.8).toFixed(1)} s</b></span>
+          </div>
+          <div class="muted small center">Draw to point things out. It stays, then fades away smoothly.</div>`;
         break;
       case 'eraser':
         pop.innerHTML = `
@@ -495,9 +600,18 @@ export class App {
           <button class="btn danger wide" data-act="clear">${icon('trash', 20)} Clear page</button>`;
         break;
       case 'shape':
-        pop.innerHTML = `<div class="shape-grid">${SHAPES.map(([k, n, svg]) => `<button class="shape-btn ${t.shape === k ? 'on' : ''}" data-shape="${k}" title="${n}" aria-label="${n}"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${svg}</svg></button>`).join('')}</div>
-          <button class="btn wide" data-act="graph">${icon('graph', 20)} Graph from an equation (y = …)</button>
-          <div class="muted small center">Draw it on the board, then tap it to change colour, size or fill.</div>`;
+        // Note 3 style: line size on top, shapes below, colours on the right.
+        pop.className = 'popover pop-n3';
+        pop.innerHTML = `
+          <div class="n3-left">
+            <div class="n3-size">
+              <input type="range" min="1" max="16" value="${t.shapeSize}" data-shapesize aria-label="Line size">
+              <span class="pen-prev"><i data-shapeprev style="width:${Math.min(20, t.shapeSize + 3)}px;height:${Math.min(20, t.shapeSize + 3)}px;background:${t.shapeColor}"></i></span>
+            </div>
+            <div class="shape-grid">${SHAPES.map(([k, n, svg]) => `<button class="shape-btn ${t.shape === k ? 'on' : ''}" data-shape="${k}" title="${n}" aria-label="${n}"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${svg}</svg></button>`).join('')}</div>
+            <button class="btn wide" data-act="graph">${icon('graph', 20)} Graph from an equation</button>
+          </div>
+          <div class="n3-colors">${this.swatches(boardColors(), t.shapeColor, 'scolor')}</div>`;
         break;
       case 'insert':
         pop.innerHTML = `<div class="grid-btns">
@@ -550,9 +664,26 @@ export class App {
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
           <div class="tbe-cols"><div><div class="pop-title">Left</div>${group('left')}</div><div><div class="pop-title">Right</div>${group('right')}</div></div>
-          <button class="btn wide" data-tbreset>Show all buttons</button>`;
+          <button class="btn wide" data-tbreset>Show all buttons</button>
+          <div class="pop-title">Floating hexagon</div>
+          <div class="muted small">Pick up to 6 buttons for a hexagon you can drag anywhere ("Move" in the middle). None = no hexagon.</div>
+          <div class="hexpick">${Object.keys(HEX_BUTTONS)
+            .map((k) => {
+              const on = (store.settings.hexItems ?? []).includes(k);
+              const full = (store.settings.hexItems ?? []).length >= 6;
+              return `<label class="check tbe-item"><input type="checkbox" data-hexitem="${k}" ${on ? 'checked' : ''} ${!on && full ? 'disabled' : ''}> ${HEX_NAMES[k]}</label>`;
+            })
+            .join('')}</div>`;
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
+          if (el.dataset.hexitem) {
+            const cur = (store.settings.hexItems ?? []).filter((x) => x !== el.dataset.hexitem);
+            if (el.checked && cur.length < 6) cur.push(el.dataset.hexitem);
+            store.setSettings({ hexItems: cur });
+            this.renderHex();
+            this.fillPopover();
+            return;
+          }
           const k = el.dataset.tbitem;
           if (!k) return;
           if (TB_OPT_IN.has(k)) {
@@ -624,10 +755,12 @@ export class App {
     const t = store.tool;
     if (d.style) store.setTool({ penStyle: d.style as 'pen' });
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
+    else if (d.scolor) store.setTool({ shapeColor: d.scolor });
     else if (d.emode) store.setTool({ eraserMode: d.emode as 'point' });
     else if (d.fillc) store.setTool({ fillColor: d.fillc });
     else if (d.tapec) store.setTool({ tapeColor: d.tapec });
     else if (d.laserc) store.setTool({ laserColor: d.laserc });
+    else if (d.lblink) store.setTool({ laserBlink: d.lblink === '1' });
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();
@@ -667,6 +800,14 @@ export class App {
       Object.assign(store.tool, store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
       const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
       if (prev) prev.style.width = prev.style.height = `${Math.min(26, v + 2)}px`;
+    } else if (el.dataset.shapesize !== undefined) {
+      store.tool.shapeSize = v;
+      const prev = this.popover?.querySelector('[data-shapeprev]') as HTMLElement | null;
+      if (prev) prev.style.width = prev.style.height = `${Math.min(20, v + 3)}px`;
+    } else if (el.dataset.lstay !== undefined) {
+      store.tool.laserStay = v;
+      const out = this.popover?.querySelector('[data-lstayv]') as HTMLElement | null;
+      if (out) out.textContent = `${v.toFixed(1)} s`;
     } else if (el.dataset.fillop !== undefined) {
       store.tool.fillOpacity = 1 - v / 100;
       const out = this.popover?.querySelector('[data-fillopv]') as HTMLElement | null;

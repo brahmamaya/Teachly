@@ -19,6 +19,10 @@ export interface Settings {
   tbHidden: string[];
   /** Extra buttons the teacher switched on (off unless chosen, e.g. Record lesson). */
   tbShown: string[];
+  /** Buttons on the floating hexagon (up to 6; none = no hexagon). */
+  hexItems: string[];
+  /** Where the hexagon sits (centre, as fractions of the screen). */
+  hexPos: { x: number; y: number } | null;
 }
 
 export interface ToolState {
@@ -41,6 +45,10 @@ export interface ToolState {
   /** Paint-bucket see-through: 0.1 (faint) … 1 (solid). */
   fillOpacity: number;
   laserColor: string;
+  /** Seconds the laser stays fully bright after lifting (then a 0.7 s fade). */
+  laserStay: number;
+  /** The laser blinks (pulses) while it is shown. */
+  laserBlink: boolean;
   tapeColor: string;
   /** Slide mode (✋): the board can be slid / zoomed while writing. */
   slide: boolean;
@@ -67,6 +75,8 @@ function loadSettings(): Settings {
     tbPos: 'bottom',
     tbHidden: [],
     tbShown: [],
+    hexItems: [],
+    hexPos: null,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -104,6 +114,8 @@ export class Store {
     fillColor: '#3b82f6',
     fillOpacity: 1,
     laserColor: '#ef4444',
+    laserStay: 0.8,
+    laserBlink: false,
     tapeColor: '#f59e0b',
     slide: false,
   };
