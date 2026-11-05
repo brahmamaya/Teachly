@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' data: blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <!-- Installed on iPad / iPhone home screen: open full screen like an app. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Teachly" />
+    <meta name="description" content="Teachly — a smooth, feature-rich interactive whiteboard for smart boards and classrooms." />
+    <link rel="icon" href="./favicon.png" type="image/png" />
+    <meta property="og:title" content="Teachly by Physica" />
+    <meta property="og:description" content="Smooth interactive whiteboard for teachers." />
+    <meta property="og:image" content="./og.png" />
+    <link rel="preload" href="./fonts/orbitron.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>Teachly</title>
+    <script type="module" crossorigin src="./assets/index-BCZoYcjV.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-mVq75jGs.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- Opening screen: clean white, no animation, 1.5 s (src/main.ts fades it out). -->
+    <div id="splash" aria-label="Teachly by Physica">
+      <style>@font-face{font-family:Orbitron;src:url(./fonts/orbitron.woff2)format("woff2");font-weight:400 900;font-display:block}#splash{z-index:99999;color:#000;background:#fff;justify-content:center;align-items:center;font-family:-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif;transition:opacity .3s;display:flex;position:fixed;top:0;bottom:0;left:0;right:0}#splash.hide{opacity:0;pointer-events:none}#splash .sp-in{flex-direction:column;align-items:center;gap:.35em;display:flex}#splash .sp-name{letter-spacing:-.01em;font-size:max(44px,min(9vmin,120px));font-weight:700;line-height:1}#splash .sp-by{font-size:max(16px,min(2.6vmin,32px));font-weight:400}#splash .sp-by span{letter-spacing:.04em;font-family:Orbitron,sans-serif;font-weight:700}</style>
+      <div class="sp-in">
+        <div class="sp-name">Teachly</div>
+        <div class="sp-by">by <span>Physica</span></div>
+      </div>
+    </div>
+  </body>
+</html>
