@@ -195,12 +195,14 @@ export class PenTool implements Tool {
       // Finger / board touch: steady the hand (1-euro style). Slow, careful
       // movement is smoothed more (the touch panel's jitter goes away),
       // fast strokes follow the finger almost exactly (no lag).
-      const lvl = store.tool.smooth ?? 2;
-      if (!l.snapper && (l.sim || lvl === 2)) {
+      // Default "Exact": the line is drawn right under the finger, exactly
+      // as written (no delay). Light / Strong steady a shaky hand.
+      const lvl = store.tool.inkSmooth ?? 0;
+      if (!l.snapper && lvl > 0 && (l.sim || lvl === 2)) {
         const d = dist(x, y, l.lastX, l.lastY) / this.board.px;
         // [floor, speed]: how much a slow move is smoothed, and how fast the
         // line catches up when the hand moves quickly. Stylus: gentler.
-        const [f, k] = l.sim ? ([[0.35, 18], [0.22, 45], [0.12, 80]] as const)[lvl] : ([0.45, 30] as const);
+        const [f, k] = l.sim ? ([[1, 1], [0.5, 20], [0.3, 45]] as const)[lvl] : ([0.5, 30] as const);
         const a = Math.min(1, f + d / k);
         x = l.lastX + (x - l.lastX) * a;
         y = l.lastY + (y - l.lastY) * a;
