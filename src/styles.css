@@ -4998,32 +4998,41 @@ button,
   opacity: 1;
 }
 
-/* ---------- Toolbar on top (Edit toolbar > Toolbar at: Top), touching the top edge ---------- */
+/* ---------- Toolbar on top (Edit toolbar > Toolbar at: Top) ----------
+   Both halves meet in the middle as one bar (placed by applyScale), right
+   under the iPad / iPhone status bar, touching the top edge elsewhere. */
 #app[data-tb='top'] .toolbar,
 #app[data-tb='top'][data-board] .toolbar {
   bottom: auto;
-  top: 0;
-  /* iPad / iPhone: the white bar runs under the status bar (time, battery),
-     the buttons sit below it where they can be tapped. */
-  padding-top: calc(3px + env(safe-area-inset-top, 0px) / var(--ui, 1));
+  top: env(safe-area-inset-top, 0px);
   border-bottom-width: 1px;
   border-top-width: 0;
-  --bar-shadow: 0 2px 14px rgba(0, 0, 0, 0.28);
+  --bar-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
   box-shadow: var(--bar-shadow);
 }
 #app[data-tb='top'] .toolbar.tb-left {
-  border-radius: 0 0 16px 0;
+  transform-origin: 0 0;
+  border-left-width: 1px;
+  border-right-width: 0;
+  border-radius: 0 0 0 16px;
 }
 #app[data-tb='top'] .toolbar.tb-right {
-  border-radius: 0 0 0 16px;
+  transform-origin: 0 0;
+  border-right-width: 1px;
+  border-radius: 0 0 16px 0;
+}
+#app[data-tb='top']:not(.tb-stacked) .toolbar.tb-right {
+  border-left-width: 0;
+}
+#app[data-tb='top'].tb-stacked .toolbar.tb-left,
+#app[data-tb='top'].tb-stacked .toolbar.tb-right {
+  border-right-width: 1px;
+  border-radius: 0 0 16px 16px;
 }
 #app[data-tb='top'].tb-stacked .tb-right {
   bottom: auto;
   top: calc(46px * var(--ui) + env(safe-area-inset-top, 0px));
-  padding-top: 3px;
-  border-radius: 0 0 0 16px;
 }
-
 /* ---------- Poll (A B C D with a timer), same glass card as the timer ---------- */
 .qtimer.poll {
   width: 340px;

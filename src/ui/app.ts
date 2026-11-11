@@ -1325,6 +1325,17 @@ export class App {
     this.root.classList.toggle('tb-stacked', stacked);
     // Buttons are always the small size (big boards still scale them up).
     computeUiScale('small', stacked ? Math.max(L, R) + 20 : one, avail);
+    // Toolbar on top: both halves together in the middle, as one bar
+    // (two centred rows on narrow screens). At the bottom they sit in the corners.
+    if (pos === 'top') {
+      const k = ui(), W = window.innerWidth;
+      const lx = stacked ? (W - L * k) / 2 : (W - (L + R) * k) / 2;
+      left.style.left = `${Math.max(0, lx)}px`;
+      right.style.left = `${Math.max(0, stacked ? (W - R * k) / 2 : lx + L * k)}px`;
+      right.style.right = 'auto';
+    } else {
+      left.style.left = right.style.left = right.style.right = '';
+    }
     // The page fills the whole screen; the toolbars float on top of it.
     this.board.insets = { top: 0, right: 0, bottom: 0, left: 0 };
     this.board.resize();
