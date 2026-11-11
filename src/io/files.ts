@@ -6,6 +6,7 @@ import { newPage, store } from '../store';
 import { saveSource } from './library';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
 import { isAppleTouch } from '../ui/install';
+import { toast } from '../ui/panel';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -157,6 +158,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   // pages (small and sharp). Not enough space: the pictures alone still work.
   const source = await saveSource(bytes.slice(0)).catch(() => '');
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
+  if (source && (await relinkBook(pdf, source))) return;
   const pages: Page[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -189,6 +191,44 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   all.splice(replace ? store.index : store.index + 1, replace ? 1 : 0, ...pages);
   store.commit(all, replace ? store.index : store.index + 1);
   board.fitPage();
+}
+
+/**
+ * The same book was opened here before this version kept original files:
+ * its pages are pictures with the teacher's writing on them. Offer to link
+ * them to this file (nothing on the pages changes), so Save as PDF becomes
+ * small. Matched by page count and page shapes. True if linked.
+ */
+async function relinkBook(pdf: { numPages: number; getPage(i: number): Promise<{ getViewport(o: { scale: number }): { width: number; height: number } }> }, source: string): Promise<boolean> {
+  // Runs of book pages (a locked picture first on the page) without a kept original.
+  const runs: number[][] = [];
+  let run: number[] = [];
+  store.doc.pages.forEach((p, i) => {
+    const e = p.els[0];
+    if (e?.type === 'image' && e.locked && !e.pdf) run.push(i);
+    else if (run.length) {
+      runs.push(run);
+      run = [];
+    }
+  });
+  if (run.length) runs.push(run);
+  const match = runs.find((r) => r.length === pdf.numPages);
+  if (!match) return false;
+  for (let j = 0; j < match.length; j++) {
+    const vp = (await pdf.getPage(j + 1)).getViewport({ scale: 1 });
+    const e = store.doc.pages[match[j]].els[0] as ImageEl;
+    if (Math.abs(vp.width / vp.height - e.w / e.h) > 0.02 * (e.w / e.h)) return false;
+  }
+  if (!confirm(`This notebook already has these ${pdf.numPages} pages (opened earlier). Link them to this file so "Save as PDF" is much smaller? Your writing stays as it is.\n\nOK = link the pages · Cancel = add the PDF again as new pages`)) return false;
+  const pages = store.doc.pages.map((p, i) => {
+    const j = match.indexOf(i);
+    if (j < 0) return p;
+    const [first, ...rest] = p.els;
+    return { ...p, els: [{ ...(first as ImageEl), pdf: { src: source, page: j } }, ...rest] };
+  });
+  store.commit(pages, store.index);
+  toast(`Linked ${pdf.numPages} pages. Save as PDF will now be small.`, 4000);
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -235,8 +275,16 @@ export function exportPng(board: Board): void {
  */
 export async function exportPdf(_board: Board): Promise<void> {
   const { makePdf } = await import('./pdfvector');
-  const blob = await makePdf(store.doc.pages, liteDevice() ? 2.25 : 3);
+  const { blob, pictures } = await makePdf(store.doc.pages, liteDevice() ? 2.25 : 3);
   download(blob, `${safeName(store.doc.title)}.pdf`);
+  const mb = blob.size / 1048576;
+  const size = mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(blob.size / 1024))} KB`;
+  toast(
+    pictures
+      ? `PDF saved (${size}). ${pictures} book page${pictures === 1 ? ' was' : 's were'} opened in an older version and went in as pictures. Open that PDF again (Insert > PDF) for a much smaller file.`
+      : `PDF saved (${size}).`,
+    pictures ? 9000 : 3000,
+  );
 }
 
 /** Paste handler: images from clipboard, or internal element clipboard. */

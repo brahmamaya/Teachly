@@ -241,7 +241,7 @@ type SrcPage = { key: string; page: number; el: El & { type: 'image' } };
  * and the original PDF page is put between them, so a book stays as small
  * and sharp as the original file.
  */
-export async function makePdf(pages: Page[], k: number): Promise<Blob> {
+export async function makePdf(pages: Page[], k: number): Promise<{ blob: Blob; pictures: number }> {
   const { loadSource } = await import('./library');
   // Which original files can be used (still on this device, readable).
   const keys = new Set<string>();
@@ -251,6 +251,9 @@ export async function makePdf(pages: Page[], k: number): Promise<Blob> {
     const b = await loadSource(key);
     if (b) sources.set(key, b);
   }
+  // Opened-PDF pages that have no kept original (opened before this version, or on another device).
+  let pictures = 0;
+  for (const p of pages) for (const e of p.els) if (e.type === 'image' && e.locked && !(e.pdf && sources.has(e.pdf.src))) pictures++;
   const usable = (e: El): e is El & { type: 'image' } => e.type === 'image' && !!e.pdf && !e.rot && sources.has(e.pdf.src);
 
   // 1. Board layers with jsPDF. A board page with original pages becomes
@@ -291,7 +294,7 @@ export async function makePdf(pages: Page[], k: number): Promise<Blob> {
     await new Promise((ok) => setTimeout(ok, 0)); // let the screen breathe between pages
   }
   const board = pdf.output('arraybuffer');
-  if (!sources.size) return new Blob([board], { type: 'application/pdf' });
+  if (!sources.size) return { blob: new Blob([board], { type: 'application/pdf' }), pictures };
 
   // 2. Put the layers and the original pages together with pdf-lib.
   const { PDFDocument, rgb } = await import('pdf-lib');
@@ -331,6 +334,7 @@ export async function makePdf(pages: Page[], k: number): Promise<Blob> {
         pg.drawPage(orig, { x, y, width: w, height: h });
       }
       else {
+        pictures++;
         // This page could not be reused: its stored picture instead.
         const img = e.src.startsWith('data:image/png') ? await out.embedPng(e.src) : await out.embedJpg(e.src);
         pg.drawImage(img, { x, y, width: w, height: h });
@@ -338,5 +342,5 @@ export async function makePdf(pages: Page[], k: number): Promise<Blob> {
     }
   }
   const bytes = await out.save({ useObjectStreams: true });
-  return new Blob([bytes as BlobPart], { type: 'application/pdf' });
+  return { blob: new Blob([bytes as BlobPart], { type: 'application/pdf' }), pictures };
 }
