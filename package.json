@@ -2,7 +2,7 @@
   "name": "teachly",
   "private": true,
   "version": "1.0.0",
-  "description": "Teachly \u2014 a smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
+  "description": "Teachly — a smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -16,6 +16,7 @@
   "dependencies": {
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.4.299",
     "perfect-freehand": "^1.2.3",
     "pptx-preview": "^1.0.7"

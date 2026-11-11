@@ -31,6 +31,8 @@ const STORE = 'docs';
 const INDEX = 'library';
 const LAST = 'teachly.lastNotebook';
 const FOLDERS = 'folders';
+/** Original PDF files kept for exports: key → ids of the notebooks using it. */
+const SRCREFS = 'srcrefs';
 
 let dbp: Promise<IDBDatabase> | null = null;
 function db(): Promise<IDBDatabase> {
@@ -104,6 +106,7 @@ export async function saveNotebook(doc: Doc, folder?: string): Promise<Doc> {
   if (prev?.trashed) meta.trashed = prev.trashed;
   const next = [meta, ...list.filter((m) => m.id !== doc.id)];
   await put([[`nb:${doc.id}`, doc], [INDEX, next]]);
+  await noteSources(doc);
   try {
     localStorage.setItem(LAST, doc.id!);
   } catch {
@@ -173,6 +176,7 @@ export async function restoreNotebook(id: string): Promise<void> {
 export async function deleteNotebook(id: string): Promise<void> {
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
   await put([[INDEX, list.filter((m) => m.id !== id)]], [`nb:${id}`]);
+  await dropSources([id]);
 }
 
 /** Empty the trash: every notebook in it is removed for good. */
@@ -180,6 +184,7 @@ export async function emptyTrash(): Promise<number> {
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
   const gone = list.filter((m) => m.trashed);
   await put([[INDEX, list.filter((m) => !m.trashed)]], gone.map((m) => `nb:${m.id}`));
+  await dropSources(gone.map((m) => m.id));
   return gone.length;
 }
 
@@ -262,5 +267,81 @@ export async function recoverOrphans(): Promise<number> {
     return back.length;
   } catch {
     return 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Original PDF files (so a saved PDF reuses the real pages: small and sharp)
+
+/** Keep a copy of an opened PDF file on the device; returns its key. */
+export async function saveSource(bytes: ArrayBuffer): Promise<string> {
+  const key = `src:${Date.now().toString(36)}:${uid()}`;
+  await put([[key, bytes]]);
+  return key;
+}
+
+export async function loadSource(key: string): Promise<ArrayBuffer | null> {
+  try {
+    return (await get<ArrayBuffer>(key)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function sourcesOf(doc: Doc): string[] {
+  const keys = new Set<string>();
+  for (const p of doc.pages) for (const e of p.els) if (e.type === 'image' && e.pdf) keys.add(e.pdf.src);
+  return [...keys].sort();
+}
+
+// Last list written per notebook, so the usual autosave writes nothing extra.
+const noted = new Map<string, string>();
+/** Remember which original PDFs this notebook uses. */
+async function noteSources(doc: Doc): Promise<void> {
+  const mine = sourcesOf(doc);
+  const sig = mine.join('|');
+  if (noted.get(doc.id!) === sig) return;
+  const refs = (await get<Record<string, string[]>>(SRCREFS)) ?? {};
+  for (const k of Object.keys(refs)) refs[k] = refs[k].filter((id) => id !== doc.id);
+  for (const k of mine) (refs[k] ??= []).push(doc.id!);
+  for (const k of Object.keys(refs)) if (!refs[k].length) delete refs[k];
+  await put([[SRCREFS, refs]]);
+  noted.set(doc.id!, sig);
+}
+
+/** Notebooks deleted for good: their original PDFs go too, unless another notebook uses them. */
+async function dropSources(ids: string[]): Promise<void> {
+  try {
+    const refs = (await get<Record<string, string[]>>(SRCREFS)) ?? {};
+    const gone: string[] = [];
+    for (const k of Object.keys(refs)) {
+      refs[k] = refs[k].filter((id) => !ids.includes(id));
+      if (!refs[k].length) {
+        delete refs[k];
+        gone.push(k);
+      }
+    }
+    for (const id of ids) noted.delete(id);
+    await put([[SRCREFS, refs]], gone);
+  } catch {
+    /* tidied up at the next start */
+  }
+}
+
+/** At start: remove kept PDFs that no notebook uses (older than a day, so a fresh one is never touched). */
+export async function dropUnusedSources(): Promise<void> {
+  try {
+    const d = await db();
+    const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const req = d.transaction(STORE).objectStore(STORE).getAllKeys();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const refs = (await get<Record<string, string[]>>(SRCREFS)) ?? {};
+    const dayAgo = Date.now() - 86_400_000;
+    const unused = keys.map(String).filter((k) => k.startsWith('src:') && !refs[k] && parseInt(k.split(':')[1], 36) < dayAgo);
+    if (unused.length) await put([], unused);
+  } catch {
+    /* try again next start */
   }
 }

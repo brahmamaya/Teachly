@@ -61,6 +61,11 @@ export interface TextEl extends BoxBase {
 export interface ImageEl extends BoxBase {
   type: 'image';
   src: string;
+  /**
+   * A page of an opened PDF: the original file is kept on the device
+   * (library key) so a saved PDF can reuse the real page, small and sharp.
+   */
+  pdf?: { src: string; page: number };
 }
 
 export interface TableEl extends BoxBase {

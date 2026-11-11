@@ -1,4 +1,4 @@
-import { GState, type jsPDF as JsPDF } from 'jspdf';
+import { GState, jsPDF, type jsPDF as JsPDF } from 'jspdf';
 import { bbox } from '../geometry';
 import { drawBackground, drawEl, drawPathEl, pageRegion, withPathMaker } from '../renderer';
 import type { El, Page, Rect } from '../types';
@@ -196,15 +196,17 @@ function itemPicture(el: El, k: number): { url: string; r: Rect } | null {
   return { url, r };
 }
 
-/** Write one board page into the PDF (the PDF page is already added and sized to `r`). */
-export function drawPageVector(pdf: JsPDF, page: Page, k: number): void {
-  const r = pageRegion(page.els);
+/**
+ * Write board elements into the current PDF page (sized to the page region
+ * `r`): the background first when `bg`, then each element in order.
+ */
+function drawLayer(pdf: JsPDF, page: Page, r: Rect, els: El[], bg: boolean, k: number): void {
   // Background colour and its lines / grid / dots, lined up as on the board
   // (drawn in coordinates that already start at the region's corner).
-  drawBackground(new PdfCtx(pdf, 0, 0) as unknown as CanvasRenderingContext2D, page.bg, page.pattern, { x: r.x, y: r.y, z: 1 }, r.w, r.h);
+  if (bg) drawBackground(new PdfCtx(pdf, 0, 0) as unknown as CanvasRenderingContext2D, page.bg, page.pattern, { x: r.x, y: r.y, z: 1 }, r.w, r.h);
   const e2d = new PdfCtx(pdf, r.x, r.y) as unknown as CanvasRenderingContext2D;
   const pics = new Map<string, string>();
-  for (const el of page.els) {
+  for (const el of els) {
     if (el.type === 'path') {
       withPathMaker(
         () => new RecPath() as unknown as Path2D,
@@ -227,4 +229,114 @@ export function drawPageVector(pdf: JsPDF, page: Page, k: number): void {
       pdf.addImage(pic.url, 'PNG', pic.r.x - r.x, pic.r.y - r.y, pic.r.w, pic.r.h, undefined, 'FAST');
     }
   }
+}
+
+/** A page of an opened PDF whose original file is kept: reused as it is. */
+type SrcPage = { key: string; page: number; el: El & { type: 'image' } };
+
+/**
+ * The whole notebook as one PDF.
+ * Pages without opened-PDF pages: written directly (vector writing, stored
+ * pictures). Pages with them: the board's layers are written the same way
+ * and the original PDF page is put between them, so a book stays as small
+ * and sharp as the original file.
+ */
+export async function makePdf(pages: Page[], k: number): Promise<Blob> {
+  const { loadSource } = await import('./library');
+  // Which original files can be used (still on this device, readable).
+  const keys = new Set<string>();
+  for (const p of pages) for (const e of p.els) if (e.type === 'image' && e.pdf && !e.rot) keys.add(e.pdf.src);
+  const sources = new Map<string, ArrayBuffer>();
+  for (const key of keys) {
+    const b = await loadSource(key);
+    if (b) sources.set(key, b);
+  }
+  const usable = (e: El): e is El & { type: 'image' } => e.type === 'image' && !!e.pdf && !e.rot && sources.has(e.pdf.src);
+
+  // 1. Board layers with jsPDF. A board page with original pages becomes
+  //    several layers: [background + what lies under] [what lies over] …
+  const pdf = new jsPDF({ unit: 'px', format: [100, 100], hotfixes: ['px_scaling'], compress: true, floatPrecision: 2 });
+  type Plan = { r: Rect; parts: ({ layer: number } | SrcPage)[] };
+  const plan: Plan[] = [];
+  let layers = 0;
+  const newLayer = (r: Rect) => {
+    if (layers) pdf.addPage([r.w, r.h], r.w >= r.h ? 'landscape' : 'portrait');
+    else {
+      pdf.deletePage(1);
+      pdf.addPage([r.w, r.h], r.w >= r.h ? 'landscape' : 'portrait');
+    }
+    return layers++;
+  };
+  for (const page of pages) {
+    const r = pageRegion(page.els);
+    const parts: Plan['parts'] = [];
+    let run: El[] = [];
+    let first = true;
+    const flush = () => {
+      if (!first && !run.length) return;
+      const n = newLayer(r);
+      drawLayer(pdf, page, r, run, first, k);
+      parts.push({ layer: n });
+      first = false;
+      run = [];
+    };
+    for (const el of page.els) {
+      if (usable(el)) {
+        flush();
+        parts.push({ key: el.pdf!.src, page: el.pdf!.page, el });
+      } else run.push(el);
+    }
+    flush();
+    plan.push({ r, parts });
+    await new Promise((ok) => setTimeout(ok, 0)); // let the screen breathe between pages
+  }
+  const board = pdf.output('arraybuffer');
+  if (!sources.size) return new Blob([board], { type: 'application/pdf' });
+
+  // 2. Put the layers and the original pages together with pdf-lib.
+  const { PDFDocument, rgb } = await import('pdf-lib');
+  const out = await PDFDocument.create();
+  const layerPages = await out.embedPdf(board, [...Array(layers).keys()]);
+  const embedded = new Map<string, Awaited<ReturnType<typeof out.embedPdf>>>();
+  for (const [key, bytes] of sources) {
+    try {
+      const src = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+      if (src.isEncrypted) throw new Error('locked');
+      const want = new Set<number>();
+      for (const p of plan) for (const part of p.parts) if ('key' in part && part.key === key && part.page < src.getPageCount() && !src.getPage(part.page).getRotation().angle) want.add(part.page);
+      const list = [...want].sort((a, b) => a - b);
+      const emb = await out.embedPages(list.map((i) => src.getPage(i)));
+      const byPage = new Array(src.getPageCount());
+      list.forEach((i, j) => (byPage[i] = emb[j]));
+      embedded.set(key, byPage);
+    } catch {
+      /* locked or damaged file: its pages go in as the stored pictures */
+    }
+  }
+  for (const p of plan) {
+    const s = layerPages[(p.parts.find((x) => 'layer' in x) as { layer: number }).layer];
+    const pt = s.width / p.r.w; // board units → PDF points
+    const pg = out.addPage([s.width, s.height]);
+    for (const part of p.parts) {
+      if ('layer' in part) {
+        pg.drawPage(layerPages[part.layer], { x: 0, y: 0, width: s.width, height: s.height });
+        continue;
+      }
+      const e = part.el;
+      const x = (e.x - p.r.x) * pt, w = e.w * pt, h = e.h * pt, y = s.height - (e.y - p.r.y) * pt - h;
+      const orig = embedded.get(part.key)?.[part.page];
+      if (orig) {
+        // PDF pages are see-through; on the board they sit on white paper.
+        pg.drawRectangle({ x, y, width: w, height: h, color: rgb(1, 1, 1) });
+        pg.drawPage(orig, { x, y, width: w, height: h });
+      }
+      else {
+        // This page could not be reused: its stored picture instead.
+        const img = e.src.startsWith('data:image/png') ? await out.embedPng(e.src) : await out.embedJpg(e.src);
+        pg.drawImage(img, { x, y, width: w, height: h });
+      }
+    }
+  }
+  const bytes = await out.save({ useObjectStreams: true });
+  return new Blob([bytes as BlobPart], { type: 'application/pdf' });
 }

@@ -3,6 +3,7 @@ import { regroup, uid } from '../geometry';
 import { fitInPage, PAGE } from '../page';
 import { pageRegion, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
+import { saveSource } from './library';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
 import { isAppleTouch } from '../ui/install';
 
@@ -151,7 +152,11 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   } else {
     pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
   }
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const bytes = await file.arrayBuffer();
+  // Keep the original file on this device, so a saved PDF can reuse its real
+  // pages (small and sharp). Not enough space: the pictures alone still work.
+  const source = await saveSource(bytes.slice(0)).catch(() => '');
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
   const pages: Page[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -171,6 +176,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport: vp, canvas } as Parameters<typeof page.render>[0]).promise;
     const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.92), ...rect, rot: 0, locked: true };
+    if (source) img.pdf = { src: source, page: i - 1 };
     const p = newPage(store.page.bg, 'none');
     p.els = [img];
     pages.push(p);
@@ -224,21 +230,13 @@ export function exportPng(board: Board): void {
 
 /**
  * PDF of every page: small and sharp at any zoom. Writing, shapes and the
- * background go in as vector lines, pictures as they are stored (see
- * io/pdfvector.ts). One page at a time, so the app never freezes.
+ * background go in as vector lines, pictures as they are stored, and pages
+ * of an opened PDF as the original PDF pages (see io/pdfvector.ts).
  */
 export async function exportPdf(_board: Board): Promise<void> {
-  const [{ jsPDF }, { drawPageVector }] = await Promise.all([import('jspdf'), import('./pdfvector')]);
-  let pdf: InstanceType<typeof jsPDF> | null = null;
-  for (const page of store.doc.pages) {
-    const r: Rect = pageRegion(page.els);
-    const orient = r.w >= r.h ? 'landscape' : 'portrait';
-    if (!pdf) pdf = new jsPDF({ orientation: orient, unit: 'px', format: [r.w, r.h], hotfixes: ['px_scaling'], compress: true });
-    else pdf.addPage([r.w, r.h], orient);
-    drawPageVector(pdf, page, liteDevice() ? 2.25 : 3);
-    await new Promise((ok) => setTimeout(ok, 0)); // let the screen breathe between pages
-  }
-  if (pdf) download(pdf.output('blob'), `${safeName(store.doc.title)}.pdf`);
+  const { makePdf } = await import('./pdfvector');
+  const blob = await makePdf(store.doc.pages, liteDevice() ? 2.25 : 3);
+  download(blob, `${safeName(store.doc.title)}.pdf`);
 }
 
 /** Paste handler: images from clipboard, or internal element clipboard. */

@@ -24,6 +24,7 @@ const PRIVACY = `
 <ul>
   <li>notebooks, pages, writing, shapes, graphs, text, folders and the Trash;</li>
   <li>PDF files, PowerPoint files and pictures you open in Teachly, and photos you take with <b>Insert &gt; Camera</b> (they are read on your device and are not uploaded);</li>
+  <li>a copy of each PDF file you open, kept with the notebook so that <b>Save as PDF</b> can reuse its real pages (small and sharp); it is removed when the notebooks using it are deleted for good;</li>
   <li>your settings (for example pen colours, recent colours, board colour, graph settings, recording quality) and the place where you stopped, so Teachly can open where you left off;</li>
   <li>names you type into the name picker, and team names and scores in the scoreboard.</li>
 </ul>

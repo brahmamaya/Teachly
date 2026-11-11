@@ -1,7 +1,7 @@
 import type { Board } from '../board';
 import { trimImageCache } from '../renderer';
 import { store } from '../store';
-import { recoverOrphans, saveNotebook } from './library';
+import { dropUnusedSources, recoverOrphans, saveNotebook } from './library';
 import { saveSession } from './session';
 
 // Housekeeping, so Teachly stays light and fast however many days it runs:
@@ -45,7 +45,7 @@ export function startHousekeeping(board: Board): void {
 
   // 2. Start-up tidy (a little later, never during start).
   window.setTimeout(() => {
-    void recoverOrphans();
+    void recoverOrphans().then(() => dropUnusedSources());
     // Old website caches from earlier versions (the current one is kept by the service worker).
     void (async () => {
       try {
