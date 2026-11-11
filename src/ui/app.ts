@@ -116,22 +116,22 @@ type PropSection = 'color' | 'width' | 'fill' | null;
 const TB_OPT_IN = new Set(['record']);
 const TB_ITEMS: [string, string, 'left' | 'right'][] = [
   ['select', 'Select', 'left'],
-  ['slide', 'Slide (move the board)', 'left'],
+  ['slide', 'Slide mode', 'left'],
   ['pen', 'Pen', 'left'],
   ['eraser', 'Eraser', 'left'],
   ['shape', 'Shapes', 'left'],
   ['fill', 'Fill colour', 'left'],
   ['text', 'Text', 'left'],
   ['tape', 'Tape', 'left'],
-  ['laser', 'Laser pointer', 'left'],
+  ['laser', 'Laser', 'left'],
   ['undo', 'Undo', 'right'],
   ['redo', 'Redo', 'right'],
-  ['insert', 'Insert (picture, PDF, slides…)', 'right'],
-  ['tools', 'Tools (ruler, compass…)', 'right'],
+  ['insert', 'Insert', 'right'],
+  ['tools', 'Tools', 'right'],
   ['timer', 'Timer', 'right'],
-  ['poll', 'Poll (A B C D)', 'right'],
+  ['poll', 'Poll', 'right'],
   ['graph', 'Graph', 'right'],
-  ['record', 'Record lesson', 'right'],
+  ['record', 'Record', 'right'],
   ['pagenav', 'Page arrows', 'right'],
   ['pages', 'All pages', 'right'],
 ];
@@ -164,7 +164,7 @@ const HEX_BUTTONS: Record<string, HexBtn> = {
 const HEX_NAMES: Record<string, string> = {
   select: 'Select', pen: 'Pen', eraser: 'Eraser', shape: 'Shapes', fill: 'Fill colour', text: 'Text', tape: 'Tape', laser: 'Laser',
   slide: 'Slide mode', undo: 'Undo', redo: 'Redo', insert: 'Insert', tools: 'Tools', timer: 'Timer', poll: 'Poll', graph: 'Graph',
-  record: 'Record lesson', next: 'Next page', prev: 'Previous page', pages: 'All pages',
+  record: 'Record', next: 'Next page', prev: 'Previous page', pages: 'All pages',
 };
 
 /** When this version was built (shown in the menu, to check updates arrived). */
@@ -718,17 +718,17 @@ export class App {
       }
       case 'tbedit': {
         const hide = new Set(store.settings.tbHidden);
-        const group = (side: 'left' | 'right') =>
-          TB_ITEMS.filter(([, , sd]) => sd === side)
-            .map(([k, n]) => {
+        const group = () =>
+          TB_ITEMS.map(([k, n]) => {
               const shown = TB_OPT_IN.has(k) ? (store.settings.tbShown ?? []).includes(k) : !hide.has(k);
               return `<label class="check tbe-item"><input type="checkbox" data-tbitem="${k}" ${shown ? 'checked' : ''}> ${n}</label>`;
             })
             .join('');
+        pop.className = 'popover pop-tbedit';
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
           <div class="seg tbe-pos"><span>Toolbar at</span>${(['bottom', 'top'] as const).map((k) => `<button class="${tbEdge() === k ? 'on' : ''}" data-tbpos="${k}">${k === 'bottom' ? 'Bottom' : 'Top'}</button>`).join('')}</div>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
-          <div class="tbe-cols"><div><div class="pop-title">Left</div>${group('left')}</div><div><div class="pop-title">Right</div>${group('right')}</div></div>
+          <div class="tbe-grid">${group()}</div>
           <button class="btn wide" data-tbreset>Show all buttons</button>
           <div class="pop-title">Floating hexagon</div>
           <div class="muted small">Pick up to 6 buttons for a hexagon you can drag anywhere ("Move" in the middle). None = no hexagon.</div>
@@ -741,7 +741,7 @@ export class App {
             <input type="range" min="0" max="80" step="5" value="${Math.round((1 - hexAlpha()) * 100)}" data-hexop aria-label="Hexagon transparency in percent">
             <span class="slider-preview"><b data-hexopv>${Math.round((1 - hexAlpha()) * 100)}%</b></span>
           </div>
-          <div class="hexpick">${Object.keys(HEX_BUTTONS)
+          <div class="tbe-grid">${Object.keys(HEX_BUTTONS)
             .map((k) => {
               const on = (store.settings.hexItems ?? []).includes(k);
               const full = (store.settings.hexItems ?? []).length >= 6;

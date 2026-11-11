@@ -5291,3 +5291,29 @@ button,
     animation: none;
   }
 }
+
+/* ---------- Edit toolbar: compact (3 a row), always inside the screen ---------- */
+.popover.pop-tbedit {
+  width: min(460px, calc(100vw / var(--ui, 1) - 16px));
+  max-height: calc((100vh - 24px) / var(--ui, 1));
+  max-height: calc((100dvh - 24px) / var(--ui, 1));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  gap: 8px;
+}
+.tbe-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 10px;
+}
+.pop-tbedit .tbe-item {
+  padding: 3px 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pop-tbedit .muted.small {
+  margin: 0;
+}
