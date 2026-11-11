@@ -32,7 +32,7 @@ export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last
 }
 
 export function outlineToPath(outline: number[][]): Path2D {
-  const path = new Path2D();
+  const path = newPath();
   const n = outline.length;
   if (n < 2) return path;
   path.moveTo(outline[0][0], outline[0][1]);
@@ -51,7 +51,7 @@ export function outlineToPath(outline: number[][]): Path2D {
  * in the other — like a real italic pen.
  */
 function calligraphyPath(pts: number[], size: number): Path2D {
-  const path = new Path2D();
+  const path = newPath();
   const a = -Math.PI / 4;
   const nx = Math.cos(a) * size * 0.9, ny = Math.sin(a) * size * 0.9;
   // Light smoothing so hand jitter does not show in the broad strokes.
@@ -113,10 +113,28 @@ function upsample(pts: number[], step: number): number[][] {
   return out;
 }
 
+/**
+ * While a PDF is being made (io/pdfvector.ts), stroke outlines are recorded
+ * as vector paths instead of browser paths; the caches are left alone then.
+ */
+let pathMaker: (() => Path2D) | null = null;
+export function withPathMaker<T>(make: () => Path2D, fn: () => T): T {
+  const prev = pathMaker;
+  pathMaker = make;
+  try {
+    return fn();
+  } finally {
+    pathMaker = prev;
+  }
+}
+function newPath(): Path2D {
+  return pathMaker ? pathMaker() : new Path2D();
+}
+
 const pathCache = new WeakMap<PathEl, Path2D>();
 
 function shapePath(el: PathEl): Path2D {
-  const p = new Path2D();
+  const p = newPath();
   const pts = el.pts;
   p.moveTo(pts[0], pts[1]);
   for (let i = 3; i < pts.length; i += 3) p.lineTo(pts[i], pts[i + 1]);
@@ -125,10 +143,10 @@ function shapePath(el: PathEl): Path2D {
 }
 
 function getPath(el: PathEl): Path2D {
-  let p = pathCache.get(el);
+  let p = pathMaker ? undefined : pathCache.get(el);
   if (!p) {
     p = el.style === 'shape' ? shapePath(el) : isMarker(el) ? markerPath(el.pts) : freehandPath(el.pts, el, true);
-    pathCache.set(el, p);
+    if (!pathMaker) pathCache.set(el, p);
   }
   return p;
 }
@@ -186,14 +204,14 @@ function drawArrowHead(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2
 const regionCache = new WeakMap<PathEl, Path2D>();
 /** Outline + holes of a paint-bucket fill, as one path. */
 function regionPath(el: PathEl): Path2D {
-  let p = regionCache.get(el);
+  let p = pathMaker ? undefined : regionCache.get(el);
   if (p) return p;
-  p = new Path2D();
+  p = newPath();
   for (const [ring, stride] of [[el.pts, 3], ...(el.rings ?? []).map((r) => [r, 2] as const)] as [number[], number][]) {
     for (let i = 0; i < ring.length; i += stride) (i ? p.lineTo : p.moveTo).call(p, ring[i], ring[i + 1]);
     p.closePath();
   }
-  regionCache.set(el, p);
+  if (!pathMaker) regionCache.set(el, p);
   return p;
 }
 
@@ -263,7 +281,7 @@ export function isMarker(el: Pick<PathEl, 'style' | 'sim'>): boolean {
  * (wet) drawing uses the same segments, so nothing shifts on lift-off.
  */
 export function markerPath(pts: number[]): Path2D {
-  const p = new Path2D();
+  const p = newPath();
   const n = pts.length / 3;
   if (n === 0) return p;
   p.moveTo(pts[0], pts[1]);
@@ -288,14 +306,14 @@ const fillCache = new WeakMap<PathEl, Path2D>();
 
 /** The area inside a hand-drawn stroke (its line, closed back to the start). */
 function fillPath(el: PathEl): Path2D {
-  let p = fillCache.get(el);
+  let p = pathMaker ? undefined : fillCache.get(el);
   if (!p) {
-    p = new Path2D();
+    p = newPath();
     const pts = el.pts;
     p.moveTo(pts[0], pts[1]);
     for (let i = 3; i < pts.length; i += 3) p.lineTo(pts[i], pts[i + 1]);
     p.closePath();
-    fillCache.set(el, p);
+    if (!pathMaker) fillCache.set(el, p);
   }
   return p;
 }

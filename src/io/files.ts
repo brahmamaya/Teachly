@@ -223,27 +223,21 @@ export function exportPng(board: Board): void {
 }
 
 /**
- * PDF of every page, sharp enough to zoom into and print: each page is drawn
- * at about 3x the board's own size (lighter on classroom boards), kept at the
- * page's real proportions, one page at a time so the app never freezes.
+ * PDF of every page: small and sharp at any zoom. Writing, shapes and the
+ * background go in as vector lines, pictures as they are stored (see
+ * io/pdfvector.ts). One page at a time, so the app never freezes.
  */
 export async function exportPdf(_board: Board): Promise<void> {
-  const { jsPDF } = await import('jspdf');
+  const [{ jsPDF }, { drawPageVector }] = await Promise.all([import('jspdf'), import('./pdfvector')]);
   let pdf: InstanceType<typeof jsPDF> | null = null;
-  const canvas = document.createElement('canvas');
   for (const page of store.doc.pages) {
     const r: Rect = pageRegion(page.els);
-    // ~4800 px wide for a normal page; never more than ~14 million pixels
-    // (the limit iPads allow for one picture).
-    const k = Math.min(liteDevice() ? 2.25 : 3, Math.sqrt(14_000_000 / (r.w * r.h)));
-    const c = renderRegion(page, r, r.w * k, r.h * k, canvas);
     const orient = r.w >= r.h ? 'landscape' : 'portrait';
     if (!pdf) pdf = new jsPDF({ orientation: orient, unit: 'px', format: [r.w, r.h], hotfixes: ['px_scaling'], compress: true });
     else pdf.addPage([r.w, r.h], orient);
-    pdf.addImage(c.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, r.w, r.h, undefined, 'NONE');
+    drawPageVector(pdf, page, liteDevice() ? 2.25 : 3);
     await new Promise((ok) => setTimeout(ok, 0)); // let the screen breathe between pages
   }
-  canvas.width = canvas.height = 1;
   if (pdf) download(pdf.output('blob'), `${safeName(store.doc.title)}.pdf`);
 }
 
