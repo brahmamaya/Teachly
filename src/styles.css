@@ -5003,6 +5003,9 @@ button,
 #app[data-tb='top'][data-board] .toolbar {
   bottom: auto;
   top: 0;
+  /* iPad / iPhone: the white bar runs under the status bar (time, battery),
+     the buttons sit below it where they can be tapped. */
+  padding-top: calc(3px + env(safe-area-inset-top, 0px) / var(--ui, 1));
   border-bottom-width: 1px;
   border-top-width: 0;
   --bar-shadow: 0 2px 14px rgba(0, 0, 0, 0.28);
@@ -5016,7 +5019,8 @@ button,
 }
 #app[data-tb='top'].tb-stacked .tb-right {
   bottom: auto;
-  top: calc(46px * var(--ui));
+  top: calc(46px * var(--ui) + env(safe-area-inset-top, 0px));
+  padding-top: 3px;
   border-radius: 0 0 0 16px;
 }
 
