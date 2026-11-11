@@ -28,7 +28,7 @@ import java.net.URL;
 final class Updater {
     static final String BASE = "https://brahmamaya.github.io/Teachly/";
     /** Version of this Java shell; a web update can ask for a newer one. */
-    static final int NATIVE = 1;
+    static final int NATIVE = 2;
 
     private Updater() {}
 

@@ -5,12 +5,16 @@
     <!-- Privacy: no storage, no location, no contacts, nothing is uploaded.
          Internet is used only to download Teachly's own newer version from
          the Teachly website (automatic updates). The microphone is asked
-         only when the teacher records a lesson with voice. -->
+         only when the teacher records a lesson with voice, the camera only
+         when the teacher taps Insert > Camera to take a photo for a page. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application

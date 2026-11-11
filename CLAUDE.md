@@ -9,7 +9,8 @@ Every change, big or small, must keep all of these:
    press, `fadeOut()` (`src/ui/panel.ts`) to close things, `soft-in` / `box-in` / `fade-in` animations to open
    them. Only opacity and small moves/scales (cheap); respect `prefers-reduced-motion`.
 4. **Privacy**: the teacher's data stays on the device; no tracking; no extra Android permissions
-   (INTERNET for updates, RECORD_AUDIO for lesson recording only).
+   (INTERNET for updates, RECORD_AUDIO for lesson recording only, CAMERA for Insert > Camera only; both asked
+   only when the teacher taps that feature, camera off right after the photo).
 5. **No personal names shown**: the owner's name / GitHub must not appear anywhere users can see (links, QR codes,
    share text, pages). Share links point to physica.in.
 6. **Never commit the signing key** (it lives outside the repo).

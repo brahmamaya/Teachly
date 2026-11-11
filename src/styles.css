@@ -5186,3 +5186,104 @@ button,
 .tbe-pos > span {
   align-self: center;
 }
+
+/* ---------- Camera (Insert > Camera): full screen, big shutter button ---------- */
+.campanel {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+  font-family: 'Exo 2', system-ui, sans-serif;
+  animation: fade-in 0.2s ease;
+}
+.cam-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+.cam-video,
+.cam-shot {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.cam-video[hidden],
+.cam-shot[hidden] {
+  display: none;
+}
+.cam-msg {
+  position: absolute;
+  max-width: min(480px, 90%);
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+.cam-msg[hidden] {
+  display: none;
+}
+.cam-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: rgba(20, 20, 24, 0.95);
+}
+.cam-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+  border: 0;
+  background: none;
+  color: #fff;
+  font: 600 13px 'Exo 2', system-ui, sans-serif;
+  transition: transform 0.15s;
+}
+.cam-btn[hidden],
+.cam-snap[hidden],
+.cam-use[hidden] {
+  display: none;
+}
+.cam-snap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: #fff;
+  box-shadow: inset 0 0 0 4px #000;
+  transition: transform 0.15s, opacity 0.2s;
+}
+.cam-snap:disabled {
+  opacity: 0.35;
+}
+.cam-use {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font: 800 16px 'Exo 2', system-ui, sans-serif;
+  transition: transform 0.15s;
+}
+.cam-btn:active,
+.cam-snap:active,
+.cam-use:active {
+  transform: scale(0.92);
+}
+@media (prefers-reduced-motion: reduce) {
+  .campanel {
+    animation: none;
+  }
+}

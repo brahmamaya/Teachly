@@ -28,6 +28,7 @@ import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
 import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types';
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
+import { openCamera } from '../widgets/camera';
 import { openPoll } from '../widgets/poll';
 import { openTimer } from '../widgets/timer';
 import { isRecording, onRecordingChange, toggleRecording } from '../widgets/recorder';
@@ -678,6 +679,7 @@ export class App {
       case 'insert':
         pop.innerHTML = `<div class="grid-btns">
           ${this.gridBtn('image', 'image', 'Picture')}
+          ${this.gridBtn('camera', 'camera', 'Camera')}
           ${this.gridBtn('pdf', 'pdf', 'PDF / Book')}
           ${this.gridBtn('pptx', 'slides', 'PowerPoint')}
           ${this.gridBtn('table', 'table', 'Table')}
@@ -979,6 +981,13 @@ export class App {
       case 'delete-page':
         store.deletePage();
         return toast('Page deleted — tap Undo to bring it back');
+      case 'camera':
+        return openCamera(this.root, (src) => {
+          void insertImageSrc(b, src).then((el) => {
+            store.setTool({ tool: 'select' });
+            store.select([el.id]);
+          });
+        });
       case 'image':
         void insertImages(b);
         return;
