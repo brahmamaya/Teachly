@@ -501,10 +501,23 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
       break;
     case 'image': {
       const img = getImage(el.src);
+      // A book page lies on the board like a sheet of paper: a soft shadow
+      // under it and a fine edge (four faint rectangles: cheap to draw).
+      const sheet = !!el.locked;
+      if (sheet) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.04)';
+        for (let i = 1; i <= 5; i++) ctx.fillRect(-i * 1.8, -i * 1.8 + 3, el.w + i * 3.6, el.h + i * 3.6);
+      }
       if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, el.w, el.h);
       else {
-        ctx.fillStyle = '#e2e8f0';
+        // Not drawn yet: clean white paper (book page) or a soft placeholder.
+        ctx.fillStyle = sheet ? '#ffffff' : '#e2e8f0';
         ctx.fillRect(0, 0, el.w, el.h);
+      }
+      if (sheet) {
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.16)';
+        ctx.lineWidth = 0.75;
+        ctx.strokeRect(0, 0, el.w, el.h);
       }
       break;
     }
