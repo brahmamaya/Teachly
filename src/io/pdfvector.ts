@@ -336,7 +336,13 @@ export async function makePdf(pages: Page[], k: number): Promise<{ blob: Blob; p
       else {
         pictures++;
         // This page could not be reused: its stored picture instead.
-        const img = e.src.startsWith('data:image/png') ? await out.embedPng(e.src) : await out.embedJpg(e.src);
+        let data: string | ArrayBuffer = e.src;
+        if (e.src.startsWith('pdfp:')) {
+          const pic = await (await import('./pdfpages')).pagePicture(e.src);
+          if (!pic) continue;
+          data = await pic.arrayBuffer();
+        }
+        const img = typeof data === 'string' && data.startsWith('data:image/png') ? await out.embedPng(data) : await out.embedJpg(data);
         pg.drawImage(img, { x, y, width: w, height: h });
       }
     }

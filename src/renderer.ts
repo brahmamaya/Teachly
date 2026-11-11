@@ -161,12 +161,19 @@ export function setAssetLoadCallback(fn: () => void): void {
   onAssetLoad = fn;
 }
 
+/** Pictures that are made on demand (pages of a kept PDF: `pdfp:…`). */
+let lazyLoader: ((src: string) => Promise<string | null>) | null = null;
+export function setLazyImageLoader(fn: (src: string) => Promise<string | null>): void {
+  lazyLoader = fn;
+}
+
 /** Forget pictures that are no longer on any page (keeps memory small on long days). */
 export function trimImageCache(keep: Set<string>): number {
   let freed = 0;
   for (const [src, img] of images) {
     if (keep.has(src)) continue;
     img.onload = null;
+    if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
     img.src = '';
     images.delete(src);
     freed++;
@@ -180,8 +187,14 @@ export function getImage(src: string): HTMLImageElement {
     img = new Image();
     img.decoding = 'async';
     img.onload = () => onAssetLoad();
-    img.src = src;
     images.set(src, img);
+    if (src.startsWith('pdfp:')) {
+      const mine = img;
+      void lazyLoader?.(src).then((url) => {
+        if (url && images.get(src) === mine) mine.src = url;
+        else if (url) URL.revokeObjectURL(url);
+      });
+    } else img.src = src;
   }
   return img;
 }

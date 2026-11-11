@@ -20,7 +20,14 @@ const started = performance.now();
 
 function imagesInUse(): Set<string> {
   const keep = new Set<string>();
-  for (const p of store.doc.pages) for (const e of p.els) if (e.type === 'image') keep.add(e.src);
+  store.doc.pages.forEach((p, i) => {
+    for (const e of p.els) {
+      if (e.type !== 'image') continue;
+      // Book pages (drawn on demand) are kept only around the page in use.
+      if (e.src.startsWith('pdfp:') && Math.abs(i - store.index) > 2) continue;
+      keep.add(e.src);
+    }
+  });
   return keep;
 }
 

@@ -274,18 +274,53 @@ export async function recoverOrphans(): Promise<number> {
 // Original PDF files (so a saved PDF reuses the real pages: small and sharp)
 
 /** Keep a copy of an opened PDF file on the device; returns its key. */
-export async function saveSource(bytes: ArrayBuffer): Promise<string> {
+export async function saveSource(file: Blob): Promise<string> {
   const key = `src:${Date.now().toString(36)}:${uid()}`;
-  await put([[key, bytes]]);
+  // Stored as a file (no copy in memory), so even very big PDFs fit.
+  await put([[key, file]]);
   return key;
 }
 
-export async function loadSource(key: string): Promise<ArrayBuffer | null> {
+/** The kept original as a file (older notebooks kept it as bytes). */
+export async function loadSourceBlob(key: string): Promise<Blob | null> {
   try {
-    return (await get<ArrayBuffer>(key)) ?? null;
+    const v = await get<Blob | ArrayBuffer>(key);
+    if (!v) return null;
+    return v instanceof Blob ? v : new Blob([v], { type: 'application/pdf' });
   } catch {
     return null;
   }
+}
+
+export async function loadSource(key: string): Promise<ArrayBuffer | null> {
+  return (await loadSourceBlob(key))?.arrayBuffer() ?? null;
+}
+
+/** A page of a kept PDF, drawn once and stored (`pimg:<source>:<page>`). */
+export async function getPagePicture(key: string): Promise<Blob | null> {
+  try {
+    return (await get<Blob>(key)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function putPagePicture(key: string, pic: Blob): Promise<void> {
+  await put([[key, pic]]);
+}
+
+async function allKeys(): Promise<string[]> {
+  const d = await db();
+  return new Promise((resolve, reject) => {
+    const req = d.transaction(STORE).objectStore(STORE).getAllKeys();
+    req.onsuccess = () => resolve(req.result.map(String));
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** The source key a stored page picture belongs to. */
+function pictureSource(k: string): string {
+  return k.slice(5, k.lastIndexOf(':'));
 }
 
 function sourcesOf(doc: Doc): string[] {
@@ -322,7 +357,9 @@ async function dropSources(ids: string[]): Promise<void> {
       }
     }
     for (const id of ids) noted.delete(id);
-    await put([[SRCREFS, refs]], gone);
+    // The pages drawn from those files go too.
+    const pics = gone.length ? (await allKeys()).filter((k) => k.startsWith('pimg:') && gone.includes(pictureSource(k))) : [];
+    await put([[SRCREFS, refs]], [...gone, ...pics]);
   } catch {
     /* tidied up at the next start */
   }
@@ -331,15 +368,11 @@ async function dropSources(ids: string[]): Promise<void> {
 /** At start: remove kept PDFs that no notebook uses (older than a day, so a fresh one is never touched). */
 export async function dropUnusedSources(): Promise<void> {
   try {
-    const d = await db();
-    const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
-      const req = d.transaction(STORE).objectStore(STORE).getAllKeys();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+    const keys = await allKeys();
     const refs = (await get<Record<string, string[]>>(SRCREFS)) ?? {};
     const dayAgo = Date.now() - 86_400_000;
-    const unused = keys.map(String).filter((k) => k.startsWith('src:') && !refs[k] && parseInt(k.split(':')[1], 36) < dayAgo);
+    const old = (src: string) => !refs[src] && parseInt(src.split(':')[1], 36) < dayAgo;
+    const unused = keys.filter((k) => (k.startsWith('src:') && old(k)) || (k.startsWith('pimg:') && old(pictureSource(k))));
     if (unused.length) await put([], unused);
   } catch {
     /* try again next start */

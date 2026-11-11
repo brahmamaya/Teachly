@@ -1,7 +1,7 @@
 import { bbox } from './geometry';
 import { Instruments } from './instruments';
 import { PAGE, setPageSize } from './page';
-import { drawBackground, drawEls, setAssetLoadCallback } from './renderer';
+import { drawBackground, drawEls, setAssetLoadCallback, setLazyImageLoader } from './renderer';
 import { store } from './store';
 import { toast } from './ui/panel';
 import type { Camera, El, Rect, ToolId } from './types';
@@ -128,6 +128,8 @@ export class Board {
 
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
+    // Pages of a kept PDF are drawn when first shown (pdf.js loads only then).
+    setLazyImageLoader((src) => import('./io/pdfpages').then((m) => m.pageURL(src)));
     setAssetLoadCallback(() => {
       this.inkState = null;
       this.invalidate('ink');

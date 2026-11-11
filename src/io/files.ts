@@ -144,21 +144,31 @@ export async function insertImages(board: Board, files?: File[]): Promise<void> 
 export async function importPdf(board: Board, file?: File, onProgress?: (done: number, total: number) => void): Promise<void> {
   file ??= (await pickFiles('application/pdf'))[0];
   if (!file) return;
-  // The legacy build carries polyfills, so PDFs open on older tablets and boards too.
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  if (import.meta.env.MODE === 'single') {
-    // Single-file offline build: the worker travels inside the page as text.
-    const code = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?raw')).default;
-    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
-  } else {
-    pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
+  // Keep the original file on this device. Its pages are drawn only when
+  // shown (see io/pdfpages.ts), so even a book of hundreds of MB opens in
+  // seconds, and a saved PDF reuses the real pages (small and sharp).
+  const source = await saveSource(file).catch(() => '');
+  if (source) {
+    const { openSource, pageSrc } = await import('./pdfpages');
+    const pdf = await openSource(source, file);
+    if (await relinkBook(pdf, source)) return;
+    const pages: Page[] = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const base = page.getViewport({ scale: 1 });
+      page.cleanup();
+      const img: ImageEl = { id: uid(), type: 'image', src: pageSrc(source, i - 1), ...fitInPage(base.width, base.height), rot: 0, locked: true, pdf: { src: source, page: i - 1 } };
+      const p = newPage(store.page.bg, 'none');
+      p.els = [img];
+      pages.push(p);
+      if (i % 10 === 0 || i === pdf.numPages) onProgress?.(i, pdf.numPages);
+    }
+    return addPdfPages(board, pages);
   }
-  const bytes = await file.arrayBuffer();
-  // Keep the original file on this device, so a saved PDF can reuse its real
-  // pages (small and sharp). Not enough space: the pictures alone still work.
-  const source = await saveSource(bytes.slice(0)).catch(() => '');
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
-  if (source && (await relinkBook(pdf, source))) return;
+  // No space to keep the file: every page becomes a picture now (as before).
+  const { pdfjs } = await import('./pdfpages');
+  const task = (await pdfjs()).getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  const pdf = await task.promise;
   const pages: Page[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -178,12 +188,19 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport: vp, canvas } as Parameters<typeof page.render>[0]).promise;
     const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.92), ...rect, rot: 0, locked: true };
-    if (source) img.pdf = { src: source, page: i - 1 };
+    canvas.width = canvas.height = 1;
+    page.cleanup();
     const p = newPage(store.page.bg, 'none');
     p.els = [img];
     pages.push(p);
     onProgress?.(i, pdf.numPages);
   }
+  await task.destroy();
+  addPdfPages(board, pages);
+}
+
+/** Put the pages of an opened PDF into the notebook (in place of an empty page, or after this one). */
+function addPdfPages(board: Board, pages: Page[]): void {
   if (!pages.length) return;
   const all = store.doc.pages.slice();
   // Replace the current page if it is empty, otherwise insert after it.
@@ -224,7 +241,8 @@ async function relinkBook(pdf: { numPages: number; getPage(i: number): Promise<{
     const j = match.indexOf(i);
     if (j < 0) return p;
     const [first, ...rest] = p.els;
-    return { ...p, els: [{ ...(first as ImageEl), pdf: { src: source, page: j } }, ...rest] };
+    // The big stored picture is no longer needed: the page is drawn from the file.
+    return { ...p, els: [{ ...(first as ImageEl), src: `pdfp:${source}:${j}`, pdf: { src: source, page: j } }, ...rest] };
   });
   store.commit(pages, store.index);
   toast(`Linked ${pdf.numPages} pages. Save as PDF will now be small.`, 4000);
