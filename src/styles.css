@@ -4999,8 +4999,9 @@ button,
 }
 
 /* ---------- Toolbar on top (Edit toolbar > Toolbar at: Top) ----------
-   Both halves meet in the middle as one bar (placed by applyScale), right
-   under the iPad / iPhone status bar, touching the top edge elsewhere. */
+   Right under the iPad / iPhone status bar, touching the top edge elsewhere.
+   Edit toolbar > Buttons: "Middle" (one bar in the middle, placed by
+   applyScale) or "Sides" (each half in its corner). */
 #app[data-tb='top'] .toolbar,
 #app[data-tb='top'][data-board] .toolbar {
   bottom: auto;
@@ -5010,29 +5011,57 @@ button,
   --bar-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
   box-shadow: var(--bar-shadow);
 }
-#app[data-tb='top'] .toolbar.tb-left {
+#app[data-tb='top'][data-tbalign='sides'] .toolbar.tb-left {
   transform-origin: 0 0;
-  border-left-width: 1px;
-  border-right-width: 0;
-  border-radius: 0 0 0 16px;
-}
-#app[data-tb='top'] .toolbar.tb-right {
-  transform-origin: 0 0;
-  border-right-width: 1px;
   border-radius: 0 0 16px 0;
 }
-#app[data-tb='top']:not(.tb-stacked) .toolbar.tb-right {
-  border-left-width: 0;
-}
-#app[data-tb='top'].tb-stacked .toolbar.tb-left,
-#app[data-tb='top'].tb-stacked .toolbar.tb-right {
-  border-right-width: 1px;
-  border-radius: 0 0 16px 16px;
+#app[data-tb='top'][data-tbalign='sides'] .toolbar.tb-right {
+  transform-origin: 100% 0;
+  border-left-width: 1px;
+  border-radius: 0 0 0 16px;
 }
 #app[data-tb='top'].tb-stacked .tb-right {
   bottom: auto;
   top: calc(46px * var(--ui) + env(safe-area-inset-top, 0px));
 }
+
+/* Middle (top or bottom): the two halves meet as one bar. */
+#app[data-tbalign='middle'] .toolbar.tb-left {
+  border-left-width: 1px;
+  border-right-width: 0;
+}
+#app[data-tbalign='middle'] .toolbar.tb-right {
+  border-right-width: 1px;
+  border-left-width: 0;
+}
+#app[data-tbalign='middle'][data-tb='top'] .toolbar.tb-left {
+  transform-origin: 0 0;
+  border-radius: 0 0 0 16px;
+}
+#app[data-tbalign='middle'][data-tb='top'] .toolbar.tb-right {
+  transform-origin: 0 0;
+  border-radius: 0 0 16px 0;
+}
+#app[data-tbalign='middle'][data-tb='bottom'] .toolbar.tb-left {
+  transform-origin: 0 100%;
+  border-radius: 16px 0 0 0;
+}
+#app[data-tbalign='middle'][data-tb='bottom'] .toolbar.tb-right {
+  transform-origin: 0 100%;
+  border-radius: 0 16px 0 0;
+}
+#app[data-tbalign='middle'].tb-stacked .toolbar.tb-left,
+#app[data-tbalign='middle'].tb-stacked .toolbar.tb-right {
+  border-left-width: 1px;
+  border-right-width: 1px;
+}
+#app[data-tbalign='middle'][data-tb='top'].tb-stacked .toolbar {
+  border-radius: 0 0 16px 16px;
+}
+#app[data-tbalign='middle'][data-tb='bottom'].tb-stacked .toolbar {
+  border-radius: 16px 16px 0 0;
+}
+
 /* ---------- Poll (A B C D with a timer), same glass card as the timer ---------- */
 .qtimer.poll {
   width: 340px;

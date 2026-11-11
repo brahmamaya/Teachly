@@ -25,6 +25,8 @@ export interface Settings {
   hexPos: { x: number; y: number } | null;
   /** Hexagon size (radius in px). */
   hexSize: number;
+  /** Toolbar halves: together in the middle, or each in its corner. */
+  tbAlign?: 'middle' | 'sides';
   /** Floating hexagon opacity, 0.2 to 1. */
   hexAlpha?: number;
 }

@@ -192,6 +192,12 @@ function tbEdge(): 'bottom' | 'top' {
   return store.settings.tbPos === 'top' ? 'top' : 'bottom';
 }
 
+/** Toolbar halves together in the middle? (Edit toolbar > Buttons; default: middle on top, sides at the bottom.) */
+function tbMiddle(): boolean {
+  const a = store.settings.tbAlign;
+  return a ? a === 'middle' : tbEdge() === 'top';
+}
+
 /** How solid the floating hexagon is (1 = solid; Edit toolbar > Transparency). */
 function hexAlpha(): number {
   const a = store.settings.hexAlpha;
@@ -727,6 +733,7 @@ export class App {
         pop.className = 'popover pop-tbedit';
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
           <div class="seg tbe-pos"><span>Toolbar at</span>${(['bottom', 'top'] as const).map((k) => `<button class="${tbEdge() === k ? 'on' : ''}" data-tbpos="${k}">${k === 'bottom' ? 'Bottom' : 'Top'}</button>`).join('')}</div>
+          <div class="seg tbe-pos"><span>Buttons</span>${(['middle', 'sides'] as const).map((k) => `<button class="${tbMiddle() === (k === 'middle') ? 'on' : ''}" data-tbalign="${k}">${k === 'middle' ? 'Middle' : 'Sides'}</button>`).join('')}</div>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
           <div class="tbe-grid">${group()}</div>
           <button class="btn wide" data-tbreset>Show all buttons</button>
@@ -860,6 +867,11 @@ export class App {
       return;
     } else if (d.tbreset !== undefined) {
       store.setSettings({ tbHidden: [], tbShown: [...TB_OPT_IN] });
+      this.fillPopover();
+      return;
+    } else if (d.tbalign) {
+      store.setSettings({ tbAlign: d.tbalign as 'middle' | 'sides' });
+      this.applyScale(true);
       this.fillPopover();
       return;
     } else if (d.tbpos) {
@@ -1325,9 +1337,11 @@ export class App {
     this.root.classList.toggle('tb-stacked', stacked);
     // Buttons are always the small size (big boards still scale them up).
     computeUiScale('small', stacked ? Math.max(L, R) + 20 : one, avail);
-    // Toolbar on top: both halves together in the middle, as one bar
-    // (two centred rows on narrow screens). At the bottom they sit in the corners.
-    if (pos === 'top') {
+    // "Middle": both halves together in the middle as one bar (two centred
+    // rows on narrow screens). "Sides": each half in its corner.
+    const mid = tbMiddle();
+    this.root.dataset.tbalign = mid ? 'middle' : 'sides';
+    if (mid) {
       const k = ui(), W = window.innerWidth;
       const lx = stacked ? (W - L * k) / 2 : (W - (L + R) * k) / 2;
       left.style.left = `${Math.max(0, lx)}px`;
