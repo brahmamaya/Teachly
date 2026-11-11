@@ -165,6 +165,8 @@ export class Library {
   private view: View = 'all';
   private query = '';
   private armed = '';
+  /** The notebook whose ⋯ menu is open. */
+  private menuFor = '';
 
   constructor(private host: HTMLElement) {}
 
@@ -266,19 +268,22 @@ export class Library {
       items
         .map((m, n) => {
           const where = this.folders.find((f) => f.id === this.folderOf(m))?.name;
+          // The card's buttons stay tucked behind ⋯ until it is tapped.
+          const act = (a: string, ic: string, label: string) => `<button class="nb-act" data-lib="${a}">${icon(ic, 17)}<span>${label}</span></button>`;
           const actions = inTrash
-            ? `<button class="icon-btn" data-lib="restore" title="Restore" aria-label="Restore">${icon('undo', 17)}</button>
-               <button class="icon-btn ${this.armed === m.id ? 'armed' : ''}" data-lib="purge" title="Delete for good" aria-label="Delete for good">${icon('trash', 17)}</button>`
-            : `<button class="icon-btn" data-lib="rename" title="Rename" aria-label="Rename">${icon('text', 17)}</button>
-               <button class="icon-btn" data-lib="move" title="Move to a folder" aria-label="Move to a folder">${icon('folder', 17)}</button>
-               <button class="icon-btn" data-lib="copy" title="Make a copy" aria-label="Make a copy">${icon('copy', 17)}</button>
-               <button class="icon-btn" data-lib="delete" title="Move to trash" aria-label="Move to trash">${icon('trash', 17)}</button>`;
+            ? act('restore', 'undo', 'Restore') + act('purge', 'trash', 'Delete for good')
+            : act('rename', 'text', 'Rename') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('delete', 'trash', 'Move to trash');
           return `
-        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''}" data-id="${m.id}" style="--n:${n + 1}">
+        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''}" data-id="${m.id}" style="--n:${n + 1}">
           <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
-          <span class="nb-title">${esc(m.title)}</span>
-          <span class="nb-meta">${inTrash ? `Deleted ${when(m.trashed!)}` : when(m.updated)}${where && this.view === 'all' ? ` · ${esc(where)}` : ''}</span>
-          <span class="nb-actions">${actions}</span>
+          <span class="nb-row">
+            <span class="nb-text">
+              <span class="nb-title">${esc(m.title)}</span>
+              <span class="nb-meta">${inTrash ? `Deleted ${when(m.trashed!)}` : when(m.updated)}${where && this.view === 'all' ? ` · ${esc(where)}` : ''}</span>
+            </span>
+            <button class="nb-more" data-lib="more" title="More" aria-label="More for ${esc(m.title)}" aria-expanded="${this.menuFor === m.id}">${icon('more', 18)}</button>
+          </span>
+          ${this.menuFor === m.id ? `<span class="nb-menu" role="menu">${actions}</span>` : ''}
         </div>`;
         })
         .join('');
@@ -299,13 +304,23 @@ export class Library {
 
   private async onClick(e: MouseEvent): Promise<void> {
     const b = (e.target as HTMLElement).closest('[data-lib]') as HTMLElement | null;
-    if (!b || !this.el) return;
+    // Any tap closes an open ⋯ menu (a tap on ⋯ itself toggles it below).
+    const hadMenu = this.menuFor;
+    this.menuFor = '';
+    if (!b || !this.el) {
+      if (hadMenu && this.el) this.render();
+      return;
+    }
     const id = (b.closest('[data-id]') as HTMLElement | null)?.dataset.id ?? '';
     const folderId = this.view.startsWith('f:') ? this.view.slice(2) : '';
     const act = b.dataset.lib;
     const wasArmed = this.armed;
     this.armed = '';
+    if (hadMenu && act !== 'more') this.render();
     switch (act) {
+      case 'more':
+        this.menuFor = hadMenu === id ? '' : id;
+        return this.render();
       case 'close':
         return this.close();
       case 'view':
