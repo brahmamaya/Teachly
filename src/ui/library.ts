@@ -235,6 +235,11 @@ export class Library {
     const folder = this.view.startsWith('f:') ? this.folders.find((f) => `f:${f.id}` === this.view) : undefined;
     const title = this.view === 'all' ? 'All notebooks' : this.view === 'unfiled' ? 'Not in a folder' : this.view === 'trash' ? 'Trash' : (folder?.name ?? '');
     (el.querySelector('.lib-title') as HTMLElement).textContent = title;
+    // Cards glide in only when the list is opened or another list is chosen
+    // (not after every rename or move).
+    const grid = el.querySelector('.lib-grid') as HTMLElement;
+    grid.classList.toggle('fresh', grid.dataset.shown !== this.view);
+    grid.dataset.shown = this.view;
 
     // The bar under the title: folder tools, or the trash tools.
     const bar = el.querySelector('.lib-bar') as HTMLElement;
@@ -259,7 +264,7 @@ export class Library {
     (el.querySelector('.lib-grid') as HTMLElement).innerHTML =
       newCard +
       items
-        .map((m) => {
+        .map((m, n) => {
           const where = this.folders.find((f) => f.id === this.folderOf(m))?.name;
           const actions = inTrash
             ? `<button class="icon-btn" data-lib="restore" title="Restore" aria-label="Restore">${icon('undo', 17)}</button>
@@ -269,7 +274,7 @@ export class Library {
                <button class="icon-btn" data-lib="copy" title="Make a copy" aria-label="Make a copy">${icon('copy', 17)}</button>
                <button class="icon-btn" data-lib="delete" title="Move to trash" aria-label="Move to trash">${icon('trash', 17)}</button>`;
           return `
-        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''}" data-id="${m.id}">
+        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''}" data-id="${m.id}" style="--n:${n + 1}">
           <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
           <span class="nb-title">${esc(m.title)}</span>
           <span class="nb-meta">${inTrash ? `Deleted ${when(m.trashed!)}` : when(m.updated)}${where && this.view === 'all' ? ` · ${esc(where)}` : ''}</span>
