@@ -235,8 +235,12 @@ export function blankNotebook(title: string, bg = '#000000'): Doc {
   return { version: 1, id: uid(), title, pages: [newPage(bg)] };
 }
 
-/** Remove notebook data left behind by an interrupted save (not in the index). */
-export async function cleanOrphans(): Promise<number> {
+/**
+ * Never lose a notebook: any saved notebook that is missing from the library
+ * list (for example if the list itself was damaged) is put back into it.
+ * Nothing is ever deleted here.
+ */
+export async function recoverOrphans(): Promise<number> {
   try {
     const d = await db();
     const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
@@ -246,9 +250,16 @@ export async function cleanOrphans(): Promise<number> {
     });
     const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
     const known = new Set(list.map((m) => `nb:${m.id}`));
-    const orphans = keys.map(String).filter((k) => k.startsWith('nb:') && !known.has(k));
-    if (orphans.length) await put([], orphans);
-    return orphans.length;
+    const back: NotebookMeta[] = [];
+    for (const k of keys.map(String)) {
+      if (!k.startsWith('nb:') || known.has(k)) continue;
+      const doc = await get<Doc>(k);
+      if (!doc || !Array.isArray(doc.pages) || !doc.pages.length) continue;
+      const pages = doc.pages.length;
+      back.push({ id: k.slice(3), title: doc.title || 'Recovered notebook', updated: Date.now(), pages, thumb: cover(doc), folder: '' });
+    }
+    if (back.length) await put([[INDEX, [...back, ...list]]]);
+    return back.length;
   } catch {
     return 0;
   }

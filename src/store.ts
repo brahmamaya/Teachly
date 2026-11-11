@@ -25,6 +25,8 @@ export interface Settings {
   hexPos: { x: number; y: number } | null;
   /** Hexagon size (radius in px). */
   hexSize: number;
+  /** Floating hexagon opacity, 0.2 to 1. */
+  hexAlpha?: number;
 }
 
 export interface ToolState {
@@ -146,9 +148,9 @@ export class Store {
   }
 
   get camera(): Camera {
-    let c = this.cameras.get(this.page.id);
-    if (!c) this.cameras.set(this.page.id, (c = { x: 0, y: 0, z: 1 }));
-    return c;
+    // A page never shown yet has no camera; the board gives it the fitted
+    // view (ensureCam). Reading it must not invent one for that page.
+    return this.cameras.get(this.page.id) ?? { x: 0, y: 0, z: 1 };
   }
 
   setCamera(c: Camera): void {

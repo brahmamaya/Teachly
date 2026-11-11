@@ -28,6 +28,7 @@ import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
 import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types';
 import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
+import { openPoll } from '../widgets/poll';
 import { openTimer } from '../widgets/timer';
 import { isRecording, onRecordingChange, toggleRecording } from '../widgets/recorder';
 import { openCalculator, openPicker, openScoreboard } from '../widgets/classroom';
@@ -127,6 +128,7 @@ const TB_ITEMS: [string, string, 'left' | 'right'][] = [
   ['insert', 'Insert (picture, PDF, slides…)', 'right'],
   ['tools', 'Tools (ruler, compass…)', 'right'],
   ['timer', 'Timer', 'right'],
+  ['poll', 'Poll (A B C D)', 'right'],
   ['graph', 'Graph', 'right'],
   ['record', 'Record lesson', 'right'],
   ['pagenav', 'Page arrows', 'right'],
@@ -151,6 +153,7 @@ const HEX_BUTTONS: Record<string, HexBtn> = {
   insert: () => [hb('data-pop="insert"', 'plus', 'Insert'), false],
   tools: () => [hb('data-pop="tools"', 'ruler', 'Tools'), false],
   timer: () => [hb('data-act="timer"', 'timer', 'Timer'), false],
+  poll: () => [hb('data-act="poll"', 'poll', 'Poll'), false],
   graph: () => [hb('data-act="graph"', 'graph', 'Graph'), false],
   record: () => [hb('data-act="record"', 'rec', isRecording() ? 'Stop recording' : 'Record lesson'), isRecording()],
   next: () => [hb('data-act="next"', 'next', 'Next page'), false],
@@ -159,7 +162,7 @@ const HEX_BUTTONS: Record<string, HexBtn> = {
 };
 const HEX_NAMES: Record<string, string> = {
   select: 'Select', pen: 'Pen', eraser: 'Eraser', shape: 'Shapes', fill: 'Fill colour', text: 'Text', tape: 'Tape', laser: 'Laser',
-  slide: 'Slide mode', undo: 'Undo', redo: 'Redo', insert: 'Insert', tools: 'Tools', timer: 'Timer', graph: 'Graph',
+  slide: 'Slide mode', undo: 'Undo', redo: 'Redo', insert: 'Insert', tools: 'Tools', timer: 'Timer', poll: 'Poll', graph: 'Graph',
   record: 'Record lesson', next: 'Next page', prev: 'Previous page', pages: 'All pages',
 };
 
@@ -181,6 +184,17 @@ function addRecentColor(c: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/** The edge the toolbar touches: bottom (default) or top. */
+function tbEdge(): 'bottom' | 'top' {
+  return store.settings.tbPos === 'top' ? 'top' : 'bottom';
+}
+
+/** How solid the floating hexagon is (1 = solid; Edit toolbar > Transparency). */
+function hexAlpha(): number {
+  const a = store.settings.hexAlpha;
+  return typeof a === 'number' && a >= 0.2 && a <= 1 ? a : 1;
 }
 
 export class App {
@@ -348,6 +362,7 @@ export class App {
       ${show('insert', `<button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 22)}</button>`)}
       ${show('tools', `<button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 22)}</button>`)}
       ${show('timer', `<button class="tb-btn" data-act="timer" title="Timer for a question">${icon('timer', 22)}</button>`)}
+      ${show('poll', `<button class="tb-btn" data-act="poll" title="Poll: A B C D with a timer">${icon('poll', 22)}</button>`)}
       ${show('graph', `<button class="tb-btn" data-act="graph" title="Graph from an equation (y = …)">${icon('graph', 22)}</button>`)}
       ${show('record', `<button class="tb-btn tb-rec ${isRecording() ? 'recording' : ''}" data-act="record" title="${isRecording() ? 'Stop recording' : 'Record lesson'}" aria-pressed="${isRecording()}">${icon('rec', 22)}<i class="tb-rec-ring" aria-hidden="true"></i></button>`)}
       ${show('pagenav', `<div class="tb-pagenav">
@@ -417,6 +432,7 @@ export class App {
     dock.style.left = `${pos.x * 100}%`;
     dock.style.top = `${pos.y * 100}%`;
     dock.style.setProperty('--R', `${store.settings.hexSize ?? 28}px`);
+    dock.style.setProperty('--hexa', String(hexAlpha()));
     if (!dock.dataset.bound) {
       dock.dataset.bound = '1';
       let drag: { id: number; dx: number; dy: number } | null = null;
@@ -508,6 +524,15 @@ export class App {
     return top;
   }
 
+  /** Bottom of the top bars under the span x1..x2 (toolbar on top). */
+  private barsBottom(x1: number, x2: number, bottom: number): number {
+    for (const b of this.root.querySelectorAll<HTMLElement>('.toolbar')) {
+      const r = b.getBoundingClientRect();
+      if (r.right > x1 && r.left < x2) bottom = Math.max(bottom, r.bottom);
+    }
+    return bottom;
+  }
+
   private positionPopover(anchor: HTMLElement): void {
     const pop = this.popover!;
     scaleFloating(pop);
@@ -531,10 +556,10 @@ export class App {
     // Open away from the edge the toolbar sits on.
     const [left, top] = {
       bottom: [cx, Math.max(8, this.barsTop(cx, cx + pw, r.top) - ph - gap)],
-      top: [cx, Math.min(H - ph - 8, r.bottom + gap)],
+      top: [cx, Math.min(H - ph - 8, this.barsBottom(cx, cx + pw, r.bottom) + gap)],
       left: [Math.min(W - pw - 8, r.right + gap), cy],
       right: [Math.max(8, r.left - pw - gap), cy],
-    }[store.settings.tbPos];
+    }[tbEdge()];
     pop.style.left = `${left}px`;
     pop.style.top = `${top}px`;
   }
@@ -699,6 +724,7 @@ export class App {
             })
             .join('');
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
+          <div class="seg tbe-pos"><span>Toolbar at</span>${(['bottom', 'top'] as const).map((k) => `<button class="${tbEdge() === k ? 'on' : ''}" data-tbpos="${k}">${k === 'bottom' ? 'Bottom' : 'Top'}</button>`).join('')}</div>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
           <div class="tbe-cols"><div><div class="pop-title">Left</div>${group('left')}</div><div><div class="pop-title">Right</div>${group('right')}</div></div>
           <button class="btn wide" data-tbreset>Show all buttons</button>
@@ -707,6 +733,11 @@ export class App {
           <div class="slider-row">
             <span class="slider-label">Size</span>
             <input type="range" min="20" max="44" step="1" value="${store.settings.hexSize ?? 28}" data-hexsize aria-label="Hexagon size">
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Transparency</span>
+            <input type="range" min="0" max="80" step="5" value="${Math.round((1 - hexAlpha()) * 100)}" data-hexop aria-label="Hexagon transparency in percent">
+            <span class="slider-preview"><b data-hexopv>${Math.round((1 - hexAlpha()) * 100)}%</b></span>
           </div>
           <div class="hexpick">${Object.keys(HEX_BUTTONS)
             .map((k) => {
@@ -830,8 +861,8 @@ export class App {
       this.fillPopover();
       return;
     } else if (d.tbpos) {
-      this.closePopover();
-      this.setToolbarPos(d.tbpos as 'bottom');
+      this.setToolbarPos(d.tbpos as 'bottom' | 'top');
+      this.fillPopover();
       return;
     } else if (d.bg) this.setBoard({ bg: d.bg });
     else if (d.pattern) this.setBoard({ pattern: d.pattern as BgPattern });
@@ -856,6 +887,12 @@ export class App {
       store.settings.hexSize = v;
       (this.toolbar.querySelector('.hexdock') as HTMLElement).style.setProperty('--R', `${v}px`);
       store.setSettings({ hexSize: v });
+    } else if (el.dataset.hexop !== undefined) {
+      const a = 1 - v / 100;
+      (this.toolbar.querySelector('.hexdock') as HTMLElement).style.setProperty('--hexa', String(a));
+      const out = this.popover?.querySelector('[data-hexopv]') as HTMLElement | null;
+      if (out) out.textContent = `${v}%`;
+      store.setSettings({ hexAlpha: a });
     } else if (el.dataset.shapesize !== undefined) {
       store.tool.shapeSize = v;
       const prev = this.popover?.querySelector('[data-shapeprev]') as HTMLElement | null;
@@ -963,6 +1000,8 @@ export class App {
         return toast('Drag from the centre to set the size, then drag around to draw');
       case 'timer':
         return openTimer(this.root);
+      case 'poll':
+        return openPoll(this.root);
       case 'spotlight':
         return toggleSpotlight(this.root);
       case 'curtain':
@@ -1260,8 +1299,8 @@ export class App {
 
   /** Size the toolbar and panels for this screen (phone → 86" panel). */
   private applyScale(keepPopover = false): void {
-    // The toolbar always sits at the bottom.
-    const pos: string = 'bottom';
+    // The toolbar touches the bottom edge, or the top edge if chosen in Edit toolbar.
+    const pos: string = tbEdge();
     this.root.dataset.tb = pos;
     const vertical = pos === 'left' || pos === 'right';
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
@@ -1292,8 +1331,9 @@ export class App {
 
   /** Put the toolbars on another edge (they glide in there). */
   private setToolbarPos(pos: 'bottom' | 'top' | 'left' | 'right'): void {
-    if (pos === store.settings.tbPos) return;
+    if (pos === tbEdge()) return;
     store.setSettings({ tbPos: pos });
+    this.applyScale(true);
     for (const bar of this.toolbar.querySelectorAll<HTMLElement>('.toolbar')) {
       bar.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
     }

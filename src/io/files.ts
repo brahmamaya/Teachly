@@ -210,10 +210,10 @@ export async function openFile(file?: File): Promise<void> {
 // ---------------------------------------------------------------------------
 // Export
 
-function exportCanvas(_board: Board, page: Page, maxSide = 2400): HTMLCanvasElement {
-  // Exports show the page plus anything written beyond it.
+function exportCanvas(_board: Board, page: Page, maxSide = 4800): HTMLCanvasElement {
+  // Exports show the page plus anything written beyond it, sharp (up to 3x).
   const r: Rect = pageRegion(page.els);
-  const k = Math.min(3, maxSide / Math.max(r.w, r.h));
+  const k = Math.min(3, maxSide / Math.max(r.w, r.h), Math.sqrt(14_000_000 / (r.w * r.h)));
   return renderRegion(page, r, r.w * k, r.h * k);
 }
 
@@ -222,17 +222,28 @@ export function exportPng(board: Board): void {
   c.toBlob((b) => b && download(b, `${safeName(store.doc.title)}-page${store.index + 1}.png`), 'image/png');
 }
 
-export async function exportPdf(board: Board): Promise<void> {
+/**
+ * PDF of every page, sharp enough to zoom into and print: each page is drawn
+ * at about 3x the board's own size (lighter on classroom boards), kept at the
+ * page's real proportions, one page at a time so the app never freezes.
+ */
+export async function exportPdf(_board: Board): Promise<void> {
   const { jsPDF } = await import('jspdf');
   let pdf: InstanceType<typeof jsPDF> | null = null;
+  const canvas = document.createElement('canvas');
   for (const page of store.doc.pages) {
-    const c = exportCanvas(board, page, 2000);
-    const w = c.width, h = c.height;
-    const orient = w >= h ? 'landscape' : 'portrait';
-    if (!pdf) pdf = new jsPDF({ orientation: orient, unit: 'px', format: [w, h], hotfixes: ['px_scaling'] });
-    else pdf.addPage([w, h], orient);
-    pdf.addImage(c.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
+    const r: Rect = pageRegion(page.els);
+    // ~4800 px wide for a normal page; never more than ~14 million pixels
+    // (the limit iPads allow for one picture).
+    const k = Math.min(liteDevice() ? 2.25 : 3, Math.sqrt(14_000_000 / (r.w * r.h)));
+    const c = renderRegion(page, r, r.w * k, r.h * k, canvas);
+    const orient = r.w >= r.h ? 'landscape' : 'portrait';
+    if (!pdf) pdf = new jsPDF({ orientation: orient, unit: 'px', format: [r.w, r.h], hotfixes: ['px_scaling'], compress: true });
+    else pdf.addPage([r.w, r.h], orient);
+    pdf.addImage(c.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, r.w, r.h, undefined, 'NONE');
+    await new Promise((ok) => setTimeout(ok, 0)); // let the screen breathe between pages
   }
+  canvas.width = canvas.height = 1;
   if (pdf) download(pdf.output('blob'), `${safeName(store.doc.title)}.pdf`);
 }
 

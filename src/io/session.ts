@@ -14,6 +14,8 @@ interface Session {
   cam: { x: number; y: number; z: number } | null;
   /** The same view, relative to the whole page (works on any screen size). */
   view?: { rel: number; u: number; v: number } | null;
+  /** Every other page keeps its own zoom and place too (page id → view). */
+  views?: Record<string, { rel: number; u: number; v: number }>;
   size: string;
   tool: Partial<ToolState>;
   at: number;
@@ -36,12 +38,16 @@ export function saveSession(board: Board): void {
     for (const k of TOOL_KEYS) (tool as Record<string, unknown>)[k] = store.tool[k];
     // Tools that need a panel open are reopened as the pen.
     if (tool.tool === 'compass') tool.tool = 'pen';
+    const views: Session['views'] = {};
+    const ids = new Set(store.doc.pages.map((p) => p.id));
+    for (const [id, c] of store.cameras) if (ids.has(id) && id !== store.page.id) views[id] = board.viewOf(c);
     const s: Session = {
       nb: store.doc.id ?? '',
       page: store.page.id,
       index: store.index,
       cam: board.isHome ? null : { ...store.camera },
       view: board.isHome ? null : board.viewOf(store.camera),
+      views,
       size: `${Math.round(board.w)}x${Math.round(board.h)}`,
       tool,
       at: Date.now(),
@@ -64,6 +70,13 @@ export function restorePlace(board: Board): void {
   if (!s || s.nb !== store.doc.id) return;
   let i = store.doc.pages.findIndex((p) => p.id === s.page);
   if (i < 0) i = Math.min(s.index, store.doc.pages.length - 1);
+  // Each page's own zoom and place, as they were left.
+  if (s.views) {
+    for (const p of store.doc.pages) {
+      const v = s.views[p.id];
+      if (v && p.id !== s.page && Number.isFinite(v.rel) && v.rel > 0) store.cameras.set(p.id, board.camOf(v));
+    }
+  }
   if (i !== store.index) store.goTo(i);
   // The same spot and zoom as when the app was closed.
   if (s.cam && s.size === `${Math.round(board.w)}x${Math.round(board.h)}`) store.setCamera(s.cam);

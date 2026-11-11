@@ -3488,6 +3488,7 @@ button:focus-visible {
 #app .toolbar [data-pop='insert'] { color: #1d4ed8; }
 #app .toolbar [data-pop='tools'] { color: #ea580c; }
 #app .toolbar [data-act='timer'] { color: #0d9488; }
+#app .toolbar [data-act='poll'] { color: #9333ea; }
 #app .toolbar [data-act='graph'] { color: #4f46e5; }
 #app .toolbar [data-act='prev'],
 #app .toolbar [data-act='next'] { color: #334155; }
@@ -4986,4 +4987,202 @@ button,
   font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-weight: 600;
   letter-spacing: 0;
+}
+
+/* ---------- Floating hexagon transparency (Edit toolbar > Transparency) ---------- */
+.hexdock {
+  opacity: var(--hexa, 1);
+  transition: opacity 0.2s var(--ease);
+}
+.hexdock.dragging {
+  opacity: 1;
+}
+
+/* ---------- Toolbar on top (Edit toolbar > Toolbar at: Top), touching the top edge ---------- */
+#app[data-tb='top'] .toolbar,
+#app[data-tb='top'][data-board] .toolbar {
+  bottom: auto;
+  top: 0;
+  border-bottom-width: 1px;
+  border-top-width: 0;
+  --bar-shadow: 0 2px 14px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--bar-shadow);
+}
+#app[data-tb='top'] .toolbar.tb-left {
+  border-radius: 0 0 16px 0;
+}
+#app[data-tb='top'] .toolbar.tb-right {
+  border-radius: 0 0 0 16px;
+}
+#app[data-tb='top'].tb-stacked .tb-right {
+  bottom: auto;
+  top: calc(46px * var(--ui));
+  border-radius: 0 0 0 16px;
+}
+
+/* ---------- Poll (A B C D with a timer), same glass card as the timer ---------- */
+.qtimer.poll {
+  width: 340px;
+  align-items: stretch;
+  gap: 10px;
+}
+.pl-time {
+  font: 800 18px 'Exo 2', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}
+.poll.warn .pl-time {
+  color: #f59e0b;
+}
+.pl-q {
+  width: 100%;
+  resize: none;
+  border: 1px solid var(--g-line);
+  background: var(--g-fill);
+  color: var(--g-text);
+  border-radius: 14px;
+  padding: 8px 12px;
+  font: 600 16px 'Exo 2', system-ui, sans-serif;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.pl-q::placeholder {
+  color: var(--g-soft);
+}
+.pl-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pl-row {
+  display: flex;
+  gap: 6px;
+}
+.pl-opt {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--g-line);
+  border-radius: 16px;
+  background: var(--g-fill);
+  color: var(--g-text);
+  font: 700 14px 'Exo 2', system-ui, sans-serif;
+  transition: transform 0.15s, border-color 0.2s, background 0.2s;
+}
+.pl-opt:active {
+  transform: scale(0.97);
+}
+.pl-opt b {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--ring);
+  color: #fff;
+  font-size: 20px;
+}
+#app[data-board='dark'] .pl-opt b {
+  color: #000;
+}
+.pl-bar {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--g-line);
+  overflow: hidden;
+}
+.pl-bar i {
+  display: block;
+  height: 100%;
+  background: #6366f1;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pl-row.lead .pl-bar i {
+  background: #8b5cf6;
+}
+.pl-n {
+  min-width: 64px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pl-row.right .pl-opt {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.18);
+}
+.pl-row.right .pl-opt b {
+  background: #16a34a;
+  color: #fff;
+}
+.pl-row.right .pl-bar i {
+  background: #16a34a;
+}
+.poll.marking .pl-opt {
+  border-style: dashed;
+  border-color: #16a34a;
+}
+.pl-minus {
+  width: 34px;
+  border: 1px solid var(--g-line);
+  border-radius: 12px;
+  background: var(--g-fill);
+  color: var(--g-soft);
+  font: 700 18px system-ui, sans-serif;
+  transition: transform 0.15s;
+}
+.pl-minus:active {
+  transform: scale(0.9);
+}
+.pl-sum {
+  text-align: center;
+  font: 600 13px 'Exo 2', system-ui, sans-serif;
+  color: var(--g-soft);
+}
+.pl-times .qt-chip.on {
+  background: var(--ring);
+  color: #fff;
+  border-color: transparent;
+}
+#app[data-board='dark'] .pl-times .qt-chip.on {
+  color: #000;
+}
+.pl-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.pl-ctrl .qt-go {
+  height: 48px;
+}
+.poll.closed .pl-opt {
+  cursor: default;
+}
+.qtimer.poll.mini {
+  width: 230px;
+  padding: 8px 12px;
+  border-radius: 22px;
+}
+.qtimer.poll.mini .qt-head {
+  display: flex;
+}
+.poll.mini > :not(.qt-head) {
+  display: none;
+}
+
+/* The poll stays readable over any writing on the board. */
+.qtimer.poll {
+  background: linear-gradient(160deg, rgba(40, 40, 46, 0.95), rgba(14, 14, 18, 0.96));
+}
+#app:not([data-board='dark']) .qtimer.poll {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.97), rgba(240, 243, 247, 0.96));
+}
+.tbe-pos > span {
+  align-self: center;
 }

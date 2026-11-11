@@ -13,7 +13,7 @@ Every change, big or small, must keep all of these:
 5. **No personal names shown**: the owner's name / GitHub must not appear anywhere users can see (links, QR codes,
    share text, pages). Share links point to physica.in.
 6. **Never commit the signing key** (it lives outside the repo).
-7. Toolbar stays at the bottom, touching the screen edge.
+7. Toolbar touches the screen edge: bottom by default, top if the teacher picks it in Edit toolbar.
 8. **Privacy policy / Terms of use** (`src/ui/legal.ts`) must stay true: when a change affects what is stored, sent,
    or which permission is used, update those texts and their date in the same commit. Never invent legal facts
    (company names, addresses); a lawyer should review them.

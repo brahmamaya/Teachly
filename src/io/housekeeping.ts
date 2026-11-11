@@ -1,12 +1,13 @@
 import type { Board } from '../board';
 import { trimImageCache } from '../renderer';
 import { store } from '../store';
-import { cleanOrphans, saveNotebook } from './library';
+import { recoverOrphans, saveNotebook } from './library';
 import { saveSession } from './session';
 
 // Housekeeping, so Teachly stays light and fast however many days it runs:
 // - asks the device to keep the notebooks (never cleared on its own)
-// - removes leftovers of interrupted saves and old website caches
+// - puts back into the library any saved notebook missing from its list
+//   (never deletes a notebook), and removes old website caches
 // - while the board is quiet: frees pictures no page uses any more and
 //   trims a very long undo history
 // - after a long time in the background (or a very long day), refreshes
@@ -44,7 +45,7 @@ export function startHousekeeping(board: Board): void {
 
   // 2. Start-up tidy (a little later, never during start).
   window.setTimeout(() => {
-    void cleanOrphans();
+    void recoverOrphans();
     // Old website caches from earlier versions (the current one is kept by the service worker).
     void (async () => {
       try {
