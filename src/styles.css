@@ -6268,16 +6268,16 @@ button,
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 26px 22px;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 20px 16px;
   align-content: start;
-  padding: 22px 26px calc(40px + env(safe-area-inset-bottom, 0px));
+  padding: 18px 20px calc(36px + env(safe-area-inset-bottom, 0px));
 }
 .pgs-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 .pgs-grid.fresh .pgs-item {
@@ -6294,8 +6294,8 @@ button,
 .pgs-card {
   position: relative;
   width: 100%;
-  min-height: 96px;
-  border-radius: 6px;
+  min-height: 72px;
+  border-radius: 5px;
   background: var(--pg-card);
   box-shadow: 0 0 0 1px var(--pg-line), 0 2px 4px rgba(15, 23, 42, 0.1), 0 10px 22px rgba(15, 23, 42, 0.12);
   cursor: pointer;
@@ -6308,8 +6308,8 @@ button,
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 6px;
-  min-height: 96px;
+  border-radius: 5px;
+  min-height: 72px;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.25s ease;
@@ -6328,8 +6328,8 @@ button,
   position: absolute;
   top: 6px;
   left: 6px;
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   display: none;
   place-items: center;
   border: 0;
@@ -6396,11 +6396,11 @@ button,
   color: inherit;
 }
 .pgs-n {
-  min-width: 26px;
-  padding: 2px 9px;
+  min-width: 24px;
+  padding: 1px 8px;
   border-radius: 999px;
   text-align: center;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--pg-soft);
 }
@@ -6424,9 +6424,9 @@ button,
 }
 @media (max-width: 700px) {
   .pgs-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 20px 14px;
-    padding: 16px 14px calc(30px + env(safe-area-inset-bottom, 0px));
+    grid-template-columns: repeat(auto-fill, minmax(98px, 1fr));
+    gap: 16px 10px;
+    padding: 14px 12px calc(28px + env(safe-area-inset-bottom, 0px));
   }
   .pgs-pill {
     padding: 0 16px;
