@@ -15,8 +15,10 @@ import {
   renameNotebook,
   restoreNotebook,
   saveNotebook,
+  setCover,
   trashNotebook,
 } from '../io/library';
+import { COVERS, coverById, coverHTML } from './covers';
 import { store } from '../store';
 import { icon } from './icons';
 import { fadeOut, toast } from './panel';
@@ -93,6 +95,22 @@ async function chooseFolder(host: HTMLElement, current: string): Promise<string 
   if (v !== '__new') return v;
   const name = await askName(host, 'New folder');
   return name ? (await createFolder(name)).id : null;
+}
+
+/** Choose a notebook cover. '' = none (the first page is shown); null = cancelled. */
+function chooseCover(host: HTMLElement, m: NotebookMeta): Promise<string | null> {
+  const cur = coverById(m.cover)?.id ?? '';
+  return modal<string>(
+    host,
+    `<h3>Notebook cover</h3>
+     <div class="cv-grid">
+       <button type="button" class="cv-opt ${cur === '' ? 'on' : ''}" data-sv="pick" data-v="">
+         <span class="cv-none">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</span><span class="cv-name">First page</span></button>
+       ${COVERS.map((c) => `<button type="button" class="cv-opt ${cur === c.id ? 'on' : ''}" data-sv="pick" data-v="${c.id}">${coverHTML(c, m.title)}<span class="cv-name">${c.name}</span></button>`).join('')}
+     </div>
+     <div class="sv-row"><button type="button" class="btn" data-sv="cancel">Cancel</button></div>`,
+    () => null,
+  );
 }
 
 /** Ask before deleting notebooks for good: shows their covers. */
@@ -272,10 +290,10 @@ export class Library {
           const act = (a: string, ic: string, label: string) => `<button class="nb-act" data-lib="${a}">${icon(ic, 17)}<span>${label}</span></button>`;
           const actions = inTrash
             ? act('restore', 'undo', 'Restore') + act('purge', 'trash', 'Delete for good')
-            : act('rename', 'text', 'Rename') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('delete', 'trash', 'Move to trash');
+            : act('rename', 'text', 'Rename') + act('cover', 'palette', 'Cover') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('delete', 'trash', 'Move to trash');
           return `
         <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''}" data-id="${m.id}" style="--n:${n + 1}">
-          <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
+          <button class="nb-cover ${coverById(m.cover) ? 'has-cv' : ''}" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${coverById(m.cover) ? coverHTML(coverById(m.cover)!, m.title) : m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
           <span class="nb-row">
             <span class="nb-text">
               <span class="nb-title">${esc(m.title)}</span>
@@ -372,6 +390,15 @@ export class Library {
         if (!title) return;
         if (id === store.doc.id) store.doc = await saveNotebook({ ...store.doc, title });
         else await renameNotebook(id, title);
+        return this.refresh();
+      }
+      case 'cover': {
+        const m = this.list.find((x) => x.id === id);
+        if (!m) return;
+        const v = await chooseCover(this.el, m);
+        if (v === null) return;
+        await setCover(id, v);
+        toast(v ? 'Cover changed' : 'Showing the first page again');
         return this.refresh();
       }
       case 'move': {

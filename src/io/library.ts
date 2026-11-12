@@ -18,6 +18,8 @@ export interface NotebookMeta {
   folder?: string;
   /** When it was put in the trash (missing = not in the trash). */
   trashed?: number;
+  /** Chosen notebook cover (see ui/covers.ts); missing = show the first page. */
+  cover?: string;
 }
 
 export interface Folder {
@@ -104,6 +106,7 @@ export async function saveNotebook(doc: Doc, folder?: string): Promise<Doc> {
   const prev = list.find((m) => m.id === doc.id);
   const meta: NotebookMeta = { id: doc.id!, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: cover(doc), folder: folder ?? prev?.folder ?? '' };
   if (prev?.trashed) meta.trashed = prev.trashed;
+  if (prev?.cover) meta.cover = prev.cover;
   const next = [meta, ...list.filter((m) => m.id !== doc.id)];
   await put([[`nb:${doc.id}`, doc], [INDEX, next]]);
   await noteSources(doc);
@@ -196,10 +199,19 @@ export async function renameNotebook(id: string, title: string): Promise<void> {
 export async function duplicateNotebook(id: string): Promise<void> {
   const doc = await loadNotebook(id);
   const folder = (await listNotebooks()).find((m) => m.id === id)?.folder ?? '';
-  if (doc) await saveNotebook({ ...doc, id: uid(), title: `${doc.title} (copy)` }, folder);
+  if (!doc) return;
+  const copy = await saveNotebook({ ...doc, id: uid(), title: `${doc.title} (copy)` }, folder);
+  const cover = (await listNotebooks()).find((m) => m.id === id)?.cover;
+  if (cover) await setCover(copy.id!, cover);
 }
 
 /** Put a notebook into a folder ('' = out of every folder). Its pages are not touched. */
+/** Choose a notebook's cover ('' = none: the first page is shown). */
+export async function setCover(id: string, cover: string): Promise<void> {
+  const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+  await put([[INDEX, list.map((m) => (m.id === id ? { ...m, cover: cover || undefined } : m))]]);
+}
+
 export async function moveNotebook(id: string, folder: string): Promise<void> {
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
   await put([[INDEX, list.map((m) => (m.id === id ? { ...m, folder } : m))]]);
