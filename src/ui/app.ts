@@ -189,7 +189,15 @@ function addRecentColor(c: string): void {
 
 /** The edge the toolbar touches: bottom (default) or top. */
 function tbEdge(): 'bottom' | 'top' {
+  // Placed freely: the nearer half decides which way menus open.
+  if (tbFree()) return (store.settings.tbY as number) < 0.5 ? 'top' : 'bottom';
   return store.settings.tbPos === 'top' ? 'top' : 'bottom';
+}
+
+/** Is the toolbar placed anywhere with the Height slider (not stuck to an edge)? */
+function tbFree(): boolean {
+  const y = store.settings.tbY;
+  return typeof y === 'number' && y >= 0 && y <= 1;
 }
 
 /** Toolbar halves together in the middle? (Edit toolbar > Buttons; default: middle on top, sides at the bottom.) */
@@ -734,6 +742,11 @@ export class App {
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
           <div class="seg tbe-pos"><span>Toolbar at</span>${(['bottom', 'top'] as const).map((k) => `<button class="${tbEdge() === k ? 'on' : ''}" data-tbpos="${k}">${k === 'bottom' ? 'Bottom' : 'Top'}</button>`).join('')}</div>
           <div class="seg tbe-pos"><span>Buttons</span>${(['middle', 'sides'] as const).map((k) => `<button class="${tbMiddle() === (k === 'middle') ? 'on' : ''}" data-tbalign="${k}">${k === 'middle' ? 'Middle' : 'Sides'}</button>`).join('')}</div>
+          <div class="slider-row">
+            <span class="slider-label">Height</span>
+            <input type="range" min="0" max="100" step="1" value="${Math.round((store.settings.tbY ?? (tbEdge() === 'top' ? 0 : 1)) * 100)}" data-tby aria-label="Toolbar height: top to bottom">
+          </div>
+          <button class="btn wide" data-tbstick ${tbFree() ? '' : 'disabled'}>Stick to the ${tbEdge()} edge</button>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
           <div class="tbe-grid">${group()}</div>
           <button class="btn wide" data-tbreset>Show all buttons</button>
@@ -757,6 +770,11 @@ export class App {
             .join('')}</div>`;
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
+          if (el.dataset.tby !== undefined) {
+            this.applyScale(true);
+            this.fillPopover();
+            return;
+          }
           if (el.dataset.hexitem) {
             const cur = (store.settings.hexItems ?? []).filter((x) => x !== el.dataset.hexitem);
             if (el.checked && cur.length < 6) cur.push(el.dataset.hexitem);
@@ -869,6 +887,12 @@ export class App {
       store.setSettings({ tbHidden: [], tbShown: [...TB_OPT_IN] });
       this.fillPopover();
       return;
+    } else if (d.tbstick !== undefined) {
+      // Back onto the edge the bar is nearest to.
+      store.setSettings({ tbPos: tbEdge(), tbY: undefined });
+      this.applyScale(true);
+      this.fillPopover();
+      return;
     } else if (d.tbalign) {
       store.setSettings({ tbAlign: d.tbalign as 'middle' | 'sides' });
       this.applyScale(true);
@@ -901,6 +925,12 @@ export class App {
       store.settings.hexSize = v;
       (this.toolbar.querySelector('.hexdock') as HTMLElement).style.setProperty('--R', `${v}px`);
       store.setSettings({ hexSize: v });
+    } else if (el.dataset.tby !== undefined) {
+      // The bar follows the slider live; menus and the page are laid out again on release.
+      store.settings.tbY = v / 100;
+      this.root.setAttribute('data-tbfree', '');
+      this.placeBars(this.toolbar.querySelector('.tb-left') as HTMLElement, this.toolbar.querySelector('.tb-right') as HTMLElement, this.root.classList.contains('tb-stacked'));
+      store.setSettings({ tbY: v / 100 });
     } else if (el.dataset.hexop !== undefined) {
       const a = 1 - v / 100;
       (this.toolbar.querySelector('.hexdock') as HTMLElement).style.setProperty('--hexa', String(a));
@@ -1350,12 +1380,18 @@ export class App {
     } else {
       left.style.left = right.style.left = right.style.right = '';
     }
+    // Placed freely with the Height slider: the bars float over the board at
+    // that height (no strip is reserved for them).
+    const free = tbFree();
+    this.root.toggleAttribute('data-tbfree', free);
+    if (free) this.placeBars(left, right, stacked);
+    else for (const bar of [left, right]) bar.style.top = bar.style.bottom = '';
     // Toolbar at the bottom: the page fills the whole screen and the bars
     // float over it. Toolbar on top: the page starts just below the bar (it
     // is never covered), and "Teachly by Physica" stays in the top right,
     // moving under the bar only when the bar reaches that corner.
     let barBottom = 0;
-    if (pos === 'top') {
+    if (pos === 'top' && !free) {
       // The bar touches the top edge when it stays clear of the status bar's
       // time (left) and battery (right) on iPad / iPhone; otherwise it sits
       // just below the status bar.
@@ -1387,10 +1423,21 @@ export class App {
     this.positionProps();
   }
 
+  /** Height of the free toolbar: 0 = top edge, 1 = bottom edge of the screen. */
+  private placeBars(left: HTMLElement, right: HTMLElement, stacked: boolean): void {
+    const k = ui(), H = window.innerHeight;
+    const lh = left.offsetHeight * k, rh = right.offsetHeight * k;
+    const total = stacked ? lh + rh : Math.max(lh, rh);
+    const y = Math.round((store.settings.tbY ?? 0) * Math.max(0, H - total));
+    left.style.bottom = right.style.bottom = 'auto';
+    left.style.top = `${y}px`;
+    right.style.top = `${stacked ? y + lh : y}px`;
+  }
+
   /** Put the toolbars on another edge (they glide in there). */
   private setToolbarPos(pos: 'bottom' | 'top' | 'left' | 'right'): void {
-    if (pos === tbEdge()) return;
-    store.setSettings({ tbPos: pos });
+    if (pos === tbEdge() && !tbFree()) return;
+    store.setSettings({ tbPos: pos, tbY: undefined });
     this.applyScale(true);
     for (const bar of this.toolbar.querySelectorAll<HTMLElement>('.toolbar')) {
       bar.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });

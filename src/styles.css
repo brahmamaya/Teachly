@@ -5973,3 +5973,33 @@ button,
 #app[data-tb='top'] .board {
   clip-path: inset(var(--board-top, 0px) 0 0 0);
 }
+
+/* ---------- Toolbar placed anywhere (Edit toolbar > Height slider) ---------- */
+#app[data-tbfree] .toolbar,
+#app[data-tbfree][data-board] .toolbar {
+  bottom: auto;
+  border-width: 1px !important;
+  border-radius: 16px !important;
+  transform-origin: 0 0 !important;
+  --bar-shadow: 0 0 0 0.5px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.1), 0 12px 30px rgba(15, 23, 42, 0.18);
+  box-shadow: var(--bar-shadow);
+}
+#app[data-tbfree][data-tbalign='sides'] .toolbar.tb-right {
+  transform-origin: 100% 0 !important;
+}
+#app[data-tbfree][data-tbalign='sides']:not(.tb-stacked) .toolbar.tb-left {
+  border-radius: 0 16px 16px 0 !important;
+  border-left-width: 0 !important;
+}
+#app[data-tbfree][data-tbalign='sides']:not(.tb-stacked) .toolbar.tb-right {
+  border-radius: 16px 0 0 16px !important;
+  border-right-width: 0 !important;
+}
+#app[data-tbfree][data-tbalign='middle']:not(.tb-stacked) .toolbar.tb-left {
+  border-radius: 16px 0 0 16px !important;
+  border-right-width: 0 !important;
+}
+#app[data-tbfree][data-tbalign='middle']:not(.tb-stacked) .toolbar.tb-right {
+  border-radius: 0 16px 16px 0 !important;
+  border-left-width: 0 !important;
+}
