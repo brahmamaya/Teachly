@@ -102,6 +102,8 @@ export interface Page {
   bg: string;
   pattern: BgPattern;
   els: El[];
+  /** A short label put on the page in the page grid (Tag). */
+  tag?: string;
 }
 
 export interface Doc {

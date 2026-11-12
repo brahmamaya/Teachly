@@ -139,6 +139,40 @@ async function prepare(src: string): Promise<void> {
   void pump();
 }
 
+const smalls = new Map<string, string>();
+
+/** A small picture of a book page (for the page grid): drawn directly at thumbnail size, quick even for scanned books. */
+export async function smallPageURL(src: string, width = 360): Promise<string | null> {
+  const kept = smalls.get(src);
+  if (kept) return kept;
+  const at = parse(src);
+  if (!at) return null;
+  try {
+    const doc = await openSource(at.key);
+    const p = await doc.getPage(at.page + 1);
+    try {
+      const base = p.getViewport({ scale: 1 });
+      const vp = p.getViewport({ scale: width / base.width });
+      const c = document.createElement('canvas');
+      c.width = Math.round(vp.width);
+      c.height = Math.round(vp.height);
+      const ctx = c.getContext('2d')!;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      await p.render({ canvasContext: ctx, viewport: vp, canvas: c } as Parameters<typeof p.render>[0]).promise;
+      const url = c.toDataURL('image/jpeg', 0.8);
+      c.width = c.height = 1;
+      smalls.set(src, url);
+      if (smalls.size > 400) smalls.delete(smalls.keys().next().value as string);
+      return url;
+    } finally {
+      p.cleanup();
+    }
+  } catch {
+    return null;
+  }
+}
+
 /** For the board: a picture address for a PDF page, or null. */
 export async function pageURL(src: string): Promise<string | null> {
   const b = await pagePicture(src);

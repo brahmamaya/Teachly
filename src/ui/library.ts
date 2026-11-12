@@ -68,11 +68,11 @@ function modal<T>(host: HTMLElement, html: string, read: (box: HTMLElement) => T
 }
 
 /** Ask for a folder name. */
-function askName(host: HTMLElement, title: string, value = ''): Promise<string | null> {
+export function askName(host: HTMLElement, title: string, value = '', placeholder = 'Folder name'): Promise<string | null> {
   return modal(
     host,
     `<h3>${esc(title)}</h3>
-     <input class="sv-input" name="n" value="${esc(value)}" maxlength="60" placeholder="Folder name" aria-label="${esc(title)}">
+     <input class="sv-input" name="n" value="${esc(value)}" maxlength="60" placeholder="${esc(placeholder)}" aria-label="${esc(title)}">
      <div class="sv-row"><button type="button" class="btn" data-sv="cancel">Cancel</button><button type="submit" class="btn primary">OK</button></div>`,
     (box) => (box.querySelector('input') as HTMLInputElement).value.trim() || null,
   );
