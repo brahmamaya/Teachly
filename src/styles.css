@@ -6541,106 +6541,162 @@ button,
   box-shadow: 0 8px 22px rgba(91, 140, 255, 0.45);
 }
 
-/* ---------- Notebook covers (optional): a real-notebook look made of CSS ---------- */
+/* ---------- Notebook covers (optional): Teachly's own full-bleed look ---------- */
 .nbc {
   position: relative;
   display: block;
-  height: 100%;
-  aspect-ratio: 3 / 4;
-  container-type: size;
-  border-radius: 4px 12px 12px 4px;
+  width: 100%;
+  container-type: inline-size;
+  border-radius: 14px;
   background: var(--cv);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 2px 0 0 rgba(255, 255, 255, 0.55), 0 10px 20px rgba(0, 0, 0, 0.45);
+  background-size: cover;
+  background-position: center;
+  color: var(--ci);
   overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14), 0 2px 4px rgba(0, 0, 0, 0.18), 0 14px 28px rgba(0, 0, 0, 0.38);
+  text-align: left;
 }
-/* Spine on the left. */
+.nbc[data-o='p'] {
+  aspect-ratio: 3 / 4;
+}
+.nbc[data-o='l'] {
+  aspect-ratio: 4 / 3;
+}
+/* Soft light across the top left, like a printed cover. */
 .nbc::before {
   content: '';
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 9%;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.04));
-  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.2);
+  inset: 0;
+  background: linear-gradient(0deg, var(--cs, transparent), transparent 55%), linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 45%);
+  pointer-events: none;
 }
-/* Elastic band. */
+/* Fine inner frame. */
 .nbc::after {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 13%;
-  width: 6.5%;
-  background: var(--cb);
-  box-shadow: -1px 0 0 rgba(0, 0, 0, 0.2), 1px 0 0 rgba(255, 255, 255, 0.22);
+  inset: 5.5cqw;
+  border: 1px solid var(--cf);
+  border-radius: 8px;
+  pointer-events: none;
 }
-.nbc-label {
+.nbc-brand {
   position: absolute;
-  left: 17%;
-  right: 25%;
-  top: 20%;
-  max-height: 34%;
-  padding: 5% 4%;
+  left: 11cqw;
+  top: 9cqw;
+  font-family: 'Orbitron', 'Exo 2', sans-serif;
+  font-size: 8px;
+  font-size: 4.2cqw;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.nbc-t {
+  position: absolute;
+  left: 11cqw;
+  right: 12cqw;
+  bottom: 12cqw;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
   overflow: hidden;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.93);
-  color: #111827;
-  font-size: 9px;
-  font-size: 7.4cqh;
+  font-size: 12px;
+  font-size: 10.5cqw;
   font-weight: 800;
-  line-height: 1.15;
-  text-align: center;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
   word-break: break-word;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  z-index: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
-.nbc-star {
+.nbc[data-o='l'] .nbc-t {
+  font-size: 9px;
+  font-size: 8.6cqw;
+  -webkit-line-clamp: 3;
+}
+/* Bookmark ribbon at the top right. */
+.nbc-rib {
   position: absolute;
-  top: 4%;
-  right: 4%;
-  width: 14%;
-  aspect-ratio: 1;
-  background: rgba(255, 255, 255, 0.85);
-  clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 60%, 80% 100%, 50% 76%, 20% 100%, 30% 60%, 0 38%, 38% 36%);
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+  top: 0;
+  right: 13cqw;
+  width: 8cqw;
+  height: 19cqw;
+  background: linear-gradient(90deg, var(--cb), color-mix(in srgb, var(--cb) 70%, #000));
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+}
+/* A covered notebook: the cover is the whole card (no card box, no picture inside). */
+.library .nb-card.has-cv {
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.library .nb-card.has-cv .nb-cover {
+  aspect-ratio: auto;
+  overflow: visible;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  box-shadow: none;
+}
+.library .nb-card.has-cv .nb-title {
+  display: none;
+}
+.library .nb-card.has-cv .nb-row {
+  padding-top: 8px;
+}
+.library .nb-card.has-cv .nb-age {
+  right: 7cqw;
+  right: 12px;
+  bottom: 12px;
   z-index: 2;
 }
-.library .nb-cover.has-cv {
-  height: auto;
-  background: radial-gradient(90% 90% at 50% 40%, rgba(255, 255, 255, 0.07), transparent 70%);
-  border-color: transparent;
+@media (hover: hover) {
+  .library .nb-card.has-cv:hover {
+    box-shadow: none;
+  }
 }
-.library .nb-cover.has-cv .nbc {
-  height: 90%;
-  margin-top: 2%;
+.library .nb-card.has-cv.current {
+  border-color: transparent;
+  box-shadow: none;
+}
+.library .nb-card.has-cv.current .nbc {
+  box-shadow: 0 0 0 3px var(--lb-accent), 0 16px 34px rgba(0, 0, 0, 0.45);
+}
+.library .nb-card.has-cv.current::after {
+  top: 12px;
+  left: 12px;
+  right: auto;
+  z-index: 3;
 }
 
 /* Cover chooser */
 .sv-box:has(.cv-grid) {
-  width: min(600px, 100%);
+  width: min(620px, 100%);
 }
 .cv-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px 12px;
-  max-height: min(60vh, 520px);
+  gap: 16px 12px;
+  max-height: min(62vh, 540px);
   overflow-y: auto;
   padding: 4px;
+}
+.cv-grid.tall {
+  grid-template-columns: repeat(4, 1fr);
+}
+.cv-grid.wide {
+  grid-template-columns: repeat(3, 1fr);
 }
 .cv-opt {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 8px 4px 6px;
+  padding: 8px 6px 6px;
   border: 2px solid transparent;
-  border-radius: 14px;
+  border-radius: 16px;
   background: none;
   color: inherit;
   transition: transform 0.15s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease);
-}
-.cv-opt .nbc {
-  width: 100%;
-  height: auto;
 }
 .cv-opt:active {
   transform: scale(0.96);
@@ -6656,13 +6712,18 @@ button,
 }
 .cv-none {
   width: 100%;
-  aspect-ratio: 3 / 4;
   display: grid;
   place-items: center;
   border: 1.5px dashed rgba(127, 127, 127, 0.55);
-  border-radius: 6px;
+  border-radius: 12px;
   overflow: hidden;
   background: #fff;
+}
+.cv-none[data-o='p'] {
+  aspect-ratio: 3 / 4;
+}
+.cv-none[data-o='l'] {
+  aspect-ratio: 4 / 3;
 }
 .cv-none img {
   width: 100%;
@@ -6673,8 +6734,9 @@ button,
   font-weight: 700;
 }
 @media (max-width: 520px) {
-  .cv-grid {
-    grid-template-columns: repeat(3, 1fr);
+  .cv-grid.tall,
+  .cv-grid.wide {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

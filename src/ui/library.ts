@@ -15,7 +15,9 @@ import {
   renameNotebook,
   restoreNotebook,
   saveNotebook,
+  isPortrait,
   setCover,
+  setPortrait,
   trashNotebook,
 } from '../io/library';
 import { COVERS, coverById, coverHTML } from './covers';
@@ -98,15 +100,22 @@ async function chooseFolder(host: HTMLElement, current: string): Promise<string 
 }
 
 /** Choose a notebook cover. '' = none (the first page is shown); null = cancelled. */
-function chooseCover(host: HTMLElement, m: NotebookMeta): Promise<string | null> {
+async function chooseCover(host: HTMLElement, m: NotebookMeta): Promise<string | null> {
+  // Older notebooks do not know yet whether they are vertical: look once.
+  let portrait = m.portrait;
+  if (portrait === undefined) {
+    const doc = await loadNotebook(m.id);
+    portrait = doc ? isPortrait(doc) : false;
+    await setPortrait(m.id, portrait);
+  }
   const cur = coverById(m.cover)?.id ?? '';
   return modal<string>(
     host,
     `<h3>Notebook cover</h3>
-     <div class="cv-grid">
+     <div class="cv-grid ${portrait ? 'tall' : 'wide'}">
        <button type="button" class="cv-opt ${cur === '' ? 'on' : ''}" data-sv="pick" data-v="">
-         <span class="cv-none">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</span><span class="cv-name">First page</span></button>
-       ${COVERS.map((c) => `<button type="button" class="cv-opt ${cur === c.id ? 'on' : ''}" data-sv="pick" data-v="${c.id}">${coverHTML(c, m.title)}<span class="cv-name">${c.name}</span></button>`).join('')}
+         <span class="cv-none" data-o="${portrait ? 'p' : 'l'}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</span><span class="cv-name">First page</span></button>
+       ${COVERS.map((c) => `<button type="button" class="cv-opt ${cur === c.id ? 'on' : ''}" data-sv="pick" data-v="${c.id}">${coverHTML(c, m.title, portrait)}<span class="cv-name">${c.name}</span></button>`).join('')}
      </div>
      <div class="sv-row"><button type="button" class="btn" data-sv="cancel">Cancel</button></div>`,
     () => null,
@@ -243,6 +252,17 @@ export class Library {
     [this.list, this.folders] = await Promise.all([listNotebooks(true), listFolders()]);
     if (this.view.startsWith('f:') && !this.folders.some((f) => `f:${f.id}` === this.view)) this.view = 'all';
     this.render();
+    // Notebooks with a cover that do not know yet if they are vertical (saved
+    // before): look once, then show the cover in the right shape.
+    const unknown = this.list.filter((m) => m.cover && m.portrait === undefined);
+    if (unknown.length) {
+      for (const m of unknown) {
+        const doc = await loadNotebook(m.id);
+        await setPortrait(m.id, doc ? isPortrait(doc) : false);
+      }
+      this.list = await listNotebooks(true);
+      this.render();
+    }
   }
 
   private folderOf(m: NotebookMeta): string {
@@ -305,8 +325,8 @@ export class Library {
             ? act('restore', 'undo', 'Restore') + act('purge', 'trash', 'Delete for good')
             : act('rename', 'text', 'Rename') + act('cover', 'palette', 'Cover') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('delete', 'trash', 'Move to trash');
           return `
-        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''}" data-id="${m.id}" style="--n:${n + 1}">
-          <button class="nb-cover ${coverById(m.cover) ? 'has-cv' : ''}" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${coverById(m.cover) ? coverHTML(coverById(m.cover)!, m.title) : m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
+        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''} ${coverById(m.cover) ? 'has-cv' : ''}" data-id="${m.id}" style="--n:${n + 1}">
+          <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${coverById(m.cover) ? coverHTML(coverById(m.cover)!, m.title, !!m.portrait) : m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
           <span class="nb-row">
             <span class="nb-text">
               <span class="nb-title">${esc(m.title)}</span>

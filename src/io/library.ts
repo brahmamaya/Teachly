@@ -1,7 +1,8 @@
 import { uid } from '../geometry';
 import { pageRegion, renderRegion } from '../renderer';
+import { PAGE } from '../page';
 import { newPage } from '../store';
-import type { Doc } from '../types';
+import type { Doc, ImageEl } from '../types';
 
 // On-device notebook library (IndexedDB). Unlimited notebooks, each saved
 // on its own, plus a small index with titles and cover pictures so the
@@ -20,6 +21,8 @@ export interface NotebookMeta {
   trashed?: number;
   /** Chosen notebook cover (see ui/covers.ts); missing = show the first page. */
   cover?: string;
+  /** A tall (vertical) notebook? Decides the shape of its cover. Missing = wide. */
+  portrait?: boolean;
 }
 
 export interface Folder {
@@ -104,7 +107,7 @@ export async function saveNotebook(doc: Doc, folder?: string): Promise<Doc> {
   if (!doc.id) doc = { ...doc, id: uid() };
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
   const prev = list.find((m) => m.id === doc.id);
-  const meta: NotebookMeta = { id: doc.id!, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: cover(doc), folder: folder ?? prev?.folder ?? '' };
+  const meta: NotebookMeta = { id: doc.id!, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: cover(doc), folder: folder ?? prev?.folder ?? '', portrait: isPortrait(doc) };
   if (prev?.trashed) meta.trashed = prev.trashed;
   if (prev?.cover) meta.cover = prev.cover;
   const next = [meta, ...list.filter((m) => m.id !== doc.id)];
@@ -206,6 +209,20 @@ export async function duplicateNotebook(id: string): Promise<void> {
 }
 
 /** Put a notebook into a folder ('' = out of every folder). Its pages are not touched. */
+/** A vertical notebook: its first page is a tall book page, or the screen is held upright. */
+export function isPortrait(doc: Doc): boolean {
+  const first = doc.pages[0];
+  const book = first?.els.find((e): e is ImageEl => e.type === 'image' && !!e.locked);
+  if (book) return book.h > book.w * 1.1;
+  return PAGE.h > PAGE.w * 1.1;
+}
+
+/** Remember whether a notebook is vertical (for notebooks saved before this was known). */
+export async function setPortrait(id: string, portrait: boolean): Promise<void> {
+  const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+  await put([[INDEX, list.map((m) => (m.id === id ? { ...m, portrait } : m))]]);
+}
+
 /** Choose a notebook's cover ('' = none: the first page is shown). */
 export async function setCover(id: string, cover: string): Promise<void> {
   const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
