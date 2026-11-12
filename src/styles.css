@@ -6013,3 +6013,110 @@ button,
 #app[data-tbalign='middle']:not(.tb-stacked) .toolbar.tb-right {
   clip-path: inset(-80px -80px -80px 0);
 }
+
+/* ---------- Menus: arrow to their button, list style for Insert and Tools ---------- */
+.popover {
+  border-radius: 22px;
+}
+.pop-arrow {
+  position: absolute;
+  z-index: 5001;
+  background: var(--surface-solid);
+  border-radius: 3px;
+  transform: rotate(45deg);
+  pointer-events: none;
+  animation: pop 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Only the half that sticks out of the menu is visible (a diamond half-hidden by the menu). */
+.pop-arrow[data-dir='down'] {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  box-shadow: 2px 2px 3px rgba(15, 23, 42, 0.08);
+}
+.pop-arrow[data-dir='up'] {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  box-shadow: -2px -2px 3px rgba(15, 23, 42, 0.08);
+}
+.pop-arrow.leaving {
+  transition: opacity 0.15s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop-arrow {
+    animation: none;
+  }
+}
+
+.popover.pop-list {
+  gap: 4px;
+  padding: 10px 10px 8px;
+  min-width: 286px;
+  border-radius: 26px;
+}
+.popover.pop-list-2 {
+  min-width: min(560px, calc(100vw / var(--ui, 1) - 16px));
+}
+.pm-title {
+  padding: 8px 8px 6px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+.pm-list {
+  display: flex;
+  flex-direction: column;
+}
+.pm-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 8px;
+}
+.pm-sep {
+  height: 1px;
+  margin: 6px 10px;
+  background: var(--border);
+}
+.pm-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 0.16s var(--ease), transform 0.16s var(--ease);
+}
+.pm-item svg {
+  flex: none;
+  color: var(--muted);
+}
+@media (hover: hover) {
+  .pm-item:hover {
+    background: var(--accent-soft);
+  }
+}
+.pm-item:active {
+  transform: scale(0.98);
+  background: var(--accent-soft);
+}
+.pm-item.on {
+  background: var(--accent-soft);
+}
+.pm-item.on svg {
+  color: var(--text);
+}
+@media (max-width: 700px) {
+  .popover.pop-list-2 .pm-cols {
+    grid-template-columns: 1fr;
+  }
+  .popover.pop-list-2 {
+    min-width: 286px;
+  }
+}

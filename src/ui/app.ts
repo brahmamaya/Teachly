@@ -506,6 +506,8 @@ export class App {
     if (!this.popover) return;
     fadeOut(this.popover);
     this.popover = null;
+    if (this.popArrow) fadeOut(this.popArrow);
+    this.popArrow = null;
     const wasEdit = this.popFor === 'tbedit' || this.popFor === 'menu';
     this.popFor = '';
     if (wasEdit) this.renderHex();
@@ -558,6 +560,8 @@ export class App {
     // From the floating hexagon: open beside it, never over it.
     const dock = anchor.closest('.hexdock');
     if (dock) {
+      this.popArrow?.remove();
+      this.popArrow = null;
       const d = dock.getBoundingClientRect();
       const right = d.right + gap + pw <= W - 8;
       const left = right ? d.right + gap : Math.max(8, d.left - gap - pw);
@@ -577,7 +581,23 @@ export class App {
     }[tbEdge()];
     pop.style.left = `${left}px`;
     pop.style.top = `${top}px`;
+    // A small arrow from the menu to the button it belongs to.
+    const edge = tbEdge();
+    const arrow = (this.popArrow ??= (() => {
+      const a = document.createElement('i');
+      a.className = 'pop-arrow';
+      this.root.appendChild(a);
+      return a;
+    })());
+    const s = 14 * k;
+    const ax = Math.max(left + 22 * k, Math.min(left + pw - 22 * k, r.left + r.width / 2));
+    arrow.style.width = arrow.style.height = `${s}px`;
+    arrow.style.left = `${ax - s / 2}px`;
+    arrow.style.top = `${edge === 'bottom' ? top + ph - s / 2 - 1 : top - s / 2 + 1}px`;
+    arrow.dataset.dir = edge === 'bottom' ? 'down' : 'up';
   }
+
+  private popArrow: HTMLElement | null = null;
 
   /** Colour buttons, the teacher's own recent colours, and a picker for any colour. */
   private swatches(colors: string[], current: string | null, attr: string, pre = ''): string {
@@ -691,14 +711,19 @@ export class App {
           <div class="n3-colors">${this.swatches(boardColors(), t.shapeColor, 'scolor')}</div>`;
         break;
       case 'insert':
-        pop.innerHTML = `<div class="grid-btns">
-          ${this.gridBtn('image', 'image', 'Picture')}
-          ${this.gridBtn('camera', 'camera', 'Camera')}
-          ${this.gridBtn('pdf', 'pdf', 'PDF / Book')}
-          ${this.gridBtn('pptx', 'slides', 'PowerPoint')}
-          ${this.gridBtn('table', 'table', 'Table')}
-          ${this.gridBtn('graph', 'graph', 'Graph y = f(x)')}
-          ${this.gridBtn('page', 'pages', 'New page')}</div>`;
+        // A tidy list with a title; the camera sits apart at the bottom.
+        pop.className = 'popover pop-list';
+        pop.innerHTML = `<div class="pm-title">Insert</div>
+          <div class="pm-list">
+            ${this.menuItem('image', 'image', 'Picture')}
+            ${this.menuItem('pdf', 'pdf', 'PDF / Book')}
+            ${this.menuItem('pptx', 'slides', 'PowerPoint')}
+            ${this.menuItem('table', 'table', 'Table')}
+            ${this.menuItem('graph', 'graph', 'Graph y = f(x)')}
+            ${this.menuItem('page', 'pages', 'New page')}
+          </div>
+          <div class="pm-sep"></div>
+          <div class="pm-list">${this.menuItem('camera', 'camera', 'Take Photo')}</div>`;
         break;
       case 'table':
         // Word-style picker: slide over the grid to choose rows × columns.
@@ -715,19 +740,21 @@ export class App {
         break;
       case 'tools': {
         const ins = this.board.instruments;
-        pop.innerHTML = `<div class="grid-btns tools-grid">
-          ${this.gridBtn('ruler', 'ruler', 'Ruler', ins.has('ruler'))}
-          ${this.gridBtn('protractor', 'protractor', 'Protractor', ins.has('protractor'))}
-          ${this.gridBtn('compass', 'compass', 'Compass', t.tool === 'compass')}
-          ${this.gridBtn('timer', 'timer', 'Timer')}
-          ${this.gridBtn('spotlight', 'spotlight', 'Spotlight')}
-          ${this.gridBtn('curtain', 'curtain', 'Screen cover')}
-          ${this.gridBtn('magnifier', 'magnifier', 'Magnifier')}
-          ${this.gridBtn('graph', 'graph', 'Graph y = f(x)')}
-          ${this.gridBtn('calc', 'calc', 'Calculator')}
-          ${this.gridBtn('picker', 'dice', 'Random picker')}
-          ${this.gridBtn('score', 'score', 'Scoreboard')}
-          ${this.gridBtn('multi', 'pen', 'Group writing', store.settings.multiWrite)}</div>`;
+        pop.className = 'popover pop-list pop-list-2';
+        pop.innerHTML = `<div class="pm-title">Tools</div>
+          <div class="pm-list pm-cols">
+          ${this.menuItem('ruler', 'ruler', 'Ruler', ins.has('ruler'))}
+          ${this.menuItem('protractor', 'protractor', 'Protractor', ins.has('protractor'))}
+          ${this.menuItem('compass', 'compass', 'Compass', t.tool === 'compass')}
+          ${this.menuItem('timer', 'timer', 'Timer')}
+          ${this.menuItem('spotlight', 'spotlight', 'Spotlight')}
+          ${this.menuItem('curtain', 'curtain', 'Screen cover')}
+          ${this.menuItem('magnifier', 'magnifier', 'Magnifier')}
+          ${this.menuItem('graph', 'graph', 'Graph y = f(x)')}
+          ${this.menuItem('calc', 'calc', 'Calculator')}
+          ${this.menuItem('picker', 'dice', 'Random picker')}
+          ${this.menuItem('score', 'score', 'Scoreboard')}
+          ${this.menuItem('multi', 'pen', 'Group writing', store.settings.multiWrite)}</div>`;
         break;
       }
       case 'tbedit': {
@@ -853,8 +880,9 @@ export class App {
     }
   }
 
-  private gridBtn(act: string, ic: string, label: string, on = false): string {
-    return `<button class="grid-btn ${on ? 'on' : ''}" data-act="${act}">${icon(ic, 30)}<span>${label}</span></button>`;
+  /** One row of a list menu: icon and name (highlighted when `on`). */
+  private menuItem(act: string, ic: string, label: string, on = false): string {
+    return `<button class="pm-item ${on ? 'on' : ''}" data-act="${act}" role="menuitem">${icon(ic, 22)}<span>${label}</span></button>`;
   }
 
   private onPopoverClick(e: MouseEvent): void {
