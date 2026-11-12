@@ -6003,3 +6003,13 @@ button,
   border-radius: 0 16px 16px 0 !important;
   border-left-width: 0 !important;
 }
+
+/* Middle style: the two halves are one bar. Each half's shadow stops at the
+   seam, so one does not darken the other (clip-path leaves room for the
+   shadow on every other side). */
+#app[data-tbalign='middle']:not(.tb-stacked) .toolbar.tb-left {
+  clip-path: inset(-80px 0 -80px -80px);
+}
+#app[data-tbalign='middle']:not(.tb-stacked) .toolbar.tb-right {
+  clip-path: inset(-80px -80px -80px 0);
+}
