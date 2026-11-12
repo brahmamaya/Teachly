@@ -5967,3 +5967,9 @@ button,
 #app[data-tb='top'][data-tbflush][data-board] .toolbar {
   top: 0;
 }
+
+/* Toolbar on top: its strip is not part of the writing board. Ink, laser and
+   touches stop at the bar's lower edge (a plain rectangle clip: cheap). */
+#app[data-tb='top'] .board {
+  clip-path: inset(var(--board-top, 0px) 0 0 0);
+}

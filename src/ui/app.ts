@@ -1368,10 +1368,12 @@ export class App {
       const reaches = Math.max(left.getBoundingClientRect().right, right.getBoundingClientRect().right) > window.innerWidth - cw;
       this.root.style.setProperty('--corner-top', reaches ? `${Math.round(barBottom + 6)}px` : '');
       this.root.style.setProperty('--bar-end', `${Math.round(barBottom)}px`);
+      this.root.style.setProperty('--board-top', `${Math.round(barBottom)}px`);
     } else {
       this.root.removeAttribute('data-tbflush');
       this.root.style.removeProperty('--corner-top');
       this.root.style.removeProperty('--bar-end');
+      this.root.style.removeProperty('--board-top');
     }
     this.board.setInsets({ top: Math.round(barBottom), right: 0, bottom: 0, left: 0 });
     this.board.resize();
