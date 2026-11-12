@@ -5961,3 +5961,9 @@ button,
     transition: none;
   }
 }
+
+/* Toolbar on top, clear of the iPad status bar's time and battery: touches the very top edge. */
+#app[data-tb='top'][data-tbflush] .toolbar,
+#app[data-tb='top'][data-tbflush][data-board] .toolbar {
+  top: 0;
+}

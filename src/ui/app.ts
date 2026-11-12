@@ -1356,6 +1356,12 @@ export class App {
     // moving under the bar only when the bar reaches that corner.
     let barBottom = 0;
     if (pos === 'top') {
+      // The bar touches the top edge when it stays clear of the status bar's
+      // time (left) and battery (right) on iPad / iPhone; otherwise it sits
+      // just below the status bar.
+      const W = window.innerWidth, clear = 190;
+      const clearOfStatus = mid && !stacked && left.getBoundingClientRect().left >= clear && W - right.getBoundingClientRect().right >= clear;
+      this.root.toggleAttribute('data-tbflush', clearOfStatus);
       for (const bar of [left, right]) barBottom = Math.max(barBottom, bar.getBoundingClientRect().bottom);
       const corner = this.root.querySelector('.corner') as HTMLElement | null;
       const cw = (corner?.offsetWidth ?? 120) * ui() + 24;
@@ -1363,6 +1369,7 @@ export class App {
       this.root.style.setProperty('--corner-top', reaches ? `${Math.round(barBottom + 6)}px` : '');
       this.root.style.setProperty('--bar-end', `${Math.round(barBottom)}px`);
     } else {
+      this.root.removeAttribute('data-tbflush');
       this.root.style.removeProperty('--corner-top');
       this.root.style.removeProperty('--bar-end');
     }
