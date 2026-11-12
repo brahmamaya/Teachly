@@ -5931,3 +5931,14 @@ button,
   box-shadow: none;
   outline: 1px solid rgba(15, 23, 42, 0.18);
 }
+
+/* ---------- Toolbar on top: page sits below the bar, brand stays top right ---------- */
+#app[data-tb='top'] .corner {
+  top: var(--corner-top, calc(12px + env(safe-area-inset-top, 0px)));
+  bottom: auto;
+  flex-direction: column;
+  transform-origin: 100% 0;
+}
+#app[data-tb='top'] .zoom-pill {
+  top: calc(var(--bar-end, 0px) + 10px);
+}

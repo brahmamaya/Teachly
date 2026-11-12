@@ -1350,8 +1350,23 @@ export class App {
     } else {
       left.style.left = right.style.left = right.style.right = '';
     }
-    // The page fills the whole screen; the toolbars float on top of it.
-    this.board.insets = { top: 0, right: 0, bottom: 0, left: 0 };
+    // Toolbar at the bottom: the page fills the whole screen and the bars
+    // float over it. Toolbar on top: the page starts just below the bar (it
+    // is never covered), and "Teachly by Physica" stays in the top right,
+    // moving under the bar only when the bar reaches that corner.
+    let barBottom = 0;
+    if (pos === 'top') {
+      for (const bar of [left, right]) barBottom = Math.max(barBottom, bar.getBoundingClientRect().bottom);
+      const corner = this.root.querySelector('.corner') as HTMLElement | null;
+      const cw = (corner?.offsetWidth ?? 120) * ui() + 24;
+      const reaches = Math.max(left.getBoundingClientRect().right, right.getBoundingClientRect().right) > window.innerWidth - cw;
+      this.root.style.setProperty('--corner-top', reaches ? `${Math.round(barBottom + 6)}px` : '');
+      this.root.style.setProperty('--bar-end', `${Math.round(barBottom)}px`);
+    } else {
+      this.root.style.removeProperty('--corner-top');
+      this.root.style.removeProperty('--bar-end');
+    }
+    this.board.setInsets({ top: Math.round(barBottom), right: 0, bottom: 0, left: 0 });
     this.board.resize();
     if (!keepPopover) this.closePopover();
     else if (this.popover) {

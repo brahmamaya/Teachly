@@ -186,6 +186,27 @@ export class Board {
   /** Screen space kept free around the page (toolbars, clock). Set by the app. */
   insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
+  /**
+   * Change the free area (toolbar moved to another edge). Pages showing the
+   * whole page are fitted again to the new area; zoomed pages keep the same
+   * part of the page and zoom.
+   */
+  setInsets(next: { top: number; right: number; bottom: number; left: number }): void {
+    const o = this.insets;
+    if (o.top === next.top && o.right === next.right && o.bottom === next.bottom && o.left === next.left) return;
+    if (!this.w || !this.h) {
+      this.insets = next;
+      return;
+    }
+    const old = this.fitCam();
+    const near = (c: Camera) => Math.abs(c.z - old.z) < 1e-3 && Math.abs(c.x - old.x) * c.z < 1 && Math.abs(c.y - old.y) * c.z < 1;
+    const kept = [...store.cameras].map(([id, c]) => [id, near(c) ? null : this.viewOf(c)] as const);
+    this.insets = next;
+    const fit = this.fitCam();
+    for (const [id, v] of kept) store.cameras.set(id, v ? this.camOf(v) : { ...fit });
+    this.invalidate('bg', 'ink', 'overlay');
+  }
+
   /** Zoom at which the whole page just fits on screen. */
   get fitZ(): number {
     const i = this.insets;
