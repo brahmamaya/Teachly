@@ -327,12 +327,12 @@ export class Library {
             ? act('restore', 'undo', 'Restore') + act('purge', 'trash', 'Delete for good')
             : act('rename', 'text', 'Rename') + act('cover', 'palette', 'Cover') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('download', 'download', 'Download') + act('delete', 'trash', 'Move to trash');
           return `
-        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''} ${coverById(m.cover) ? 'has-cv' : ''}" data-id="${m.id}" style="--n:${n + 1}">
+        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''} ${coverById(m.cover) ? 'has-cv' : ''}" data-o="${m.portrait ? 'p' : 'l'}" data-id="${m.id}" style="--n:${n + 1}">
           <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${coverById(m.cover) ? coverHTML(coverById(m.cover)!, m.title, !!m.portrait) : m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
           <span class="nb-row">
             <span class="nb-text">
               <span class="nb-title">${esc(m.title)}</span>
-              <span class="nb-meta">${inTrash ? `Deleted ${when(m.trashed!)}` : when(m.updated)}${where && this.view === 'all' ? ` · ${esc(where)}` : ''}</span>
+              <span class="nb-meta">${inTrash ? `Deleted ${when(m.trashed!)}` : when(m.updated)}${coverById(m.cover) ? ` · ${m.pages}p` : ''}${where && this.view === 'all' ? ` · ${esc(where)}` : ''}</span>
             </span>
             <button class="nb-more" data-lib="more" title="More" aria-label="More for ${esc(m.title)}" aria-expanded="${this.menuFor === m.id}">${icon('more', 18)}</button>
           </span>

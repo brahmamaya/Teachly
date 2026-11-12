@@ -7026,3 +7026,62 @@ button,
     animation: none;
   }
 }
+
+
+/* ---------- One line: every card has the same slot, so rows stay straight ----------
+   The slot is wide (4:3). A wide cover fills it; a tall cover is as high as
+   the slot and sits in the middle (so vertical and horizontal notebooks share
+   one line). Pictures of pages are shown whole inside the same slot. */
+.library .nb-cover,
+.library .nb-card.has-cv .nb-cover {
+  aspect-ratio: 4 / 3;
+}
+.library .nb-cover img {
+  object-fit: contain;
+  background: #fff;
+}
+.library .nb-card.has-cv .nb-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.library .nb-card.has-cv .nbc {
+  height: auto;
+  margin-top: 0;
+}
+.library .nb-card.has-cv .nbc[data-o='l'] {
+  width: 100%;
+}
+/* Tall: 3:4 and as high as the slot = 56.25% of its width. */
+.library .nb-card.has-cv .nbc[data-o='p'] {
+  width: 56.25%;
+}
+.library .nb-card.has-cv[data-o='p'] .nb-age {
+  right: calc(21.875% + 10px);
+}
+.library .nb-card.has-cv[data-o='p'].current::after {
+  left: calc(21.875% + 10px);
+}
+.library .nb-card.nb-new {
+  align-self: stretch;
+}
+
+/* Square slot: a wide cover fills its width, a tall cover its height, both in one line. */
+.library .nb-cover,
+.library .nb-card.has-cv .nb-cover {
+  aspect-ratio: 1 / 1;
+}
+.library .nb-card.has-cv .nbc[data-o='p'] {
+  width: 75%;
+}
+/* No box behind a cover, and the page count sits with the date (not on the cover). */
+#app[data-board] .library .nb-card.has-cv .nb-cover {
+  background: none;
+  border-color: transparent;
+}
+.library .nb-card.has-cv .nb-age {
+  display: none;
+}
+.library .nb-card.has-cv[data-o='p'].current::after {
+  left: calc(12.5% + 10px);
+}
