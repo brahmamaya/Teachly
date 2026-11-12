@@ -6541,19 +6541,17 @@ button,
   box-shadow: 0 8px 22px rgba(91, 140, 255, 0.45);
 }
 
-/* ---------- Notebook covers (optional): Teachly's own full-bleed look ---------- */
+/* ---------- Notebook covers (optional): flat colour, one fine line drawing, the name ---------- */
 .nbc {
   position: relative;
   display: block;
   width: 100%;
   container-type: inline-size;
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--cv);
-  background-size: cover;
-  background-position: center;
   color: var(--ci);
   overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14), 0 2px 4px rgba(0, 0, 0, 0.18), 0 14px 28px rgba(0, 0, 0, 0.38);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 24px rgba(0, 0, 0, 0.32);
   text-align: left;
 }
 .nbc[data-o='p'] {
@@ -6562,66 +6560,62 @@ button,
 .nbc[data-o='l'] {
   aspect-ratio: 4 / 3;
 }
-/* Soft light across the top left, like a printed cover. */
-.nbc::before {
-  content: '';
+/* The drawing sits in the upper part; the name below it, so they never meet. */
+.nbc-art {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(0deg, var(--cs, transparent), transparent 55%), linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 45%);
-  pointer-events: none;
+  left: 9cqw;
+  right: 9cqw;
+  top: 15cqw;
+  bottom: 38cqw;
+  background: var(--ca) center / contain no-repeat;
 }
-/* Fine inner frame. */
-.nbc::after {
-  content: '';
-  position: absolute;
-  inset: 5.5cqw;
-  border: 1px solid var(--cf);
-  border-radius: 8px;
-  pointer-events: none;
+.nbc[data-o='l'] .nbc-art {
+  top: 11cqw;
+  bottom: 30cqw;
 }
 .nbc-brand {
   position: absolute;
-  left: 11cqw;
-  top: 9cqw;
+  left: 9cqw;
+  top: 7cqw;
   font-family: 'Orbitron', 'Exo 2', sans-serif;
-  font-size: 8px;
-  font-size: 4.2cqw;
+  font-size: 7px;
+  font-size: 3.6cqw;
   font-weight: 700;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  opacity: 0.85;
+  opacity: 0.7;
+}
+.nbc-tw {
+  position: absolute;
+  left: 9cqw;
+  right: 9cqw;
+  bottom: 9cqw;
+}
+.nbc-rule {
+  display: block;
+  width: 10cqw;
+  height: 2px;
+  margin-bottom: 3cqw;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.75;
 }
 .nbc-t {
-  position: absolute;
-  left: 11cqw;
-  right: 12cqw;
-  bottom: 12cqw;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   overflow: hidden;
-  font-size: 12px;
-  font-size: 10.5cqw;
+  font-size: 11px;
+  font-size: 9.5cqw;
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.1;
   letter-spacing: -0.01em;
-  word-break: break-word;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  overflow-wrap: anywhere;
 }
 .nbc[data-o='l'] .nbc-t {
   font-size: 9px;
-  font-size: 8.6cqw;
-  -webkit-line-clamp: 3;
-}
-/* Bookmark ribbon at the top right. */
-.nbc-rib {
-  position: absolute;
-  top: 0;
-  right: 13cqw;
-  width: 8cqw;
-  height: 19cqw;
-  background: linear-gradient(90deg, var(--cb), color-mix(in srgb, var(--cb) 70%, #000));
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+  font-size: 8cqw;
+  -webkit-line-clamp: 2;
 }
 /* A covered notebook: the cover is the whole card (no card box, no picture inside). */
 .library .nb-card.has-cv {
@@ -7164,4 +7158,121 @@ button,
   font-size: 13px;
   font-weight: 700;
   color: #64748b;
+}
+
+/* ---------- Page grid: exactly the dark look of the reference (black, #202020 top, #404040 bar) ---------- */
+#app .pgs,
+#app[data-board] .pgs {
+  --pg-bg: #000000;
+  --pg-text: #ffffff;
+  --pg-soft: #ffffff;
+  --pg-line: rgba(255, 255, 255, 0.08);
+  --pg-accent: #4e99ff;
+  --pg-tint: rgba(255, 255, 255, 0.12);
+  background: #000000;
+  color: #ffffff;
+}
+#app[data-board] .pgs .pgs-top {
+  background: #202020;
+  padding-bottom: 14px;
+}
+#app[data-board] .pgs .pgs-bar {
+  background: #404040;
+  border-bottom: 0;
+  box-shadow: inset 0 1px 0 #5c5c5c;
+  padding-top: 4px;
+}
+#app[data-board] .pgs .pgs-round {
+  background: #1c1c1c;
+  border-color: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+  box-shadow: none;
+}
+.pgs-hist {
+  padding: 3px;
+  gap: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background: #1a1a1a;
+}
+.pgs-hist .pgs-round {
+  border-color: transparent;
+  background: transparent;
+}
+#app[data-board] .pgs .pgs-title {
+  font-size: 22px;
+  color: #ffffff;
+}
+#app[data-board] .pgs .pgs-pill {
+  background: #373737;
+  border: 0;
+  color: #ffffff;
+}
+#app[data-board] .pgs .pgs-pill.on {
+  background: #4e99ff;
+  color: #ffffff;
+}
+#app[data-board] .pgs .pgs-act,
+#app[data-board] .pgs .pgs-act svg,
+#app[data-board] .pgs .pgs-act.danger,
+#app[data-board] .pgs .pgs-act.danger svg {
+  color: #ffffff;
+}
+#app[data-board] .pgs .pgs-act:disabled,
+#app[data-board] .pgs .pgs-act:disabled svg {
+  opacity: 1;
+  color: #8c8c8c;
+}
+#app[data-board] .pgs .pgs-act:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+}
+@media (hover: hover) {
+  #app[data-board] .pgs .pgs-act:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+/* Pages: plain white sheets on black, no frame; the chosen one has the blue frame. */
+#app[data-board] .pgs .pgs-card {
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+#app[data-board] .pgs .pgs-card img {
+  border-radius: 0;
+}
+#app[data-board] .pgs .pgs-card.sel {
+  box-shadow: 0 0 0 4px #4e99ff;
+}
+#app[data-board] .pgs .pgs-zoom,
+#app[data-board] .pgs .pgs-check {
+  background: #4e99ff;
+  color: #ffffff;
+}
+#app[data-board] .pgs .pgs-n,
+#app[data-board] .pgs .pgs-n.cur {
+  min-width: 0;
+  padding: 0;
+  background: none;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 500;
+}
+.pgs-item.over .pgs-card {
+  outline-color: #4e99ff;
+}
+
+/* Wide cover: the drawing on the right (bigger), the name on the left. */
+.nbc[data-o='l'] .nbc-art {
+  left: 50cqw;
+  right: 6cqw;
+  top: 8cqw;
+  bottom: 8cqw;
+}
+.nbc[data-o='l'] .nbc-tw {
+  right: 48cqw;
+}
+.nbc[data-o='l'] .nbc-t {
+  font-size: 8px;
+  font-size: 7.6cqw;
+  -webkit-line-clamp: 4;
 }
