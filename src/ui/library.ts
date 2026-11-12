@@ -20,7 +20,9 @@ import {
   setPortrait,
   trashNotebook,
 } from '../io/library';
+import { liteDevice } from '../board';
 import { COVERS, coverById, coverHTML } from './covers';
+import { askPdfRange } from './pdfrange';
 import { store } from '../store';
 import { icon } from './icons';
 import { fadeOut, toast } from './panel';
@@ -323,7 +325,7 @@ export class Library {
           const act = (a: string, ic: string, label: string) => `<button class="nb-act" data-lib="${a}">${icon(ic, 17)}<span>${label}</span></button>`;
           const actions = inTrash
             ? act('restore', 'undo', 'Restore') + act('purge', 'trash', 'Delete for good')
-            : act('rename', 'text', 'Rename') + act('cover', 'palette', 'Cover') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('delete', 'trash', 'Move to trash');
+            : act('rename', 'text', 'Rename') + act('cover', 'palette', 'Cover') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('download', 'download', 'Download') + act('delete', 'trash', 'Move to trash');
           return `
         <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''} ${coverById(m.cover) ? 'has-cv' : ''}" data-id="${m.id}" style="--n:${n + 1}">
           <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${coverById(m.cover) ? coverHTML(coverById(m.cover)!, m.title, !!m.portrait) : m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
@@ -427,6 +429,24 @@ export class Library {
         if (id === store.doc.id) store.doc = await saveNotebook({ ...store.doc, title });
         else await renameNotebook(id, title);
         return this.refresh();
+      }
+      case 'download': {
+        const m = this.list.find((x) => x.id === id);
+        const doc = m ? await loadNotebook(id) : null;
+        if (!m || !doc) return toast('Could not open that notebook');
+        const total = doc.pages.length;
+        const r = await askPdfRange(this.el, { total, current: id === store.doc.id ? Math.min(total, store.index + 1) : 0, title: m.title });
+        if (!r) return;
+        toast('Making the PDF…', 2500);
+        try {
+          const [{ makePdf }, { download }] = await Promise.all([import('../io/pdfvector'), import('../io/files')]);
+          const { blob } = await makePdf(doc.pages.slice(r.from - 1, r.to), liteDevice() ? 2.25 : 3);
+          const base = m.title.replace(/[^\w\- ]+/g, '').trim() || 'teachly';
+          download(blob, r.from === 1 && r.to === total ? `${base}.pdf` : `${base} pages ${r.from}-${r.to}.pdf`);
+        } catch {
+          toast('Could not make the PDF');
+        }
+        return;
       }
       case 'cover': {
         const m = this.list.find((x) => x.id === id);
