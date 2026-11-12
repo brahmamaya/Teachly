@@ -6486,3 +6486,57 @@ button,
 .page-thumb img[src] {
   opacity: 1;
 }
+
+/* ---------- My notebooks: premium black (always, whatever the board colour) ---------- */
+#app .library,
+#app[data-board] .library {
+  --lb-bg: radial-gradient(110% 70% at 85% -10%, #151a2e 0%, rgba(21, 26, 46, 0) 60%), linear-gradient(180deg, #08090d 0%, #050507 100%);
+  --lb-side: rgba(255, 255, 255, 0.025);
+  --lb-card: #12141b;
+  --lb-text: #f4f6fb;
+  --lb-soft: #8d95a8;
+  --lb-line: rgba(255, 255, 255, 0.075);
+  --lb-accent: #5b8cff;
+  --lb-tint: rgba(91, 140, 255, 0.16);
+  --lb-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.55);
+  --lb-shadow-up: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 16px 36px rgba(40, 90, 255, 0.28);
+  background: var(--lb-bg);
+  color: var(--lb-text);
+}
+#app[data-board] .library .ls-item.on .ls-n,
+#app[data-board] .library .nb-card.current::after,
+#app[data-board] .library .nb-new .nb-cover {
+  color: #fff;
+}
+#app[data-board] .library .nb-card.nb-new {
+  border-color: rgba(91, 140, 255, 0.45);
+  background: rgba(91, 140, 255, 0.1);
+}
+/* A page cover keeps its own paper colour; a thin edge lifts it off the black. */
+#app[data-board] .library .nb-cover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #0b0c11;
+}
+#app[data-board] .library .nb-age {
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+#app[data-board] .library .lib-search {
+  border-color: var(--lb-line);
+  box-shadow: none;
+}
+#app[data-board] .library .lib-head .icon-btn {
+  box-shadow: none;
+}
+#app[data-board] .library .nb-menu {
+  background: #181b24;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 44px rgba(0, 0, 0, 0.7);
+}
+#app[data-board] .library .nb-act:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+#app[data-board] .library .nb-new .nb-cover {
+  background: var(--lb-accent);
+  border: 0;
+  box-shadow: 0 8px 22px rgba(91, 140, 255, 0.45);
+}
