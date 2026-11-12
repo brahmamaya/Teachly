@@ -31,6 +31,8 @@ export interface Settings {
   tbAlign?: 'middle' | 'sides';
   /** Floating hexagon opacity, 0.2 to 1. */
   hexAlpha?: number;
+  /** Look of My notebooks: dark (default) or light. */
+  libTheme?: 'light' | 'dark';
 }
 
 export interface ToolState {

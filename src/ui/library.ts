@@ -192,18 +192,31 @@ export class Library {
     return !!this.el;
   }
 
+  /** Light or dark look (the sun / moon switch at the top). */
+  private applyTheme(el: HTMLElement): void {
+    const light = store.settings.libTheme === 'light';
+    el.dataset.theme = light ? 'light' : 'dark';
+    el.querySelector('.lib-theme')?.setAttribute('aria-checked', String(!light));
+  }
+
   async show(): Promise<void> {
     if (this.el) return;
     // Save what is on the board first so its cover is up to date.
     store.doc = await saveNotebook(store.doc);
     const el = document.createElement('section');
     el.className = 'library';
+    this.applyTheme(el);
     el.setAttribute('aria-label', 'My notebooks');
     el.innerHTML = `
       <nav class="lib-side" aria-label="Notebook lists"></nav>
       <div class="lib-main">
         <header class="lib-head">
           <h2 class="lib-title"></h2>
+          <button class="lib-theme" data-lib="theme" role="switch" aria-label="Light or dark look" title="Light / Dark">
+            <svg class="lt-sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#fbbf24"/><g stroke="#f59e0b" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></g></svg>
+            <svg class="lt-moon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z" fill="#c7d2fe"/><circle cx="16.5" cy="6" r="1" fill="#e0e7ff"/><circle cx="19.2" cy="9.2" r="0.7" fill="#e0e7ff"/></svg>
+            <i class="lt-thumb"></i>
+          </button>
           <input class="lib-search" type="search" placeholder="Search" aria-label="Search notebooks">
           <button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('folderPlus', 24)}</button>
           <button class="icon-btn" data-lib="close" title="Back to board" aria-label="Back to board">${icon('close', 22)}</button>
@@ -341,6 +354,9 @@ export class Library {
         return this.render();
       case 'close':
         return this.close();
+      case 'theme':
+        store.setSettings({ libTheme: store.settings.libTheme === 'light' ? 'dark' : 'light' });
+        return this.applyTheme(this.el);
       case 'view':
         this.view = (b.dataset.v ?? 'all') as View;
         this.query = '';
