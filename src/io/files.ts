@@ -265,7 +265,7 @@ export async function openFile(file?: File): Promise<void> {
   try {
     const doc = JSON.parse(await file.text()) as Doc;
     if (!Array.isArray(doc.pages)) throw new Error('Not a Teachly file');
-    store.loadDoc({ version: 1, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages.length ? doc.pages : [newPage()] });
+    store.loadDoc({ version: 1, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages.length ? doc.pages : [newPage()], ...(doc.orient === 'portrait' ? { orient: 'portrait' as const } : {}) });
   } catch (e) {
     alert(`Could not open file: ${(e as Error).message}`);
   }

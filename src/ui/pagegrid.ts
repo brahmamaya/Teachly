@@ -384,7 +384,7 @@ export class PagesGrid {
         return toast(`${idx.length} page${idx.length === 1 ? '' : 's'} deleted. Tap Undo to bring ${idx.length === 1 ? 'it' : 'them'} back`);
       case 'extract': {
         const copy = idx.map((i) => clonePage(pages[i]));
-        const doc = { ...blankNotebook(`${store.doc.title} (${idx.length} page${idx.length === 1 ? '' : 's'})`), pages: copy };
+        const doc = { ...blankNotebook(`${store.doc.title} (${idx.length} page${idx.length === 1 ? '' : 's'})`, '#000000', store.doc.orient), pages: copy };
         await saveNotebook(doc);
         return toast(`${idx.length} page${idx.length === 1 ? '' : 's'} saved as a new notebook in My notebooks`, 3500);
       }

@@ -38,6 +38,7 @@ import { toggleMagnifier } from '../widgets/magnifier';
 import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
 import { Library, saveNotebookDialog } from './library';
+import { newNotebookFlow } from './newnotebook';
 import { PagesGrid } from './pagegrid';
 import { PAGE_DRAG, PagesPanel } from './pages';
 import { fadeOut, toast } from './panel';
@@ -1107,7 +1108,9 @@ export class App {
       case 'new':
         // The current notebook stays in My notebooks, so nothing is lost.
         void saveNotebook(store.doc).then(async () => {
-          store.loadDoc(await saveNotebook(blankNotebook('Notebook', store.page.bg)));
+          const doc = await newNotebookFlow(this.root, { name: 'Notebook', bg: store.page.bg });
+          if (!doc) return;
+          store.loadDoc(doc);
           toast('New notebook — the old one is in My notebooks');
         });
         return;

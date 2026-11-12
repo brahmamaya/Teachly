@@ -1,4 +1,5 @@
 import { uid } from './geometry';
+import { setPageShape } from './page';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } from './types';
 
 export interface Settings {
@@ -296,6 +297,7 @@ export class Store {
 
   loadDoc(doc: Doc): void {
     this.doc = doc.id ? doc : { ...doc, id: uid() };
+    setPageShape(doc.orient === 'portrait' ? 4 / 3 : null);
     this.index = 0;
     this.undoStack = [];
     this.redoStack = [];

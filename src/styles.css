@@ -7085,3 +7085,83 @@ button,
 .library .nb-card.has-cv[data-o='p'].current::after {
   left: calc(12.5% + 10px);
 }
+
+/* ---------- New notebook sheet: name, page shape, optional cover ---------- */
+.nn-box {
+  width: min(600px, 100%);
+}
+.nn-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding: 2px 4px;
+}
+.nn-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--lb-soft, #64748b);
+}
+.nn-label small {
+  font-weight: 600;
+  opacity: 0.8;
+}
+.nn-box .sv-input {
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid var(--lb-line, rgba(127, 127, 127, 0.3));
+  background: var(--lb-tint, #eef2ff);
+  color: var(--lb-text, #0f172a);
+  font-size: 17px;
+  font-weight: 600;
+}
+.nn-shapes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.nn-shape {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 64px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  background: var(--lb-tint, #eef2ff);
+  color: var(--lb-text, #0f172a);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  transition: border-color 0.18s var(--ease), transform 0.15s var(--ease), background 0.18s var(--ease);
+}
+.nn-shape:active {
+  transform: scale(0.97);
+}
+.nn-shape.on {
+  border-color: var(--lb-accent, #2563eb);
+}
+.nn-ico {
+  display: block;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.85;
+}
+.nn-ico.wide {
+  width: 34px;
+  height: 24px;
+}
+.nn-ico.tall {
+  width: 24px;
+  height: 32px;
+}
+.cv-blank {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+}

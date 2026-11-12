@@ -22,6 +22,7 @@ import {
 } from '../io/library';
 import { liteDevice } from '../board';
 import { COVERS, coverById, coverHTML } from './covers';
+import { newNotebookFlow } from './newnotebook';
 import { askPdfRange } from './pdfrange';
 import { store } from '../store';
 import { icon } from './icons';
@@ -409,8 +410,10 @@ export class Library {
         this.view = 'all';
         return this.refresh();
       case 'new': {
-        const doc = blankNotebook(`Notebook ${this.list.length + 1}`, store.page.bg);
-        store.loadDoc(await saveNotebook(doc, folderId));
+        // Name, shape and (if wanted) a cover first.
+        const doc = await newNotebookFlow(this.el, { name: `Notebook ${this.list.length + 1}`, bg: store.page.bg, folder: folderId });
+        if (!doc) return;
+        store.loadDoc(doc);
         this.close();
         return toast('New notebook');
       }

@@ -211,6 +211,7 @@ export async function duplicateNotebook(id: string): Promise<void> {
 /** Put a notebook into a folder ('' = out of every folder). Its pages are not touched. */
 /** A vertical notebook: its first page is a tall book page, or the screen is held upright. */
 export function isPortrait(doc: Doc): boolean {
+  if (doc.orient === 'portrait') return true;
   const first = doc.pages[0];
   const book = first?.els.find((e): e is ImageEl => e.type === 'image' && !!e.locked);
   if (book) return book.h > book.w * 1.1;
@@ -265,8 +266,8 @@ export async function deleteFolder(id: string): Promise<void> {
   ]);
 }
 
-export function blankNotebook(title: string, bg = '#000000'): Doc {
-  return { version: 1, id: uid(), title, pages: [newPage(bg)] };
+export function blankNotebook(title: string, bg = '#000000', orient?: 'portrait'): Doc {
+  return { version: 1, id: uid(), title, pages: [newPage(bg)], ...(orient ? { orient } : {}) };
 }
 
 /**

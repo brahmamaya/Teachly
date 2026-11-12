@@ -112,6 +112,8 @@ export interface Doc {
   id?: string;
   title: string;
   pages: Page[];
+  /** A vertical notebook: its pages are tall (3:4). Missing = the pages follow the screen. */
+  orient?: 'portrait';
 }
 
 export interface Camera {

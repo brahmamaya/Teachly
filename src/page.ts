@@ -7,9 +7,32 @@ import type { Rect } from './types';
  */
 export const PAGE: Rect = { x: 0, y: 0, w: 1600, h: 900 };
 
-/** Match the page to the screen's shape. */
+let screenShape = 9 / 16;
+/** A fixed page shape (height / width) chosen for the notebook, or null = follow the screen. */
+let fixedShape: number | null = null;
+
+/** Match the page to the screen's shape (a notebook with a fixed shape keeps its own). */
 export function setPageSize(screenW: number, screenH: number): void {
-  if (screenW > 0 && screenH > 0) PAGE.h = Math.round((PAGE.w * screenH) / screenW);
+  if (screenW > 0 && screenH > 0) screenShape = screenH / screenW;
+  if (fixedShape) return;
+  PAGE.w = 1600;
+  PAGE.h = Math.round(PAGE.w * screenShape);
+}
+
+/**
+ * A vertical notebook has a tall page (3:4) whatever the screen; the others
+ * follow the screen. The tall page is 900 wide so ink and tools look the
+ * same size as on a wide page.
+ */
+export function setPageShape(ratio: number | null): void {
+  fixedShape = ratio;
+  if (ratio) {
+    PAGE.w = 900;
+    PAGE.h = Math.round(900 * ratio);
+  } else {
+    PAGE.w = 1600;
+    PAGE.h = Math.round(PAGE.w * screenShape);
+  }
 }
 
 /** Fit a w×h picture inside the page (centred, keeping its proportions). */
