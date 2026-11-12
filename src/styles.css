@@ -6435,3 +6435,54 @@ button,
     font-size: 15px;
   }
 }
+
+/* ---------- Pages side panel: "Expand" tab on its edge opens the full-screen grid ---------- */
+.pages-expand {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-100%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55em;
+  padding: 1em 0.55em;
+  border: 1px solid var(--border);
+  border-right: 0;
+  border-radius: 1em 0 0 1em;
+  background: var(--accent-soft, var(--surface-solid));
+  background-color: var(--surface-solid);
+  box-shadow: -3px 4px 14px rgba(15, 23, 42, 0.14);
+  color: var(--text);
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  transition: background 0.18s var(--ease), padding 0.18s var(--ease);
+}
+.pages-expand span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+.pages-expand svg {
+  color: var(--accent);
+  flex: none;
+}
+.pages-expand:active {
+  padding-left: 0.8em;
+}
+@media (hover: hover) {
+  .pages-expand:hover {
+    background-color: var(--accent-soft, var(--surface-solid));
+  }
+}
+.page-thumb img:not([src]) {
+  opacity: 0;
+}
+.page-thumb img {
+  transition: opacity 0.25s ease;
+  background: #fff;
+}
+.page-thumb img[src] {
+  opacity: 1;
+}

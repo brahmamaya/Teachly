@@ -38,6 +38,7 @@ import { toggleMagnifier } from '../widgets/magnifier';
 import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
 import { Library, saveNotebookDialog } from './library';
+import { PagesGrid } from './pagegrid';
 import { PAGE_DRAG, PagesPanel } from './pages';
 import { fadeOut, toast } from './panel';
 import { showLegal } from './legal';
@@ -225,6 +226,7 @@ export class App {
   private propSection: PropSection = null;
   private selectTool: SelectTool;
   private pages: PagesPanel;
+  private grid: PagesGrid;
   private library: Library;
   private tableEditor: TableEditor;
 
@@ -261,7 +263,8 @@ export class App {
     this.board.updateCursor();
 
     this.toolbar = root.querySelector('.toolbars') as HTMLElement;
-    this.pages = new PagesPanel(root, () => this.renderToolbar());
+    this.grid = new PagesGrid(root, () => this.renderToolbar());
+    this.pages = new PagesPanel(root, () => this.renderToolbar(), () => this.grid.toggle());
     this.library = new Library(root);
     this.props = root.querySelector('.props') as HTMLElement;
     this.renderToolbar();
