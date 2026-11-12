@@ -5942,3 +5942,22 @@ button,
 #app[data-tb='top'] .zoom-pill {
   top: calc(var(--bar-end, 0px) + 10px);
 }
+
+/* Zoom label: only while zooming / moving, gone 2 seconds later. */
+.zoom-pill {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s var(--ease);
+}
+.zoom-pill.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+#app.drawing .zoom-pill.show {
+  opacity: 0.18;
+}
+@media (prefers-reduced-motion: reduce) {
+  .zoom-pill {
+    transition: none;
+  }
+}

@@ -271,11 +271,11 @@ export class App {
     });
     store.on('page', () => {
       this.updatePageLabel();
-      this.updateZoom();
+      this.updateZoom(false);
       this.updateBoardTone();
     });
     store.on('camera', () => {
-      this.updateZoom();
+      this.updateZoom(true);
       this.positionProps();
     });
     store.on('selection', () => {
@@ -283,7 +283,7 @@ export class App {
       this.renderProps();
     });
     this.updatePageLabel();
-    this.updateZoom();
+    this.updateZoom(false);
     this.updateBoardTone();
     this.startClock();
     this.applyScale();
@@ -1404,12 +1404,30 @@ export class App {
     window.setInterval(tick, 5_000);
   }
 
-  private updateZoom(): void {
+  private zoomShown = '';
+  private zoomTimer = 0;
+
+  /**
+   * The zoom label appears while the board is being zoomed or moved and
+   * fades away 2 seconds after the last change (it stays out of the way
+   * while writing). `show` is false for a page change or start-up.
+   */
+  private updateZoom(show: boolean): void {
     const pill = this.root.querySelector('.zoom-pill') as HTMLElement;
-    // Shown only after moving / zooming the board; tap to go back to the whole page.
     const z = Math.round((store.camera.z / this.board.fitZ) * 100);
     pill.hidden = this.board.isHome;
     pill.textContent = z === 100 ? '⟲  Back to page' : `${z}%  ·  Whole page`;
+    // Only a real zoom / move shows it again (not a page change or re-fit).
+    const key = `${store.page.id}:${store.camera.z.toFixed(3)}:${Math.round(store.camera.x)}:${Math.round(store.camera.y)}`;
+    const changed = key !== this.zoomShown;
+    this.zoomShown = key;
+    if (!show || !changed || pill.hidden) {
+      if (!show) pill.classList.remove('show');
+      return;
+    }
+    pill.classList.add('show');
+    clearTimeout(this.zoomTimer);
+    this.zoomTimer = window.setTimeout(() => pill.classList.remove('show'), 2000);
   }
 
   private bindKeys(): void {
