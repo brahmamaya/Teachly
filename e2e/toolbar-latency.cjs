@@ -54,7 +54,7 @@ async function run(heavy, rate, lite) {
 
 (async () => {
   console.log('scenario                      n   feedback p50/p95/max (ms, from finger down)   tool changed p50/p95');
-  for (const lite of (process.env.LITE ? [true] : [false, true])) for (const heavy of [false, true]) for (const rate of [1, 4, 8]) {
+  for (const lite of (process.env.LITE ? [true] : [false, true])) for (const heavy of (process.env.HEAVY ? [true] : [false, true])) for (const rate of [1, 4, 8]) {
     const r = await run(heavy, rate, lite);
     const ok = r.seen.filter((v) => v <= 100).length;
     console.log(`${lite ? 'lite ' : 'full '}${heavy ? 'heavy' : 'blank'} cpu x${rate}`.padEnd(30), String(r.n).padStart(2), `  ${pct(r.seen, 0.5).toFixed(0)}/${pct(r.seen, 0.95).toFixed(0)}/${Math.max(...r.seen).toFixed(0)}  (${(100 * ok / r.n).toFixed(0)}% <=100ms)`.padEnd(48), `  ${pct(r.tool, 0.5).toFixed(0)}/${pct(r.tool, 0.95).toFixed(0)}`);
