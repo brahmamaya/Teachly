@@ -1,6 +1,7 @@
 import { GState, jsPDF, type jsPDF as JsPDF } from 'jspdf';
 import { bbox } from '../geometry';
-import { drawBackground, drawEl, drawPathEl, pageRegion, withPathMaker } from '../renderer';
+import { drawBackground, drawEl, drawPathEl, imagesReady, pageRegion, withPathMaker } from '../renderer';
+import { inlinePictures } from './assets';
 import type { El, Page, Rect } from '../types';
 
 // Small, sharp PDFs. Instead of one big photo per page, the page goes into
@@ -241,7 +242,11 @@ type SrcPage = { key: string; page: number; el: El & { type: 'image' } };
  * and the original PDF page is put between them, so a book stays as small
  * and sharp as the original file.
  */
-export async function makePdf(pages: Page[], k: number): Promise<{ blob: Blob; pictures: number }> {
+export async function makePdf(notebookPages: Page[], k: number): Promise<{ blob: Blob; pictures: number }> {
+  // Pictures kept on the device as assets are written out as data URLs first, and every
+  // picture is ready before anything is drawn (items drawn as pictures need them loaded).
+  const pages = await inlinePictures(notebookPages);
+  for (const p of pages) await imagesReady(p);
   const { loadSource } = await import('./library');
   // Which original files can be used (still on this device, readable).
   const keys = new Set<string>();

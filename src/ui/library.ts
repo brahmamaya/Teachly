@@ -179,8 +179,8 @@ export async function saveNotebookDialog(host: HTMLElement): Promise<void> {
     folder = (await createFolder(name)).id;
     where = name;
   } else if (folder) where = folders.find((f) => f.id === folder)?.name ?? where;
-  store.doc = await saveNotebook({ ...store.doc, title: res.title }, folder);
-  store.emit('doc');
+  store.setTitle(res.title);
+  await saveNotebook(store.doc, folder);
   toast(`Saved in ${where}`);
 }
 
@@ -213,8 +213,8 @@ export class Library {
 
   async show(): Promise<void> {
     if (this.el) return;
-    // Save what is on the board first so its cover is up to date.
-    store.doc = await saveNotebook(store.doc);
+    // Save what is on the board first so its cover is up to date (the board may change meanwhile: it is never replaced).
+    await saveNotebook(store.doc);
     const el = document.createElement('section');
     el.className = 'library';
     this.applyTheme(el);
@@ -429,8 +429,10 @@ export class Library {
         const m = this.list.find((x) => x.id === id);
         const title = window.prompt('Notebook name', m?.title ?? '')?.trim();
         if (!title) return;
-        if (id === store.doc.id) store.doc = await saveNotebook({ ...store.doc, title });
-        else await renameNotebook(id, title);
+        if (id === store.doc.id) {
+          store.setTitle(title);
+          await saveNotebook(store.doc);
+        } else await renameNotebook(id, title);
         return this.refresh();
       }
       case 'download': {

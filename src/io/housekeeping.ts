@@ -1,7 +1,8 @@
 import type { Board } from '../board';
 import { trimImageCache } from '../renderer';
 import { store } from '../store';
-import { dropUnusedSources, recoverOrphans, saveNotebook } from './library';
+import { saveNow } from './autosave';
+import { dropUnusedSources, recoverOrphans } from './library';
 import { saveSession } from './session';
 
 // Housekeeping, so Teachly stays light and fast however many days it runs:
@@ -33,7 +34,7 @@ function imagesInUse(): Set<string> {
 
 async function refresh(board: Board): Promise<void> {
   try {
-    await saveNotebook(store.doc);
+    await saveNow();
   } catch {
     /* keep going: the regular autosave has the latest anyway */
   }

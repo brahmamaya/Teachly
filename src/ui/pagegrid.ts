@@ -2,9 +2,9 @@ import { bbox, similarity, transformEl, uid } from '../geometry';
 import { download } from '../io/files';
 import { blankNotebook, saveNotebook } from '../io/library';
 import { PAGE } from '../page';
-import { getImage, pageRegion, renderRegion } from '../renderer';
+import { imagesReady, pageRegion, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
-import type { El, Page } from '../types';
+import type { Page } from '../types';
 import { icon } from './icons';
 import { askName } from './library';
 import { fadeOut, toast } from './panel';
@@ -24,13 +24,6 @@ const thumbs = new WeakMap<Page, string>();
 /** An independent copy of a page (new ids). */
 function clonePage(p: Page): Page {
   return { ...p, id: uid(), els: p.els.map((e) => ({ ...e, id: uid() })) };
-}
-
-/** Wait until the pictures on a page are ready to draw (book pages are made on demand). */
-async function imagesReady(p: Page): Promise<void> {
-  const imgs = p.els.filter((e): e is El & { type: 'image' } => e.type === 'image').map((e) => getImage(e.src));
-  const t0 = performance.now();
-  while (imgs.some((i) => !(i.complete && i.naturalWidth)) && performance.now() - t0 < 12_000) await new Promise((r) => setTimeout(r, 80));
 }
 
 /** A thumbnail picture of a page (null if it could not be drawn). */

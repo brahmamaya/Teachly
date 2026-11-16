@@ -161,13 +161,24 @@ export function setAssetLoadCallback(fn: () => void): void {
   onAssetLoad = fn;
 }
 
-/** Pictures that are made on demand (pages of a kept PDF: `pdfp:…`). */
+/** Pictures that are made on demand: pages of a kept PDF (`pdfp:…`) and stored pictures (`asset:…`). */
 let lazyLoader: ((src: string) => Promise<string | null>) | null = null;
 export function setLazyImageLoader(fn: (src: string) => Promise<string | null>): void {
   lazyLoader = fn;
 }
 
 /** Forget pictures that are no longer on any page (keeps memory small on long days). */
+/**
+ * Wait until the pictures on a page can be drawn (they are fetched from the
+ * device when first needed). True if all are ready within `maxMs`.
+ */
+export async function imagesReady(p: { els: El[] }, maxMs = 12_000): Promise<boolean> {
+  const imgs = p.els.filter((e): e is El & { type: 'image' } => e.type === 'image').map((e) => getImage(e.src));
+  const t0 = performance.now();
+  while (imgs.some((i) => !(i.complete && i.naturalWidth)) && performance.now() - t0 < maxMs) await new Promise((r) => setTimeout(r, 60));
+  return imgs.every((i) => i.complete && i.naturalWidth);
+}
+
 export function trimImageCache(keep: Set<string>): number {
   let freed = 0;
   for (const [src, img] of images) {
@@ -188,7 +199,7 @@ export function getImage(src: string): HTMLImageElement {
     img.decoding = 'async';
     img.onload = () => onAssetLoad();
     images.set(src, img);
-    if (src.startsWith('pdfp:')) {
+    if (src.startsWith('pdfp:') || src.startsWith('asset:')) {
       const mine = img;
       void lazyLoader?.(src).then((url) => {
         if (url && images.get(src) === mine) mine.src = url;

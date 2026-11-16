@@ -14,7 +14,8 @@ import {
 import { isDarkColor, measureText } from '../renderer';
 import { store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
-import { blankNotebook, loadLastNotebook, saveNotebook } from '../io/library';
+import { saveNow, startAutosave } from '../io/autosave';
+import { blankNotebook, loadLastNotebook, saveNotebook, takeMigrationNotes } from '../io/library';
 import { restorePlace, restoreTools, trackSession } from '../io/session';
 import { startHousekeeping } from '../io/housekeeping';
 import { EraserTool } from '../tools/eraser';
@@ -40,6 +41,7 @@ import { installApp, isInstalled, shareApp } from './install';
 import { Library, saveNotebookDialog } from './library';
 import { newNotebookFlow } from './newnotebook';
 import { PagesGrid } from './pagegrid';
+import { SaveBadge } from './savebadge';
 import { PAGE_DRAG, PagesPanel } from './pages';
 import { fadeOut, toast } from './panel';
 import { showLegal } from './legal';
@@ -279,7 +281,6 @@ export class App {
       this.updateBoardTone();
       this.renderProps();
       this.updateUndo();
-      this.scheduleSave();
     });
     store.on('page', () => {
       this.updatePageLabel();
@@ -334,17 +335,18 @@ export class App {
     });
     // The Record button shows when a recording runs (it turns red and pulses).
     onRecordingChange(() => this.renderToolbar());
-    // Never lose work when the app is closed or hidden.
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        clearTimeout(this.saveTimer);
-        void saveNotebook(store.doc).catch(() => {});
-      }
-    });
+    // Autosave (io/autosave.ts): shortly after each change, at once when the app is hidden or closed.
+    startAutosave(() => this.board.busyInput);
+    new SaveBadge(this.root.querySelector('.corner') as HTMLElement);
     // Back exactly where the lesson stopped: notebook, page, spot, pen.
     restoreTools();
     void loadLastNotebook().then((doc) => {
-      if (doc) store.loadDoc(doc);
+      if (doc) {
+        store.loadDoc(doc);
+        // An older notebook that had to be converted or repaired: say so once.
+        const notes = takeMigrationNotes(doc.id!);
+        if (notes.length) toast(`This notebook was saved by an older version and updated safely (the original is kept). ${notes.join(' ')}`, 9000);
+      }
       requestAnimationFrame(() => restorePlace(this.board));
       trackSession(this.board);
     });
@@ -354,7 +356,33 @@ export class App {
   // ---------------------------------------------------------------------------
   // Bottom toolbar
 
+  /** What the toolbar's markup depends on; when only the active tool changed, the buttons are just re-marked. */
+  private tbKey = '';
+
+  private toolbarKey(): string {
+    const t = store.tool;
+    return JSON.stringify([store.settings.tbHidden, store.settings.tbShown, store.settings.hexItems, t.penStyle, t.color, t.hlColor, t.fillColor, t.tapeColor, isRecording(), this.popFor, this.pages.open, store.index, store.doc.pages.length]);
+  }
+
+  /** Quick path: only mark the active tool and the slide switch (no markup rebuild, a few class changes). */
+  private markActive(): void {
+    const t = store.tool;
+    const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
+    left.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.classList.toggle('active', b.dataset.tool === t.tool));
+    const sl = left.querySelector<HTMLElement>('[data-act=slide]');
+    if (sl) {
+      sl.classList.toggle('on', !!t.slide);
+      sl.setAttribute('aria-pressed', String(!!t.slide));
+    }
+    this.moveIndicator(left);
+    this.toolbar.querySelectorAll('.hexdock .hx').forEach((h) => h.classList.remove('active'));
+    this.renderHex();
+  }
+
   private renderToolbar(): void {
+    const key = this.toolbarKey();
+    if (key === this.tbKey && this.toolbar.querySelector('.tb-left .tb-ind')) return this.markActive();
+    this.tbKey = key;
     const t = store.tool;
     const dot = t.penStyle === 'highlighter' ? t.hlColor : t.color;
     const tool = (id: ToolId, ic: string, label: string, extra = '') =>
@@ -1107,7 +1135,7 @@ export class App {
       }
       case 'new':
         // The current notebook stays in My notebooks, so nothing is lost.
-        void saveNotebook(store.doc).then(async () => {
+        void saveNow().then(async () => {
           const doc = await newNotebookFlow(this.root, { name: 'Notebook', bg: store.page.bg });
           if (!doc) return;
           store.loadDoc(doc);
@@ -1121,7 +1149,7 @@ export class App {
           const f = files[0];
           if (!f) return;
           // Open it as its own notebook; the current one stays in My notebooks.
-          await saveNotebook(store.doc);
+          await saveNow();
           store.loadDoc(await saveNotebook(blankNotebook(f.name.replace(/\.\w+$/, ''), store.page.bg)));
           if (pdf) await this.withProgress('Opening PDF', (p) => importPdf(b, f, p));
           else await this.openSlides(f);
@@ -1369,9 +1397,40 @@ export class App {
   // Chrome, keyboard, drag & drop, autosave
 
   private bindChrome(): void {
+    // A toolbar button reacts the moment the finger lands (not after it lifts), once.
+    // A board that drops the browser's click still works; a real click (keyboard,
+    // mouse without pointer events) is the fallback and is ignored when already handled.
+    let done: { b: HTMLElement; t: number } | null = null;
+    const handled = (b: HTMLElement): boolean => !!done && done.b === b && performance.now() - done.t < 900;
+    const buttonOf = (e: Event) => (e.target as HTMLElement).closest('button') as HTMLElement | null;
+    this.toolbar.addEventListener('pointerdown', (e) => {
+      const b = buttonOf(e);
+      if (!b || b.hasAttribute('disabled') || e.button > 0) return;
+      done = null;
+      b.classList.add('pressed');
+      const release = () => {
+        b.classList.remove('pressed');
+        window.removeEventListener('pointerup', release, true);
+        window.removeEventListener('pointercancel', release, true);
+      };
+      window.addEventListener('pointerup', release, true);
+      window.addEventListener('pointercancel', release, true);
+      // Choosing another tool is instant; opening menus and the rest wait for the lift.
+      if (b.dataset.tool && b.dataset.tool !== store.tool.tool) {
+        done = { b, t: performance.now() };
+        this.onToolbarClick(b);
+      }
+    });
+    this.toolbar.addEventListener('pointerup', (e) => {
+      const b = buttonOf(e);
+      if (!b || b.hasAttribute('disabled') || e.button > 0 || handled(b)) return;
+      done = { b, t: performance.now() };
+      this.onToolbarClick(b);
+    });
     this.toolbar.addEventListener('click', (e) => {
-      const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
-      if (b) this.onToolbarClick(b);
+      const b = buttonOf(e);
+      if (b && !handled(b)) this.onToolbarClick(b);
+      done = null;
     });
     this.root.querySelector('.zoom-pill')!.addEventListener('click', () => this.action('zoom-reset'));
     this.board.el.addEventListener('pointerdown', () => this.closePopover(), true);
@@ -1634,22 +1693,6 @@ export class App {
     store.select(els.map((e) => e.id));
   }
 
-  private saveTimer = 0;
-
-  private scheduleSave(): void {
-    // Save once the teacher pauses (and never while a finger or pen is
-    // on the board), so saving never interrupts writing on slow boards.
-    clearTimeout(this.saveTimer);
-    const attempt = () => {
-      if (this.board.busyInput) {
-        this.saveTimer = window.setTimeout(attempt, 1200);
-        return;
-      }
-      saveLocalSafe();
-    };
-    // Short pause: if the power goes, at most the last second is lost.
-    this.saveTimer = window.setTimeout(attempt, 1200);
-  }
 }
 
 /** A lazily loaded part of the app could not be loaded (an older version is still open). */
@@ -1670,7 +1713,7 @@ function reloadForUpdate(): boolean {
   }
   toast('Teachly was updated: reloading…', 3000);
   // Save first (not on idle), then reload.
-  void saveNotebook(store.doc)
+  void saveNow()
     .catch(() => {
       /* storage full or unavailable: the session copy still restores the lesson */
     })
@@ -1678,13 +1721,3 @@ function reloadForUpdate(): boolean {
   return true;
 }
 
-function saveLocalSafe(): void {
-  const run = () =>
-    saveNotebook(store.doc).catch(() => {
-      /* storage full or unavailable */
-    });
-  // Save when the device is idle so it never interrupts writing.
-  const ric = (window as unknown as { requestIdleCallback?: (f: () => void, o: { timeout: number }) => void }).requestIdleCallback;
-  if (ric) ric(run, { timeout: 2000 });
-  else run();
-}

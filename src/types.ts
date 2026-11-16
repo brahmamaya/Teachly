@@ -114,6 +114,10 @@ export interface Doc {
   pages: Page[];
   /** A vertical notebook: its pages are tall (3:4). Missing = the pages follow the screen. */
   orient?: 'portrait';
+  /** Format of the saved document (2 = pictures kept as separate assets). Older ones are migrated on load. */
+  schema?: number;
+  /** Counts every change; a save never replaces a newer revision with an older one. */
+  rev?: number;
 }
 
 export interface Camera {

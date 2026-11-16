@@ -1,6 +1,10 @@
 import './polyfills';
 import './styles.css';
 import { App } from './ui/app';
+import * as autosave from './io/autosave';
+import * as library from './io/library';
+import * as page from './page';
+import { store } from './store';
 import { toast } from './ui/panel';
 import { liteDevice } from './board';
 import './ui/install';
@@ -41,6 +45,8 @@ if (splash) {
   );
 }
 (window as unknown as { teachly: App }).teachly = app;
+// A small handle for the browser checks in e2e/ (they must see the app's own objects, not new copies).
+(window as unknown as { __teachly: object }).__teachly = { store, autosave, library, page };
 
 // No service worker for the single-file version opened from a pen drive (file://).
 // (Nor inside the Android app, which carries its own files.)

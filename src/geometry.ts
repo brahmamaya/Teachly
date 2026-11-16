@@ -1,4 +1,5 @@
 import type { BoxEl, El, PathEl, Rect } from './types';
+import { PAGE } from './page';
 
 export type Mat = [number, number, number, number, number, number];
 
@@ -286,4 +287,23 @@ export function regroup<T extends El>(els: T[]): T[] {
     if (!g) map.set(e.group, (g = uid()));
     return { ...e, group: g };
   });
+}
+
+/**
+ * Elements arriving on another page: keep them where they were if they lie
+ * inside the page, otherwise slide the whole group (never each one alone, so
+ * relative positions stay) just enough to be inside; a group bigger than the
+ * page is shrunk to fit.
+ */
+export function fitIntoPage(els: El[]): El[] {
+  const b = unionRects(els.map(bbox));
+  if (!b) return els;
+  const m = 24;
+  const k = Math.min(1, (PAGE.w - m * 2) / Math.max(1, b.w), (PAGE.h - m * 2) / Math.max(1, b.h));
+  let dx = 0, dy = 0;
+  const w = b.w * k, h = b.h * k;
+  if (b.x < PAGE.x + m || b.x + w > PAGE.x + PAGE.w - m) dx = Math.max(PAGE.x + m, Math.min(b.x, PAGE.x + PAGE.w - m - w)) - b.x;
+  if (b.y < PAGE.y + m || b.y + h > PAGE.y + PAGE.h - m) dy = Math.max(PAGE.y + m, Math.min(b.y, PAGE.y + PAGE.h - m - h)) - b.y;
+  if (k === 1 && !dx && !dy) return els;
+  return els.map((e) => translateEl(k < 1 ? resizeEl(e, b.x, b.y, k, k) : e, dx, dy));
 }

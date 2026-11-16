@@ -6,7 +6,7 @@ import { fadeOut } from './panel';
 // what is stored or sent, change these texts in the same commit and update
 // the date.
 
-const UPDATED = '11 November 2026';
+const UPDATED = '16 November 2026';
 
 const PRIVACY = `
 <h1>Privacy policy</h1>
@@ -24,6 +24,7 @@ const PRIVACY = `
 <ul>
   <li>notebooks, pages, writing, shapes, graphs, text, folders and the Trash;</li>
   <li>PDF files, PowerPoint files and pictures you open in Teachly, and photos you take with <b>Insert &gt; Camera</b> (they are read on your device and are not uploaded);</li>
+  <li>each picture on a page is kept on your device as a separate file, and when Teachly updates an older notebook to the newest format it keeps an untouched copy of the old version on your device; both are removed when the notebook is deleted for good;</li>
   <li>a copy of each PDF file you open, and pictures of its pages made when you look at them, kept with the notebook so that big books open fast and <b>Save as PDF</b> can reuse the real pages (small and sharp); they are removed when the notebooks using them are deleted for good;</li>
   <li>your settings (for example pen colours, recent colours, board colour, graph settings, recording quality) and the place where you stopped, so Teachly can open where you left off;</li>
   <li>names you type into the name picker, and team names and scores in the scoreboard.</li>

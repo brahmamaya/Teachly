@@ -15,7 +15,7 @@ export class TextEditor {
 
   constructor(private board: Board) {
     store.on('camera', () => this.position());
-    store.on('page', () => this.commit());
+    store.on('leave', () => this.commit());
   }
 
   get active(): boolean {

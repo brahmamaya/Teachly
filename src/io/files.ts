@@ -1,9 +1,11 @@
 import { type Board, liteDevice } from '../board';
 import { regroup, uid } from '../geometry';
 import { fitInPage, PAGE } from '../page';
-import { pageRegion, renderRegion } from '../renderer';
+import { imagesReady, pageRegion, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
+import { inlinePictures } from './assets';
 import { saveSource } from './library';
+import { migrateDoc } from './migrate';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
 import { isAppleTouch } from '../ui/install';
 import { toast } from '../ui/panel';
@@ -252,9 +254,11 @@ async function relinkBook(pdf: { numPages: number; getPage(i: number): Promise<{
 // ---------------------------------------------------------------------------
 // Save / open lesson files
 
-export function saveFile(): void {
+/** A .teachly file: the whole notebook, every picture written out in it (so it opens anywhere). */
+export async function saveFile(): Promise<void> {
   const doc = store.doc;
-  const blob = new Blob([JSON.stringify(doc)], { type: 'application/octet-stream' });
+  const whole = { ...doc, pages: await inlinePictures(doc.pages) };
+  const blob = new Blob([JSON.stringify(whole)], { type: 'application/octet-stream' });
   download(blob, `${safeName(doc.title)}.teachly`);
 }
 
@@ -263,9 +267,11 @@ export async function openFile(file?: File): Promise<void> {
   file ??= (await pickFiles(isAppleTouch() ? '' : '.teachly,.json,application/json'))[0];
   if (!file) return;
   try {
-    const doc = JSON.parse(await file.text()) as Doc;
-    if (!Array.isArray(doc.pages)) throw new Error('Not a Teachly file');
-    store.loadDoc({ version: 1, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages.length ? doc.pages : [newPage()], ...(doc.orient === 'portrait' ? { orient: 'portrait' as const } : {}) });
+    const raw = JSON.parse(await file.text()) as Doc;
+    if (!Array.isArray(raw.pages)) throw new Error('Not a Teachly file');
+    // A file made by an older version is brought up to the current format the same safe way.
+    const { doc } = migrateDoc({ ...raw, pages: raw.pages.length ? raw.pages : [newPage()] });
+    store.loadDoc({ version: 1, schema: doc.schema, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages, ...(doc.orient === 'portrait' ? { orient: 'portrait' as const } : {}) });
   } catch (e) {
     alert(`Could not open file: ${(e as Error).message}`);
   }
@@ -281,7 +287,8 @@ function exportCanvas(_board: Board, page: Page, maxSide = 4800): HTMLCanvasElem
   return renderRegion(page, r, r.w * k, r.h * k);
 }
 
-export function exportPng(board: Board): void {
+export async function exportPng(board: Board): Promise<void> {
+  await imagesReady(store.page); // pictures are fetched from the device when first drawn
   const c = exportCanvas(board, store.page);
   c.toBlob((b) => b && download(b, `${safeName(store.doc.title)}-page${store.index + 1}.png`), 'image/png');
 }

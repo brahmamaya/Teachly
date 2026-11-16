@@ -1,4 +1,4 @@
-import { uid } from './geometry';
+import { fitIntoPage, uid } from './geometry';
 import { setPageShape } from './page';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } from './types';
 
@@ -139,7 +139,7 @@ export class Store {
   private redoStack: Snapshot[] = [];
   private listeners = new Map<string, Set<Listener>>();
 
-  on(evt: 'doc' | 'page' | 'tool' | 'selection' | 'settings' | 'camera', fn: Listener): () => void {
+  on(evt: 'doc' | 'page' | 'leave' | 'nav' | 'tool' | 'selection' | 'settings' | 'camera', fn: Listener): () => void {
     let set = this.listeners.get(evt);
     if (!set) this.listeners.set(evt, (set = new Set()));
     set.add(fn);
@@ -175,7 +175,7 @@ export class Store {
     if (this.undoStack.length > 150) this.undoStack.shift();
     this.redoStack = [];
     const pageChanged = index !== this.index;
-    this.doc = { ...this.doc, pages };
+    this.doc = { ...this.doc, pages, rev: (this.doc.rev ?? 0) + 1 };
     this.index = Math.max(0, Math.min(index, pages.length - 1));
     this.pruneSelection();
     this.emit('doc');
@@ -208,6 +208,13 @@ export class Store {
     this.commit(pages);
   }
 
+  /** Rename the open notebook (saved like any other change). */
+  setTitle(title: string): void {
+    if (title === this.doc.title) return;
+    this.doc = { ...this.doc, title, rev: (this.doc.rev ?? 0) + 1 };
+    this.emit('doc');
+  }
+
   /** Keep only the most recent undo steps (memory housekeeping). */
   trimHistory(keep: number): void {
     if (this.undoStack.length > keep) this.undoStack.splice(0, this.undoStack.length - keep);
@@ -238,7 +245,8 @@ export class Store {
 
   private restore(s: Snapshot): void {
     const pageChanged = s.index !== this.index || s.pages[s.index]?.id !== this.page.id;
-    this.doc = { ...this.doc, pages: s.pages };
+    // Undo / redo is a change too: it gets a newer revision, so it is saved as the latest state.
+    this.doc = { ...this.doc, pages: s.pages, rev: (this.doc.rev ?? 0) + 1 };
     this.index = Math.min(s.index, s.pages.length - 1);
     this.pruneSelection();
     this.emit('doc');
@@ -258,13 +266,19 @@ export class Store {
     if (changed) this.emit('selection');
   }
 
+  /**
+   * Show another page. 'leave' goes out first, while the old page is still
+   * the current one, so anything being typed is put on the page it was
+   * typed on. Changing the page does not change the document: nothing to save.
+   */
   goTo(index: number): void {
     index = Math.max(0, Math.min(index, this.doc.pages.length - 1));
     if (index === this.index) return;
+    this.emit('leave');
     this.index = index;
     this.clearSelection();
     this.emit('page');
-    this.emit('doc');
+    this.emit('nav');
   }
 
   addPage(after = this.index, page?: Page): void {
@@ -287,6 +301,28 @@ export class Store {
     this.commit(pages, Math.min(i, pages.length - 1));
   }
 
+  /**
+   * Move elements from the current page onto another page (one undo step:
+   * undo puts them back on the first page). Their ids, look, grouping and
+   * pictures stay as they are; the whole group lands inside the new page.
+   * Returns how many were moved.
+   */
+  moveElsToPage(ids: string[], to: number): number {
+    const from = this.index;
+    if (to === from || to < 0 || to >= this.doc.pages.length) return 0;
+    const want = new Set(ids);
+    const moving = this.page.els.filter((e) => want.has(e.id) && !e.locked);
+    if (!moving.length) return 0;
+    const placed = fitIntoPage(moving);
+    const pages = this.doc.pages.slice();
+    pages[from] = { ...pages[from], els: pages[from].els.filter((e) => !want.has(e.id) || e.locked) };
+    pages[to] = { ...pages[to], els: [...pages[to].els, ...placed] };
+    this.selection.clear();
+    this.emit('selection');
+    this.commit(pages, from);
+    return moving.length;
+  }
+
   movePage(from: number, to: number): void {
     if (to < 0 || to >= this.doc.pages.length) return;
     const pages = this.doc.pages.slice();
@@ -296,6 +332,7 @@ export class Store {
   }
 
   loadDoc(doc: Doc): void {
+    this.emit('leave');
     this.doc = doc.id ? doc : { ...doc, id: uid() };
     setPageShape(doc.orient === 'portrait' ? 4 / 3 : null);
     this.index = 0;

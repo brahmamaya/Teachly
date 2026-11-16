@@ -1927,7 +1927,8 @@ button:focus-visible {
   background: rgba(127, 127, 127, 0.12);
 }
 
-#app .tb-btn:active {
+#app .tb-btn:active,
+#app .tb-btn.pressed {
   transform: scale(0.88);
   transition-duration: 0.08s;
 }
@@ -7275,4 +7276,86 @@ button,
   font-size: 8px;
   font-size: 7.6cqw;
   -webkit-line-clamp: 4;
+}
+
+/* ---------- Save note: Saving… / Saved / Not saved (with Retry) ---------- */
+.save-pill {
+  position: absolute;
+  z-index: 4001;
+  top: calc(var(--corner-top, calc(12px + env(safe-area-inset-top, 0px))) + 62px * var(--ui, 1));
+  right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 36px));
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(20, 22, 30, 0.86);
+  color: #f1f5f9;
+  font: 600 13px 'Exo 2', system-ui, sans-serif;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  transform: scale(var(--ui, 1));
+  transform-origin: 100% 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.save-pill[hidden] {
+  display: none;
+}
+.save-pill.fading {
+  opacity: 0;
+}
+.save-pill .sp-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+.save-pill[data-state='saving'] .sp-dot {
+  animation: sp-pulse 1s ease-in-out infinite;
+}
+.save-pill[data-state='saved'] .sp-dot {
+  background: #22c55e;
+}
+.save-pill[data-state='error'],
+.save-pill[data-state='conflict'] {
+  pointer-events: auto;
+  padding: 8px 8px 8px 14px;
+  background: #7f1d1d;
+  white-space: normal;
+}
+.save-pill[data-state='conflict'] {
+  background: #78350f;
+}
+.save-pill[data-state='error'] .sp-dot,
+.save-pill[data-state='conflict'] .sp-dot {
+  background: #fca5a5;
+}
+.save-pill button {
+  flex: none;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+  font: inherit;
+  transition: transform 0.15s var(--ease), background 0.15s;
+}
+.save-pill button:active {
+  transform: scale(0.94);
+  background: rgba(255, 255, 255, 0.28);
+}
+@keyframes sp-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-pill,
+  .save-pill .sp-dot {
+    transition: none;
+    animation: none;
+  }
 }

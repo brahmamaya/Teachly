@@ -52,6 +52,9 @@ export interface Tool {
 
 type Layer = 'bg' | 'ink' | 'overlay';
 
+/** Tools a finger may use even when "stylus only" is on: they edit, they do not write. */
+const FINGER_TOOLS = new Set<ToolId>(['select', 'text', 'fill', 'tape']);
+
 /**
  * Android classroom boards (and devices with few cores / little memory)
  * run in "lite" mode: fewer pixels per layer, no blur effects.
@@ -107,6 +110,8 @@ export class Board {
   spaceDown = false;
   /** A stylus has been used in this session. */
   private sawPen = false;
+  /** When a stylus last touched or hovered: a finger right then is probably a palm. */
+  private lastPenAt = -1e9;
   private lastHover: Ptr | null = null;
 
   constructor(container: HTMLElement) {
@@ -129,7 +134,7 @@ export class Board {
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
     // Pages of a kept PDF are drawn when first shown (pdf.js loads only then).
-    setLazyImageLoader((src) => import('./io/pdfpages').then((m) => m.pageURL(src)));
+    setLazyImageLoader((src) => (src.startsWith('asset:') ? import('./io/assets').then((m) => m.assetURL(src)) : import('./io/pdfpages').then((m) => m.pageURL(src))));
     setAssetLoadCallback(() => {
       this.inkState = null;
       this.invalidate('ink');
@@ -703,9 +708,10 @@ export class Board {
       // draw ("Write with stylus only" in the menu, which can turn it off).
       if (!this.sawPen && !store.settings.penOnly) {
         store.setSettings({ penOnly: true });
-        toast('Stylus found — now only the pen writes (change it in Menu)', 3500);
+        toast('Stylus found — now only the pen writes; fingers can still select and move (change it in Menu)', 4500);
       }
       this.sawPen = true;
+      this.lastPenAt = now;
       // The palm usually lands a moment before the pen: drop what it was drawing.
       let palmDrawing = false;
       for (const [id, r] of this.routed) {
@@ -723,7 +729,11 @@ export class Board {
     // The laser pointer works with anything — finger, pen or mouse — whatever
     // the "stylus only" setting (it writes nothing, so nothing to reject).
     const laser = store.tool.tool === 'laser';
-    const fingerRest = !laser && !multi && store.settings.penOnly && p.type === 'touch';
+    // With "stylus only" a finger does not write, but it still has to EDIT: select, move, resize,
+    // type, fill (the stylus is a poor tool for dragging a handle). Not while the stylus is near
+    // (that is a resting hand), for a palm-sized touch, or in slide mode (fingers slide the board).
+    const fingerEdits = FINGER_TOOLS.has(store.tool.tool) && !slide && now - this.lastPenAt > 1200 && !this.isPalm(p);
+    const fingerRest = !laser && !multi && store.settings.penOnly && p.type === 'touch' && !fingerEdits;
     const slidePan = slide && (p.button === 2 || fingerRest);
     if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
       if (slide) {
@@ -769,6 +779,7 @@ export class Board {
   private onMove(e: PointerEvent): void {
     this.lastSeen.set(e.pointerId, performance.now());
     const p = this.makePtr(e);
+    if (p.type === 'pen') this.lastPenAt = performance.now();
     const route = this.routed.get(p.id);
     if (!route) {
       this.lastHover = p;
