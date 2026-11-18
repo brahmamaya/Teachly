@@ -7752,20 +7752,21 @@ button,
   border-top: 1px solid var(--bar-border);
 }
 #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-right {
-  bottom: calc(51px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(45px + env(safe-area-inset-bottom, 0px)) !important;
   border-radius: 24px 24px 0 0;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
 }
 #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar .tb-btn {
-  flex: 1 1 0;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
   min-width: 0;
-  max-width: 54px;
 }
 #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar .tb-pagenav {
   flex: 0 0 auto;
 }
 #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .quickbar {
-  bottom: calc(112px + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px) + 12px);
   scale: 1;
 }
 
