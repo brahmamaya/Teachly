@@ -1812,6 +1812,46 @@ button:focus-visible {
   color: var(--on-accent, #fff);
 }
 
+.calc-top {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.calc-chip {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: 700 13px system-ui, sans-serif;
+  transition: transform 0.12s, background 0.2s;
+}
+
+.calc-chip.on {
+  background: var(--accent);
+  color: var(--on-accent, #fff);
+  border-color: transparent;
+}
+
+.calc-chip:active {
+  transform: scale(0.94);
+}
+
+.calc-fn {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.calc-k.fn {
+  height: 40px;
+  font-size: 15px;
+  background: var(--accent-soft);
+}
+
 .magnifier {
   position: fixed;
   z-index: 4800;
@@ -7369,4 +7409,52 @@ button,
     transition: none;
     animation: none;
   }
+}
+
+/* ---- Simpler, friendlier toolbar: roomy rounded pill, one accent colour for the active tool ---- */
+#app[data-board] {
+  --ind-bg: linear-gradient(135deg, #3b82f6, #6366f1);
+  --ind-fg: #ffffff;
+  --ind-shadow: 0 6px 16px rgba(79, 70, 229, 0.38);
+}
+
+#app[data-board] .toolbar {
+  border-radius: 30px;
+  padding: 7px 8px;
+  gap: 6px;
+}
+
+#app[data-board] .tb-btn {
+  border-radius: 18px;
+}
+
+#app[data-board] .tb-btn .icon {
+  stroke-width: 1.9;
+}
+
+#app[data-board] .tb-sep {
+  opacity: 0.45;
+  margin: 0 4px;
+}
+
+#app[data-board] .tb-btn.active .swatch-dot {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* Timer: the Reset link only shows once the timer has been used. */
+.qtimer[data-fresh='true'] .qt-reset {
+  visibility: hidden;
+}
+
+.qtimer .qt-ctrl {
+  justify-content: center;
+}
+
+/* Timer: the four time choices sit on one line. */
+.qtimer .qt-presets {
+  flex-wrap: nowrap;
+  gap: 5px;
+}
+.qtimer .qt-chip {
+  padding: 8px 11px;
 }

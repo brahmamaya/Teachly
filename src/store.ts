@@ -32,6 +32,8 @@ export interface Settings {
   tbAlign?: 'middle' | 'sides';
   /** Floating hexagon opacity, 0.2 to 1. */
   hexAlpha?: number;
+  /** The simple toolbar was applied once (so a teacher's own later choice is never overwritten). */
+  tbSimpleDone?: boolean;
   /** Look of My notebooks: dark (default) or light. */
   libTheme?: 'light' | 'dark';
 }
@@ -86,20 +88,32 @@ function loadSettings(): Settings {
     multiWrite: false,
     allowZoom: false,
     tbPos: 'bottom',
-    tbHidden: [],
+    tbHidden: [...SIMPLE_HIDDEN],
     tbShown: [],
+    tbSimpleDone: true,
     hexItems: [],
     hexPos: null,
     hexSize: 28,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...defaults, ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      // Once: a toolbar nobody changed becomes the simple one.
+      if (!saved.tbSimpleDone) {
+        saved.tbSimpleDone = true;
+        if (!saved.tbHidden?.length) saved.tbHidden = [...SIMPLE_HIDDEN];
+      }
+      return { ...defaults, ...saved };
+    }
   } catch {
     /* storage unavailable */
   }
   return defaults;
 }
+
+/** Buttons the simple toolbar leaves off (all of them stay reachable from the Tools menu and Edit toolbar). */
+export const SIMPLE_HIDDEN = ['fill', 'tape', 'laser', 'timer', 'poll', 'graph'];
 
 export function newPage(bg = '#000000', pattern: BgPattern = 'none'): Page {
   return { id: uid(), bg, pattern, els: [] };

@@ -13,7 +13,7 @@ import {
   readAsDataURL,
 } from '../io/files';
 import { isDarkColor, measureText } from '../renderer';
-import { store, type ToolState } from '../store';
+import { SIMPLE_HIDDEN, store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
 import { saveNow, startAutosave } from '../io/autosave';
 import { blankNotebook, loadLastNotebook, saveNotebook, takeMigrationNotes } from '../io/library';
@@ -791,6 +791,10 @@ export class App {
           ${this.menuItem('calc', 'calc', 'Calculator')}
           ${this.menuItem('picker', 'dice', 'Random picker')}
           ${this.menuItem('score', 'score', 'Scoreboard')}
+          ${this.menuItem('poll', 'poll', 'Poll A B C D')}
+          ${this.menuItem('tool-laser', 'laser', 'Laser pointer', t.tool === 'laser')}
+          ${this.menuItem('tool-tape', 'tape', 'Tape (hide answers)', t.tool === 'tape')}
+          ${this.menuItem('tool-fill', 'bucket', 'Fill colour', t.tool === 'fill')}
           ${this.menuItem('multi', 'pen', 'Group writing', store.settings.multiWrite)}</div>`;
         break;
       }
@@ -813,7 +817,7 @@ export class App {
           <button class="btn wide" data-tbstick ${tbFree() ? '' : 'disabled'}>Stick to the ${tbEdge()} edge</button>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
           <div class="tbe-grid">${group()}</div>
-          <button class="btn wide" data-tbreset>Show all buttons</button>
+          <div class="seg tbe-pos"><button data-tbsimple>Simple toolbar</button><button data-tbreset>Show all buttons</button></div>
           <div class="pop-title">Floating hexagon</div>
           <div class="muted small">Pick up to 6 buttons for a hexagon you can drag anywhere ("Move" in the middle). None = no hexagon.</div>
           <div class="slider-row">
@@ -947,6 +951,10 @@ export class App {
       store.setTool({ tool: 'select' });
       store.select([tbl.id]);
       this.tableEditor.open(tbl, 0, 0);
+      return;
+    } else if (d.tbsimple !== undefined) {
+      store.setSettings({ tbHidden: [...SIMPLE_HIDDEN], tbShown: [] });
+      this.fillPopover();
       return;
     } else if (d.tbreset !== undefined) {
       store.setSettings({ tbHidden: [], tbShown: [...TB_OPT_IN] });
@@ -1088,6 +1096,11 @@ export class App {
       case 'delete-page':
         store.deletePage();
         return toast('Page deleted — tap Undo to bring it back');
+      case 'tool-laser':
+      case 'tool-tape':
+      case 'tool-fill':
+        this.closePopover();
+        return store.setTool({ tool: act.slice(5) as ToolId });
       case 'paste':
         this.closePopover();
         if (!pasteElements(this.board)) toast('Nothing copied yet — select something and tap Copy');
