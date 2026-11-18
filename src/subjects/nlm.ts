@@ -196,12 +196,31 @@ add('Vectors', 'axesi', 'Axes along a slope', (k) => {
 });
 add('Vectors', 'dot', 'Point mass', (k) => [dot(0, 0, 14, k, k), text('m', 0, -34, k, 32)]);
 
+// The same arrows pointing the other ways, so nothing has to be turned: right (the first set above), left, up, down.
+const FORCES: [string, string, () => string][] = [
+  ['Force F', 'F', () => C.red],
+  ['Tension T', 'T', () => C.orange],
+  ['Friction f', 'f', () => C.purple],
+  ['Acceleration a', 'a', () => C.pink],
+  ['Velocity v', 'v', () => C.teal],
+];
+const DIRS: [string, string, (l: string, c: string, k: string) => El[]][] = [
+  ['←', 'l', (l, c, k) => vec(90, 0, -90, 0, c, l, 0, -34, k)],
+  ['↑', 'u', (l, c, k) => vec(0, 70, 0, -70, c, l, 36, 0, k)],
+  ['↓', 'd', (l, c, k) => vec(0, -70, 0, 70, c, l, 36, 0, k)],
+];
+for (const [name, label, color] of FORCES) for (const [arrow, id, mk] of DIRS) add('Vectors', `${label}_${id}`, `${name} ${arrow}`, (k) => mk(label, color(), k));
+
 // ---------------------------------------------------------------- Surfaces, ropes
 add('Surfaces & ropes', 'ground', 'Ground', (k) => support(-250, 0, 250, 0, 1, k));
 add('Surfaces & ropes', 'wall', 'Wall', (k) => support(0, -160, 0, 160, -1, k));
 add('Surfaces & ropes', 'ceil', 'Ceiling', (k) => support(-250, 0, 250, 0, -1, k));
-add('Surfaces & ropes', 'rope', 'String / rope', (k) => [line(-150, 0, 150, 0, { color: C.orange, size: 3 }, k)]);
+add('Surfaces & ropes', 'rope', 'String / rope', (k) => [line(-150, 0, 150, 0, { color: C.orange, size: 6 }, k)]);
 add('Surfaces & ropes', 'rod', 'Rigid rod', (k) => [line(-150, 0, 150, 0, { color: C.grey, size: 12 }, k)]);
+
+add('Surfaces & ropes', 'wall2', 'Wall (other side)', (k) => support(0, -160, 0, 160, 1, k));
+add('Surfaces & ropes', 'ropev', 'String (up-down)', (k) => [line(0, -150, 0, 150, { color: C.orange, size: 6 }, k)]);
+add('Surfaces & ropes', 'rodv', 'Rigid rod (up-down)', (k) => [line(0, -150, 0, 150, { color: C.grey, size: 12 }, k)]);
 
 // ---------------------------------------------------------------- Blocks
 add('Blocks', 'b1', 'Block m', (k) => block(0, 0, 140, 90, 'm', C.block1, k, true), true);
@@ -238,6 +257,7 @@ add('Blocks', 'lift', 'Lift with block', (k) => [
 
 // ---------------------------------------------------------------- Springs
 add('Springs', 'sp', 'Spring', (k) => [spring(-120, 0, 120, 0, 8, 22, {}, k)]);
+add('Springs', 'spu', 'Spring (up-down)', (k) => [spring(0, -120, 0, 120, 8, 22, {}, k)]);
 add('Springs', 'spw', 'Spring on a wall with block', (k) => [
   ...support(-250, -60, -250, 90, -1, k),
   ...support(-250, 45, 260, 45, 1, k).slice(0, 1),
@@ -308,6 +328,16 @@ add('Pulleys', 'ptwo', 'Block on wedge + hanging block', (k) => {
 for (const deg of [30, 37, 45, 53, 60]) add('Wedges', `w${deg}`, `Wedge ${deg}°`, (k) => wedge(deg, k, false));
 add('Wedges', 'wb', 'Block on wedge 30°', (k) => wedge(30, k, true));
 add('Wedges', 'wb37', 'Block on wedge 37°', (k) => wedge(37, k, true));
+/** The same pieces turned over left-right (a wedge rising to the left): lines are mirrored, writing stays upright and readable. */
+const mirrored = (els: El[]): El[] =>
+  els.map((e) => {
+    if (e.type === 'path') return { ...e, pts: e.pts.map((v, i) => (i % 3 === 0 ? -v : v)) } as El;
+    if (e.type === 'text') return { ...e, x: -(e.x + e.w) } as El;
+    return e;
+  });
+for (const deg of [30, 37, 45, 53, 60]) add('Wedges', `w${deg}m`, `Wedge ${deg}° (left)`, (k) => mirrored(wedge(deg, k, false)));
+add('Wedges', 'wbm', 'Block on wedge 30° (left)', (k) => mirrored(wedge(30, k, true)));
+add('Wedges', 'wb37m', 'Block on wedge 37° (left)', (k) => mirrored(wedge(37, k, true)));
 // ---------------------------------------------------------------- Monkey problems
 add('Monkey', 'mk', 'Monkey', (k) => monkey(0, 0, k));
 add('Monkey', 'mkr', 'Monkey on a rope', (k) => [...support(-80, -190, 80, -190, -1, k), line(0, -190, 0, 40, { color: C.orange, size: 4 }, k), ...monkey(0, 70, k)]);
