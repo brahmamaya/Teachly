@@ -7813,3 +7813,30 @@ button,
   width: 40px;
   height: 40px;
 }
+
+/* Quick bar: thickness slider with a live dot */
+.qb-range {
+  width: 110px;
+  height: 32px;
+  touch-action: none;
+  accent-color: var(--cur, #3b82f6);
+  cursor: pointer;
+}
+.qb-prev {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+.qb-prev b {
+  width: var(--d, 8px);
+  height: var(--d, 8px);
+  border-radius: 50%;
+  background: var(--cur, #fff);
+  box-shadow: 0 0 0 1.5px rgba(127, 127, 127, 0.5);
+}
+@media (max-width: 480px) {
+  .qb-range {
+    width: 80px;
+  }
+}

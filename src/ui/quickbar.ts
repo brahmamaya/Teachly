@@ -7,8 +7,6 @@ import { store } from '../store';
 
 const COLORS = ['#f2f2f0', '#db0000', '#ed6d00', '#febf00', '#4ceb45', '#174ebd', '#d500a6'];
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
-const SIZES = [3, 7, 14];
-const HL_SIZES = [14, 26, 42];
 
 export class QuickBar {
   private el: HTMLElement;
@@ -28,10 +26,6 @@ export class QuickBar {
       const t = store.tool;
       const hl = t.tool === 'pen' && t.penStyle === 'highlighter';
       if (b.dataset.qc) store.setTool(t.tool === 'shape' ? { shapeColor: b.dataset.qc } : hl ? { hlColor: b.dataset.qc } : { color: b.dataset.qc });
-      if (b.dataset.qs) {
-        const v = Number(b.dataset.qs);
-        store.setTool(t.tool === 'shape' ? { shapeSize: v } : hl ? { hlSize: v } : { size: v });
-      }
     });
     store.on('tool', () => this.update());
     this.update();
@@ -46,19 +40,25 @@ export class QuickBar {
     const color = t.tool === 'shape' ? t.shapeColor : hl ? t.hlColor : t.color;
     const size = t.tool === 'shape' ? t.shapeSize : hl ? t.hlSize : t.size;
     const colors = hl ? HL_COLORS : COLORS;
-    const sizes = hl ? HL_SIZES : SIZES;
     const key = `${hl}|${colors.join()}`;
     if (key !== this.key) {
       this.key = key;
       this.el.innerHTML =
         colors.map((c) => `<button class="qb-c" data-qc="${c}" style="--c:${c}" aria-label="Colour ${c}"></button>`).join('') +
         '<i class="qb-sep" aria-hidden="true"></i>' +
-        sizes.map((s, i) => `<button class="qb-s" data-qs="${s}" aria-label="Line size ${i + 1}"><b style="--d:${6 + i * 5}px"></b></button>`).join('');
+        `<input class="qb-range" type="range" min="1" max="${hl ? 60 : 40}" step="1" aria-label="Line thickness"><span class="qb-prev" aria-hidden="true"><b></b></span>`;
+      (this.el.querySelector('.qb-range') as HTMLInputElement).addEventListener('input', (e) => {
+        const v = Number((e.target as HTMLInputElement).value);
+        const t = store.tool;
+        const h = t.tool === 'pen' && t.penStyle === 'highlighter';
+        store.setTool(t.tool === 'shape' ? { shapeSize: v } : h ? { hlSize: v } : { size: v });
+      });
     }
     // The current choice: nearest size, exact colour.
-    const near = sizes.reduce((a, b) => (Math.abs(b - size) < Math.abs(a - size) ? b : a), sizes[0]);
     this.el.querySelectorAll<HTMLElement>('[data-qc]').forEach((b) => b.classList.toggle('on', b.dataset.qc!.toLowerCase() === color.toLowerCase()));
-    this.el.querySelectorAll<HTMLElement>('[data-qs]').forEach((b) => b.classList.toggle('on', Number(b.dataset.qs) === near));
+    const range = this.el.querySelector('.qb-range') as HTMLInputElement;
+    if (Number(range.value) !== size) range.value = String(size);
+    this.el.style.setProperty('--d', `${Math.max(3, Math.min(26, size + 2))}px`);
     this.el.style.setProperty('--cur', color);
   }
 }

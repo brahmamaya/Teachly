@@ -556,7 +556,8 @@ export class App {
   private togglePopover(kind: string, anchor: HTMLElement): void {
     if (this.popFor === kind) return this.closePopover();
     this.closePopover();
-    this.popFromHex = !!anchor.closest('.hexdock');
+    // (A hexagon button may already be redrawn, and so detached, when we get here: its class tells.)
+    this.popFromHex = !!anchor.closest('.hexdock') || anchor.classList.contains('hx-btn');
     if (kind === 'tbedit' || kind === 'menu') queueMicrotask(() => this.renderHex());
     const pop = document.createElement('div');
     pop.className = 'popover';
@@ -590,26 +591,20 @@ export class App {
     return bottom;
   }
 
-  private positionPopover(anchor: HTMLElement): void {
+  private positionPopover(anchor0: HTMLElement): void {
+    let anchor = anchor0;
+    // From the floating hexagon the menu still opens at the toolbar (always the same place, never up at the hexagon).
+    // (The hexagon may have been redrawn meanwhile, so go by what was opened, not by the old button.)
+    if (this.popFromHex || anchor.closest('.hexdock')) {
+      const twin = this.toolbar.querySelector(`.tb-left [data-tool="${this.popFor}"], .tb-right [data-tool="${this.popFor}"], .tb-left [data-pop="${this.popFor}"], .tb-right [data-pop="${this.popFor}"]`) as HTMLElement | null;
+      anchor = twin ?? (this.toolbar.querySelector('.tb-left') as HTMLElement);
+    }
     const pop = this.popover!;
     scaleFloating(pop);
     const k = ui();
     const r = anchor.getBoundingClientRect();
     const pw = pop.offsetWidth * k, ph = pop.offsetHeight * k;
     const W = window.innerWidth, H = window.innerHeight, gap = 12 * k;
-    // From the floating hexagon: open beside it, never over it.
-    const dock = anchor.closest('.hexdock');
-    if (dock) {
-      this.popArrow?.remove();
-      this.popArrow = null;
-      const d = dock.getBoundingClientRect();
-      const right = d.right + gap + pw <= W - 8;
-      const left = right ? d.right + gap : Math.max(8, d.left - gap - pw);
-      const top = Math.max(8, Math.min(H - ph - 8, d.top + d.height / 2 - ph / 2));
-      pop.style.left = `${left}px`;
-      pop.style.top = `${top}px`;
-      return;
-    }
     const cx = Math.max(8, Math.min(W - pw - 8, r.left + r.width / 2 - pw / 2));
     const cy = Math.max(8, Math.min(H - ph - 8, r.top + r.height / 2 - ph / 2));
     // Open away from the edge the toolbar sits on.
@@ -1509,6 +1504,19 @@ export class App {
     });
     this.root.querySelector('.zoom-pill')!.addEventListener('click', () => this.action('zoom-reset'));
     this.board.el.addEventListener('pointerdown', () => this.closePopover(), true);
+    // A tap anywhere on the board closes the Pages panel (a drag, e.g. carrying things to a page, keeps it).
+    let tapAt: { x: number; y: number; t: number } | null = null;
+    this.board.el.addEventListener('pointerdown', (e) => (tapAt = { x: e.clientX, y: e.clientY, t: performance.now() }), true);
+    this.board.el.addEventListener(
+      'pointerup',
+      (e) => {
+        const tap = tapAt && Math.hypot(e.clientX - tapAt.x, e.clientY - tapAt.y) < 10 && performance.now() - tapAt.t < 600;
+        // (Tapping a thing to select it keeps the panel, so it can be carried to a page.)
+        if (tap && this.pages.open) setTimeout(() => !store.selection.size && this.pages.open && this.pages.close(), 0);
+        tapAt = null;
+      },
+      true,
+    );
   }
 
   private updatePageLabel(): void {
