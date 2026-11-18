@@ -48,6 +48,7 @@ export class QuickBar {
     const el = this.el;
     const app = el.parentElement as HTMLElement;
     const reset = () => {
+      delete el.dataset.fit;
       el.classList.remove('inline');
       el.style.removeProperty('left');
       el.style.removeProperty('top');
@@ -58,8 +59,17 @@ export class QuickBar {
     const l = app.querySelector('.tb-left')?.getBoundingClientRect();
     const r = app.querySelector('.tb-right')?.getBoundingClientRect();
     if (!l || !r || app.classList.contains('tb-stacked') || (edge !== 'bottom' && edge !== 'top') || app.dataset.tbalign === 'middle' || l.right > r.left) return reset();
-    const need = el.offsetWidth * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1) + 24;
-    if (r.left - l.right < need) return reset();
+    // Make the pill only as wide as the free space allows (fewer colours, a shorter slider), before giving up.
+    const k = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+    let fit = -1;
+    for (let level = 0; level <= 2 && fit < 0; level++) {
+      el.dataset.fit = String(level);
+      if (r.left - l.right >= el.offsetWidth * k + 24) fit = level;
+    }
+    if (fit < 0) {
+      delete el.dataset.fit;
+      return reset();
+    }
     el.classList.add('inline');
     // (The box is scaled around its middle, so line up the middles.)
     const c = (l.top + l.bottom) / 2, half = el.offsetHeight / 2;

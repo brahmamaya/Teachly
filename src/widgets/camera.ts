@@ -76,7 +76,7 @@ export function openCamera(host: HTMLElement, onPhoto: (dataUrl: string) => void
     stop();
     mode(false);
     msg.hidden = false;
-    msg.textContent = 'Starting camera…';
+    msg.textContent = 'Starting camera… tap Allow if your device asks. The photo stays on this device and is never uploaded.';
     (box.querySelector('[data-fallback]') as HTMLElement).hidden = true;
     btn('snap').disabled = true;
     try {

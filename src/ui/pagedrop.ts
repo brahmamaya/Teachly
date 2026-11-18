@@ -7,6 +7,11 @@ let badge: HTMLElement | null = null;
 let list: HTMLElement | null = null;
 let vy = 0;
 let raf = 0;
+let carried = 0;
+let tracking = false;
+
+/** Window-level pointer follower: keeps working even if the board stops getting move events (pen, iPad). */
+const follow = (e: PointerEvent): void => dragOver(e.clientX, e.clientY, carried);
 
 function pump(): void {
   if (!list || !vy) return void (raf = 0);
@@ -19,6 +24,11 @@ export const dropAvailable = (): boolean => !!document.querySelector('.pages-lis
 
 /** Pointer at (x, y) in the window while carrying `count` things. */
 export function dragOver(x: number, y: number, count: number): void {
+  carried = count;
+  if (!tracking) {
+    tracking = true;
+    window.addEventListener('pointermove', follow, true);
+  }
   list = document.querySelector('.pages-list');
   if (!list) return;
   if (!badge) {
@@ -30,7 +40,19 @@ export function dragOver(x: number, y: number, count: number): void {
   badge.style.transform = `translate(${x + 18}px, ${y + 18}px)`;
   const r = list.getBoundingClientRect();
   const inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-  const el = inside ? (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>('.page-thumb') ?? null : null;
+  let el = inside ? (document.elementFromPoint(x, y) as HTMLElement | null)?.closest<HTMLElement>('.page-thumb') ?? null : null;
+  // Between two thumbnails, or just beside one: the nearest page up or down (forgiving for a pen or a big finger).
+  if (!el && inside) {
+    let best = 48;
+    for (const t of list.querySelectorAll<HTMLElement>('.page-thumb')) {
+      const b = t.getBoundingClientRect();
+      const d = y < b.top ? b.top - y : y > b.bottom ? y - b.bottom : 0;
+      if (d < best) {
+        best = d;
+        el = t;
+      }
+    }
+  }
   if (el !== hot) {
     hot?.classList.remove('drop-on');
     hot = el;
@@ -44,6 +66,9 @@ export function dragOver(x: number, y: number, count: number): void {
 }
 
 function clear(): void {
+  window.removeEventListener('pointermove', follow, true);
+  tracking = false;
+  carried = 0;
   hot?.classList.remove('drop-on');
   hot = null;
   badge?.remove();
@@ -55,7 +80,8 @@ function clear(): void {
 }
 
 /** The drag ended: the page number (0-based) it was dropped on, or -1 (dropped elsewhere / cancelled). */
-export function dragEnd(): number {
+export function dragEnd(x?: number, y?: number): number {
+  if (x !== undefined && y !== undefined && carried) dragOver(x, y, carried); // where it really ended
   const i = hot ? Number(hot.dataset.i) : -1;
   clear();
   return i;

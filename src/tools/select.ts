@@ -287,7 +287,8 @@ export class SelectTool implements Tool {
     this.mode = null;
     this.inkRect = null;
     // Dropped on a page of the Pages panel: the things go there (one undo step).
-    const dropped = m.k === 'move' && m.moved ? dragEnd() : (dragCancel(), -1);
+    const bb = this.board.el.getBoundingClientRect();
+    const dropped = m.k === 'move' && m.moved ? dragEnd(p.sx + bb.left, p.sy + bb.top) : (dragCancel(), -1);
     if (dropped >= 0 && dropped !== store.index) {
       const n = store.moveElsToPage([...store.selection], dropped);
       this.mat = IDENTITY;

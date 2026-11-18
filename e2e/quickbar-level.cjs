@@ -4,7 +4,7 @@ const { check, finish } = require('./lib.cjs');
 const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratchpad/';
 (async () => {
   const b = await chromium.launch();
-  for (const [name, w, h, touch, inline] of [['tablet1024', 1024, 768, true, true], ['desk1280', 1280, 800, false, true], ['board1920', 1920, 1080, true, true], ['ipad-portrait', 820, 1180, true, false], ['phone', 390, 844, true, false]]) {
+  for (const [name, w, h, touch, inline] of [['tablet1024', 1024, 768, true, true], ['desk1280', 1280, 800, false, true], ['board1920', 1920, 1080, true, true], ['ipad-portrait', 820, 1180, true, true], ['phone', 390, 844, true, false]]) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: touch && w < 1000 });
     const page = await ctx.newPage();
     await page.goto('http://localhost:5173/');

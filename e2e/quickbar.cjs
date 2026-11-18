@@ -11,7 +11,7 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
     check(name + ': quick bar shows with the pen', vis);
     await page.click('.qb-c[data-qc="#db0000"]');
     const rb = await page.$eval('.qb-range', (e) => { const r = e.getBoundingClientRect(); return [r.left, r.top + r.height / 2, r.width]; });
-    check(name + ': thickness slider is there', rb[2] > 60);
+    check(name + ': thickness slider is there', rb[2] > 40);
     await page.mouse.move(rb[0] + 8, rb[1]); await page.mouse.down(); await page.mouse.move(rb[0] + rb[2] * 0.3, rb[1], { steps: 6 }); await page.mouse.up(); await page.waitForTimeout(150);
     const t = await page.evaluate(() => ({ c: window.__teachly.store.tool.color, s: window.__teachly.store.tool.size }));
     check(name + ': tap changes colour, sliding changes size', t.c === '#db0000' && t.s > 5 && t.s < 25, JSON.stringify(t));

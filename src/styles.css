@@ -7898,3 +7898,33 @@ button,
     animation: none;
   }
 }
+
+/* Quick bar, smaller steps so it can sit on the toolbar's line on more tablets */
+.quickbar[data-fit='1'] {
+  gap: 6px;
+  padding: 7px 10px;
+}
+.quickbar[data-fit='1'] .qb-c {
+  width: 26px;
+  height: 26px;
+}
+.quickbar[data-fit='1'] .qb-c:nth-child(7) {
+  display: none;
+}
+.quickbar[data-fit='1'] .qb-range {
+  width: 80px;
+}
+.quickbar[data-fit='2'] {
+  gap: 4px;
+  padding: 6px 8px;
+}
+.quickbar[data-fit='2'] .qb-c {
+  width: 24px;
+  height: 24px;
+}
+.quickbar[data-fit='2'] .qb-c:nth-child(n + 6) {
+  display: none;
+}
+.quickbar[data-fit='2'] .qb-range {
+  width: 64px;
+}
