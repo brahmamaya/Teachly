@@ -7458,3 +7458,88 @@ button,
 .qtimer .qt-chip {
   padding: 8px 11px;
 }
+
+/* ---- Quick bar: colours and line sizes, one tap, floating next to the toolbar ---- */
+.quickbar {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: calc(66px * var(--ui, 1) + 14px);
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--bar);
+  border: 1px solid var(--bar-border);
+  box-shadow: var(--bar-shadow);
+  scale: var(--ui, 1);
+  transform-origin: 50% 100%;
+  animation: soft-in 0.28s var(--ease, ease) both;
+}
+#app[data-tb='top'] .quickbar {
+  bottom: auto;
+  top: calc(66px * var(--ui, 1) + 14px);
+  transform-origin: 50% 0;
+}
+.quickbar[hidden] {
+  display: none;
+}
+.qb-c {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(127, 127, 127, 0.35);
+  background: var(--c);
+  transition: transform 0.18s var(--spring, ease), box-shadow 0.18s;
+}
+.qb-c.on {
+  transform: scale(1.18);
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--c), 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.qb-c:active,
+.qb-s:active {
+  transform: scale(0.88);
+}
+.qb-sep {
+  width: 1px;
+  height: 22px;
+  background: rgba(127, 127, 127, 0.35);
+  margin: 0 2px;
+}
+.qb-s {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  transition: background 0.18s, transform 0.15s;
+}
+.qb-s b {
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background: var(--cur, #fff);
+  box-shadow: 0 0 0 1.5px rgba(127, 127, 127, 0.5);
+}
+.qb-s.on {
+  background: rgba(127, 127, 127, 0.22);
+}
+@media (prefers-reduced-motion: reduce) {
+  .quickbar {
+    animation: none;
+  }
+}
+#app.pop-open .quickbar { display: none; }
+/* Phones: the toolbar has two rows, so the quick bar sits above both. */
+#app.tb-stacked .quickbar {
+  bottom: calc(126px * var(--ui, 1) + 14px);
+}
+#app.tb-stacked[data-tb='top'] .quickbar {
+  bottom: auto;
+  top: calc(126px * var(--ui, 1) + 14px);
+}

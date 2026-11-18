@@ -13,6 +13,7 @@ import {
   readAsDataURL,
 } from '../io/files';
 import { isDarkColor, measureText } from '../renderer';
+import { QuickBar } from './quickbar';
 import { SIMPLE_HIDDEN, store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
 import { saveNow, startAutosave } from '../io/autosave';
@@ -270,6 +271,7 @@ export class App {
     this.grid = new PagesGrid(root, () => this.renderToolbar());
     this.pages = new PagesPanel(root, () => this.renderToolbar(), () => this.grid.toggle());
     this.library = new Library(root);
+    new QuickBar(root);
     this.props = root.querySelector('.props') as HTMLElement;
     this.renderToolbar();
     this.bindChrome();
@@ -542,6 +544,7 @@ export class App {
     if (!this.popover) return;
     fadeOut(this.popover);
     this.popover = null;
+    this.root.classList.remove('pop-open');
     if (this.popArrow) fadeOut(this.popArrow);
     this.popArrow = null;
     const wasEdit = this.popFor === 'tbedit' || this.popFor === 'menu';
@@ -559,6 +562,7 @@ export class App {
     pop.className = 'popover';
     this.root.appendChild(pop);
     this.popover = pop;
+    this.root.classList.add('pop-open'); // the quick bar steps aside
     this.popFor = kind;
     anchor.classList.add('open');
     pop.addEventListener('click', (e) => this.onPopoverClick(e));
