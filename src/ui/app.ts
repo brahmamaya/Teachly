@@ -1484,8 +1484,9 @@ export class App {
     const one = L + R + 40;
     const stacked = avail / one < 0.85;
     this.root.classList.toggle('tb-stacked', stacked);
-    // Buttons are always the small size (big boards still scale them up).
-    computeUiScale('small', stacked ? Math.max(L, R) + 20 : one, avail);
+    // Desktop: compact buttons. Tablets and phones (finger): full 40 px buttons, easy to hit (never wider than the screen).
+    const finger = matchMedia('(pointer: coarse)').matches && window.innerWidth >= 700;
+    computeUiScale(finger ? 'normal' : 'small', stacked ? Math.max(L, R) + 20 : one, avail);
     // "Middle": both halves together in the middle as one bar (two centred
     // rows on narrow screens). "Sides": each half in its corner.
     const mid = tbMiddle();
