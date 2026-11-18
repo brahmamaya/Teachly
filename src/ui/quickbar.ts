@@ -55,6 +55,8 @@ export class QuickBar {
       el.style.removeProperty('bottom');
     };
     if (el.hidden) return;
+    // The subject dock owns the toolbar's line; the colour bar then sits just above it.
+    if (document.querySelector('.subj-dock')) return reset();
     const edge = app.dataset.tb;
     const l = app.querySelector('.tb-left')?.getBoundingClientRect();
     const r = app.querySelector('.tb-right')?.getBoundingClientRect();

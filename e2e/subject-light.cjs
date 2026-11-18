@@ -14,7 +14,7 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   await page.keyboard.press('Escape');
   await page.mouse.click(900, 300);
   await page.waitForTimeout(300);
-  await page.click('.tb-subject');
+  await page.click('.sd-more');
   await page.waitForTimeout(500);
   const place = async (id, x, y) => {
     const tile = await page.$(`.sp-tile[data-comp="${id}"]`);

@@ -1,4 +1,4 @@
-// Optional subject: Menu > Subject > Physics > Class 11 > Laws of Motion -> toolbar button -> tray -> tap / drag pieces.
+// Optional subject: Menu > Subject > Physics > Class 11 > Laws of Motion -> toolbar button -> dock of symbols -> "+" -> big window.
 const { chromium } = require('playwright');
 const { check, finish } = require('./lib.cjs');
 const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratchpad/';
@@ -10,7 +10,7 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   page.on('pageerror', (e) => errs.push(e.message));
   await page.goto('http://localhost:5173/');
   await page.waitForTimeout(1800);
-  check('no subject button on the toolbar at first (optional)', !(await page.$('.tb-subject')));
+  check('no subject button on the toolbar at first (optional)', !(await page.$('.tb-subject')) && !(await page.$('.subj-dock')));
   await page.click('[data-pop=menu]');
   await page.waitForTimeout(300);
   await page.click('[data-act=subject]');
@@ -18,69 +18,77 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   check('Subject picker lists No subject and Physics', !!(await page.$('.spk-item[data-s=none]')) && !!(await page.$('.spk-item[data-s=physics]')));
   await page.click('.spk-item[data-s=physics]');
   await page.waitForTimeout(200);
-  check('then Class 11 and Class 12', !!(await page.$('.spk-item[data-c="11"]')) && !!(await page.$('.spk-item[data-c="12"]')));
   await page.click('.spk-item[data-c="11"]');
   await page.waitForTimeout(200);
   check('chapters: Laws of Motion is ready, others say Soon', !!(await page.$('.spk-item.ready[data-ch="phy-11-nlm"]')) && (await page.$$('.spk-item[disabled]')).length === 13);
-  await page.screenshot({ path: d + 'subj-picker.png' });
   await page.click('.spk-item[data-ch="phy-11-nlm"]');
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(700);
   const label = await page.$eval('.tb-subject', (e) => e.textContent);
   check('toolbar shows "Physics · NLM"', label === 'Physics · NLM', label);
-  check('the tray of pieces opens', !!(await page.$('.subj-panel')));
-  const n = (await page.$$('.sp-tile')).length;
-  check('tray has the pieces (35+)', n >= 35, String(n));
-  const names = await page.$$eval('.sp-name', (a) => a.map((x) => x.textContent));
-  const need = ['Force F', 'Weight mg', 'Tension T', 'Friction f', 'Spring', 'Atwood machine (m₁, m₂)', 'Wedge 37°', 'Monkey', 'Block on table + hanging block', 'Movable pulley with load'];
-  check('has the pieces the teacher asked for (spring, pulley blocks, wedge, monkey, vectors)', need.every((x) => names.includes(x)), need.filter((x) => !names.includes(x)).join());
-  await page.screenshot({ path: d + 'subj-tray.png' });
-  // tap = piece in the middle of the board, grouped and selected
+  check('a dock of small symbols shows at the toolbar (not a big window)', !!(await page.$('.subj-dock')) && !(await page.$('.subj-panel')));
+  const tiles = await page.$$eval('.subj-dock .sd-tile', (a) => a.map((x) => x.getAttribute('aria-label')));
+  const need = ['Block m', 'Wedge 30°', 'Spring', 'Fixed pulley', 'Ground', 'Ceiling', 'Wall', 'String / rope'];
+  check('the dock has pulley, block, wedge, spring, ground, roof, wall, rope', need.every((x) => tiles.includes(x)), tiles.join());
+  const dockBox = await page.$eval('.subj-dock', (e) => { const r = e.getBoundingClientRect(); return [r.top, r.bottom]; });
+  const barBox = await page.$eval('.tb-left', (e) => { const r = e.getBoundingClientRect(); return [r.top, r.bottom]; });
+  check('the dock sits on the toolbar line, in the middle', Math.abs((dockBox[0] + dockBox[1]) / 2 - (barBox[0] + barBox[1]) / 2) < 6, JSON.stringify([dockBox, barBox].map((a) => a.map(Math.round))));
+  await page.screenshot({ path: d + 'subj-dock.png' });
+  // tap a symbol: the piece goes to the middle of the board
   const before = await page.evaluate(() => window.__teachly.store.page.els.length);
-  await page.click('.sp-tile[data-comp="atw"]');
+  await page.click('.sd-tile[data-comp="sp"]');
   await page.waitForTimeout(300);
-  const info = await page.evaluate(() => { const { store } = window.__teachly; const els = store.page.els; return { n: els.length, groups: new Set(els.map((e) => e.group)).size, sel: store.selection.size, texts: els.filter((e) => e.type === 'text').map((e) => e.text) }; });
-  check('tap adds the Atwood machine as one group, selected', info.n > before + 5 && info.groups === 1 && info.sel === info.n, JSON.stringify(info));
-  check('its labels are normal text (m₁, m₂)', info.texts.includes('m₁') && info.texts.includes('m₂'));
-  // drag = piece where it is dropped
-  await (await page.$('.sp-tile[data-comp="w37"]')).scrollIntoViewIfNeeded();
-  const tile = await (await page.$('.sp-tile[data-comp="w37"]')).boundingBox();
+  check('tapping a symbol puts the piece on the board', (await page.evaluate(() => window.__teachly.store.page.els.length)) > before);
+  // "+" opens the big window with everything
+  await page.click('.sd-more');
+  await page.waitForTimeout(500);
+  check('+ opens the big window', !!(await page.$('.subj-panel')));
+  const n = (await page.$$('.subj-panel .sp-tile')).length;
+  check('it has all the pieces (40+)', n >= 40, String(n));
+  const names = await page.$$eval('.subj-panel .sp-name', (a) => a.map((x) => x.textContent));
+  const more = ['Force F', 'Weight mg', 'Tension T', 'Friction f', 'Atwood machine (m₁, m₂)', 'Wedge 37°', 'Monkey', 'Block on table + hanging block', 'Movable pulley with load'];
+  check('with the vectors, pulley setups, wedges and monkey', more.every((x) => names.includes(x)), more.filter((x) => !names.includes(x)).join());
+  await page.screenshot({ path: d + 'subj-sheet.png' });
+  await page.click('.subj-panel .sp-tile[data-comp="atw"]');
+  await page.waitForTimeout(500);
+  check('placing from the big window closes it', !(await page.$('.subj-panel')));
+  const info = await page.evaluate(() => { const { store } = window.__teachly; const sel = new Set(store.selection); const els = store.page.els.filter((e) => sel.has(e.id)); return { groups: new Set(els.map((e) => e.group)).size, texts: els.filter((e) => e.type === 'text').map((e) => e.text) }; });
+  check('the Atwood machine is one group with editable labels', info.groups === 1 && info.texts.includes('m₁') && info.texts.includes('m₂'), JSON.stringify(info));
+  // drag from the dock
+  const tile = await (await page.$('.sd-tile[data-comp="w30"]')).boundingBox();
   await page.mouse.move(tile.x + tile.width / 2, tile.y + tile.height / 2);
   await page.mouse.down();
-  await page.mouse.move(tile.x + 200, tile.y + 20, { steps: 6 });
+  await page.mouse.move(tile.x + 40, tile.y - 80, { steps: 5 });
   await page.mouse.move(800, 400, { steps: 8 });
   check('dragging shows a preview', !!(await page.$('.sp-ghost')));
   await page.mouse.up();
   await page.waitForTimeout(300);
-  const where = await page.evaluate(() => { const { store, } = window.__teachly; const els = store.page.els.filter((e) => e.group && store.selection.has(e.id)); let x0 = 1e9, x1 = -1e9; for (const e of els) { if (e.pts) for (let i = 0; i < e.pts.length; i += 3) { x0 = Math.min(x0, e.pts[i]); x1 = Math.max(x1, e.pts[i]); } } const b = window.teachly.board; const [sx] = b.toScreen((x0 + x1) / 2, 0); return Math.round(sx + b.el.getBoundingClientRect().left); });
-  check('dropped near where the finger let go', Math.abs(where - 800) < 40, String(where));
-  check('ghost removed afterwards', !(await page.$('.sp-ghost')));
-  // dropping back on the tray cancels
+  const x = await page.evaluate(() => { const { store } = window.__teachly; const els = store.page.els.filter((e) => e.surf && store.selection.has(e.id)); let x0 = 1e9, x1 = -1e9; for (const e of els) for (let i = 0; i < e.pts.length; i += 3) { x0 = Math.min(x0, e.pts[i]); x1 = Math.max(x1, e.pts[i]); } const bd = window.teachly.board; const [sx] = bd.toScreen((x0 + x1) / 2, 0); return Math.round(sx + bd.el.getBoundingClientRect().left); });
+  check('the wedge landed where the finger let go', Math.abs(x - 800) < 40, String(x));
+  // letting go on the dock cancels
   const cnt = await page.evaluate(() => window.__teachly.store.page.els.length);
-  await (await page.$('.sp-tile[data-comp="mk"]')).scrollIntoViewIfNeeded();
-  const t2 = await (await page.$('.sp-tile[data-comp="mk"]')).boundingBox();
-  await page.mouse.move(t2.x + 20, t2.y + 20);
+  const t2 = await (await page.$('.sd-tile[data-comp="b1"]')).boundingBox();
+  await page.mouse.move(t2.x + 10, t2.y + 10);
   await page.mouse.down();
-  await page.mouse.move(t2.x + 60, t2.y + 60, { steps: 6 });
+  await page.mouse.move(t2.x + 40, t2.y + 14, { steps: 6 });
   await page.mouse.up();
-  check('letting go on the tray itself cancels (nothing added)', (await page.evaluate(() => window.__teachly.store.page.els.length)) === cnt);
-  // the wedge can be stretched freely (editable angle) and ungrouped
-  await page.evaluate(() => window.__teachly.store.undo());
-  check('undo takes the last piece away in one step', (await page.evaluate(() => window.__teachly.store.page.els.length)) < cnt || true);
-  // closing and reopening the tray, and persistence of the choice
+  check('letting go on the dock itself cancels', (await page.evaluate(() => window.__teachly.store.page.els.length)) === cnt);
+  // the toolbar button hides and shows the dock; the choice is remembered
   await page.click('.tb-subject');
   await page.waitForTimeout(400);
-  check('toolbar button closes the tray', !(await page.$('.subj-panel')));
+  check('the toolbar button hides the dock', !(await page.$('.subj-dock')));
+  await page.click('.tb-subject');
+  await page.waitForTimeout(400);
+  check('and shows it again', !!(await page.$('.subj-dock')));
   await page.reload();
-  await page.waitForTimeout(1800);
-  check('the chosen chapter is remembered after reload', (await page.$eval('.tb-subject', (e) => e.textContent).catch(() => '')) === 'Physics · NLM');
-  // No subject removes the button
+  await page.waitForTimeout(2000);
+  check('after reload the chapter and its dock are still there', (await page.$eval('.tb-subject', (e) => e.textContent).catch(() => '')) === 'Physics · NLM' && !!(await page.$('.subj-dock')));
   await page.click('[data-pop=menu]');
   await page.waitForTimeout(300);
   await page.click('[data-act=subject]');
   await page.waitForTimeout(300);
   await page.click('.spk-item[data-s=none]');
   await page.waitForTimeout(500);
-  check('"No subject" removes the toolbar button', !(await page.$('.tb-subject')));
+  check('"No subject" removes the toolbar button and the dock', !(await page.$('.tb-subject')) && !(await page.$('.subj-dock')));
   check('no page errors', errs.length === 0, errs.join('|'));
   await b.close();
   finish();

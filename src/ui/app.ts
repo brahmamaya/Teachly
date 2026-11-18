@@ -282,6 +282,7 @@ export class App {
     this.pasteChip();
     this.props = root.querySelector('.props') as HTMLElement;
     this.renderToolbar();
+    this.subject.sync();
     this.bindChrome();
     this.bindKeys();
     this.bindDrop();

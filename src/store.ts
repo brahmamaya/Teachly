@@ -34,6 +34,8 @@ export interface Settings {
   hexAlpha?: number;
   /** Chosen chapter with ready-made pieces (see subjects/catalog.ts); none = no subject. */
   subject?: string | null;
+  /** The strip of small symbols for the chosen chapter is shown next to the toolbar. */
+  subjectDock?: boolean;
   /** The simple toolbar was applied once (so a teacher's own later choice is never overwritten). */
   tbSimpleDone?: boolean;
   /** Look of My notebooks: dark (default) or light. */

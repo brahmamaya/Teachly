@@ -125,10 +125,12 @@ const wedge = (deg: number, ink: string, withBlock: boolean, label = 'm'): El[] 
   const th = (deg * Math.PI) / 180;
   const [bx, by] = pts[0];
   const els: El[] = [poly(pts, { fill: C.grey, size: 5, surf: true }, ink)];
-  // angle arc and label
+  // The angle: a small arc at the corner and its value on the line that halves the angle, clear of both sides.
+  const ra = Math.min(70, w * 0.3);
   const arc: P[] = [];
-  for (let i = 0; i <= 12; i++) arc.push([bx + Math.cos((-th * i) / 12) * 70, by + Math.sin((-th * i) / 12) * 70]);
-  els.push(path(arc, false, { size: 3, color: C.onBlock }, ink), text(`${deg}°`, bx + 108, by - 14, ink, 30));
+  for (let i = 0; i <= 14; i++) arc.push([bx + Math.cos((-th * i) / 14) * ra, by + Math.sin((-th * i) / 14) * ra]);
+  const d = Math.max(ra + 52, 28 / Math.sin(th / 2));
+  els.push(path(arc, false, { size: 3 }, ink), text(`${deg}°`, bx + Math.cos(th / 2) * d, by - Math.sin(th / 2) * d, ink, 30));
   if (withBlock) els.push(...onSlope(bx, by, th, hyp(w, h) * 0.55, 120, 70, label, C.block1, ink));
   return els;
 };
@@ -176,7 +178,8 @@ add('Vectors', 'vec2', 'Vector with components', (k) => [
   ...vec(-100, 80, 100, -50, C.red, 'F', -6, -40, k),
   ...vec(-100, 80, 100, 80, C.orange, 'Fx', 0, 34, k, true),
   ...vec(100, 80, 100, -50, C.teal, 'Fy', 46, 0, k, true),
-  text('θ', -48, 66, k, 30),
+  path(Array.from({ length: 12 }, (_, n): P => [-100 + Math.cos((-Math.atan2(130, 200) * n) / 11) * 46, 80 + Math.sin((-Math.atan2(130, 200) * n) / 11) * 46]), false, { size: 3 }, k),
+  text('θ', -100 + Math.cos(Math.atan2(130, 200) / 2) * 76, 80 - Math.sin(Math.atan2(130, 200) / 2) * 76, k, 28),
 ]);
 add('Vectors', 'axes', 'Axes x – y', (k) => [line(-90, 0, 100, 0, { size: 4, arrow: 1 }, k), line(0, 90, 0, -100, { size: 4, arrow: 1 }, k), text('x', 112, 0, k, 30), text('y', 0, -114, k, 30)]);
 add('Vectors', 'axesi', 'Axes along a slope', (k) => {
@@ -223,7 +226,7 @@ add('Blocks', 'lift', 'Lift with block', (k) => [
   line(0, -110, 0, -230, { color: C.orange, size: 4 }, k),
   ...block(0, 70, 110, 80, 'm', C.block1, k),
   ...vec(0, -60, 0, -140, C.pink, 'a', 34, 0, k),
-  text('T', 26, -190, C.orange, 34),
+  text('T', 28, -170, C.orange, 34),
 ]);
 
 // ---------------------------------------------------------------- Springs

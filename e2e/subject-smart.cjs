@@ -13,14 +13,23 @@ const deg = (r) => (r * 180) / Math.PI;
   await page.waitForTimeout(1800);
   await page.evaluate(() => window.__teachly.store.setSettings({ subject: 'phy-11-nlm' }));
   await page.waitForTimeout(400);
-  await page.click('.tb-subject');
   await page.waitForTimeout(600);
-  const names = await page.$$eval('.sp-name', (a) => a.map((x) => x.textContent));
+  await page.click('.sd-more');
+  await page.waitForTimeout(500);
+  const names = await page.$$eval('.subj-panel .sp-name', (a) => a.map((x) => x.textContent));
+  await page.click('.subj-panel [data-sp=close]');
+  await page.waitForTimeout(400);
   check('no automatic free-body diagrams in the tray', !names.some((n) => /free-body|with forces/i.test(n)), names.filter((n) => /free-body|forces/i.test(n)).join());
   const scr = (wx, wy) => page.evaluate(([x, y]) => { const bd = window.teachly.board; const [sx, sy] = bd.toScreen(x, y); const r = bd.el.getBoundingClientRect(); return [sx + r.left, sy + r.top]; }, [wx, wy]);
   const drag = async (id, wx, wy) => {
-    const tile = await page.$(`.sp-tile[data-comp="${id}"]`);
-    await tile.scrollIntoViewIfNeeded();
+    // the little symbols on the dock when the piece is there, else the big window
+    let tile = await page.$(`.sd-tile[data-comp="${id}"]`);
+    if (!tile) {
+      await page.click('.sd-more');
+      await page.waitForTimeout(450);
+      tile = await page.$(`.subj-panel .sp-tile[data-comp="${id}"]`);
+      await tile.scrollIntoViewIfNeeded();
+    }
     const bb = await tile.boundingBox();
     const [sx, sy] = await scr(wx, wy);
     await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);

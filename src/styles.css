@@ -8156,3 +8156,111 @@ button,
     animation: none;
   }
 }
+
+/* ---- Subject dock (little symbols next to the toolbar) and the big window ---- */
+.subj-dock {
+  position: fixed;
+  z-index: 62;
+  left: 50%;
+  bottom: calc(80px * var(--ui, 1));
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: var(--bar);
+  border: 1px solid var(--bar-border);
+  box-shadow: var(--bar-shadow);
+  scale: var(--ui, 1);
+  transform-origin: 50% 50%;
+  animation: soft-in 0.28s var(--ease, ease) both;
+}
+.subj-dock.inline {
+  animation: none;
+}
+.sd-tile {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.sd-tile:hover {
+  background: rgba(127, 127, 127, 0.14);
+}
+.sd-tile svg {
+  width: 26px;
+  height: 26px;
+}
+.sd-tile .sp-prev {
+  height: 100%;
+  width: 100%;
+  padding: 2px;
+}
+.sd-more {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+  transition: transform 0.15s var(--spring, ease);
+}
+.sd-more:active {
+  transform: scale(0.88);
+}
+.subj-dock[data-fit='1'] .sd-tile:nth-child(n + 7) {
+  display: none;
+}
+.subj-dock[data-fit='2'] .sd-tile:nth-child(n + 5) {
+  display: none;
+}
+.subj-dock.sp-dragging {
+  opacity: 0.6;
+}
+#app.pop-open .subj-dock {
+  display: none;
+}
+
+/* the big window: every piece, centred */
+.subj-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  bottom: auto;
+  translate: -50% -50%;
+  width: min(94vw, 920px);
+  height: min(84vh, 700px);
+  z-index: 6500;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+.subj-panel .sp-grid {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.subj-panel .sp-prev {
+  height: 96px;
+}
+.subj-panel.sp-dragging {
+  opacity: 0.06;
+  pointer-events: none;
+}
+@media (max-width: 560px) {
+  .subj-panel .sp-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+#app.sheet-open .quickbar,
+#app.sheet-open .paste-chip {
+  display: none;
+}

@@ -1,17 +1,21 @@
 import type { Board } from '../board';
 import { transformEl, translateEl, uid } from '../geometry';
-import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { isDarkColor } from '../renderer';
 import { chapterById, SUBJECTS, type Chapter } from '../subjects/catalog';
 import type { Comp } from '../subjects/nlm';
+import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { store } from '../store';
 import type { El, PathEl, TextEl } from '../types';
 import { icon } from './icons';
 import { fadeOut, toast } from './panel';
 
-// Subject tray: the pieces of the chosen chapter (blocks, springs, pulleys, wedges, vectors, monkey ...)
-// as small pictures. Tap one to put it in the middle of the board, or drag it onto the board (mouse,
-// finger or stylus). Pieces are made of ordinary lines and text, so they stay fully editable.
+// Subject pieces, two ways to reach them:
+//  - the DOCK: a small strip next to the toolbar with the most used pieces as little symbols
+//    (block, wedge, spring, pulley, ground, roof, wall, rope) and a "+" button
+//  - the SHEET (the "+"): a big window with every piece of the chapter
+// Tap a piece to put it in the middle of the board, or drag it onto the board (mouse, finger or
+// stylus). A block dropped near a surface sits on it. Pieces are ordinary lines and text, so they
+// stay fully editable.
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -57,10 +61,23 @@ export function previewSvg(els: El[], bg: string): string {
   return `<svg viewBox="${x0 - pad} ${y0 - pad} ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x="${x0 - pad}" y="${y0 - pad}" width="${w}" height="${h}" fill="${bg}" opacity="0"/>${body}</svg>`;
 }
 
+/** Bold one-colour symbols for the dock (a small picture of the whole piece would be too faint). */
+const DOCK_ICONS: Record<string, [string, string]> = {
+  b1: ['<rect x="3.5" y="7" width="17" height="11" rx="1.6"/><text x="12" y="15.2" font-size="8.5" text-anchor="middle" fill="currentColor" stroke="none" font-weight="800" font-family="system-ui">m</text>', '#2563eb'],
+  w30: ['<path d="M3 19.5h18V8z"/><path d="M9.5 19.5a6.5 6.5 0 0 0-1.7-4.1"/>', '#475569'],
+  sp: ['<path d="M2 12h3.2l1.6-5 3.2 10 3.2-10 3.2 10 1.6-5H22"/>', '#d97706'],
+  p1: ['<path d="M7 2.5h10"/><path d="M12 2.5v3.5"/><circle cx="12" cy="11" r="4.6"/><circle cx="12" cy="11" r=".8" fill="currentColor"/><path d="M7.4 11v10M16.6 11v10"/>', '#7c3aed'],
+  ground: ['<path d="M2.5 9h19"/><path d="M5.5 9l-2.5 4.5M9.5 9l-2.5 4.5M13.5 9l-2.5 4.5M17.5 9l-2.5 4.5M21.5 9l-2.5 4.5"/>', '#0f172a'],
+  ceil: ['<path d="M2.5 14.5h19"/><path d="M5.5 14.5L3 10M9.5 14.5L7 10M13.5 14.5L11 10M17.5 14.5L15 10M21.5 14.5L19 10"/>', '#0f172a'],
+  wall: ['<path d="M14 3v18"/><path d="M14 6.5l5-2.5M14 11l5-2.5M14 15.5l5-2.5M14 20l5-2.5"/>', '#0f172a'],
+  rope: ['<path d="M3.5 12h17"/><circle cx="3.5" cy="12" r="1.5" fill="currentColor"/><circle cx="20.5" cy="12" r="1.5" fill="currentColor"/>', '#b45309'],
+};
+
 const inkFor = (): string => (isDarkColor(store.page.bg) ? '#ffffff' : '#1e293b');
 
 export class SubjectPanel {
-  private el: HTMLElement | null = null;
+  private sheet: HTMLElement | null = null;
+  private dock: HTMLElement | null = null;
   private count = 0;
   private picker: HTMLElement | null = null;
 
@@ -68,47 +85,165 @@ export class SubjectPanel {
     private host: HTMLElement,
     private board: Board,
     private onChange: () => void = () => {},
-  ) {}
+  ) {
+    store.on('settings', () => this.sync());
+    store.on('tool', () => requestAnimationFrame(() => requestAnimationFrame(() => this.placeDock())));
+    window.addEventListener('resize', () => this.placeDock());
+    const bars = host.querySelector('.toolbars');
+    if (bars) new ResizeObserver(() => this.placeDock()).observe(bars);
+  }
 
+  /** The dock is showing (what the toolbar button switches). */
   get open(): boolean {
-    return !!this.el;
+    return !!this.dock;
   }
 
+  /** The big window with every piece is showing. */
+  get sheetOpen(): boolean {
+    return !!this.sheet;
+  }
+
+  /** The toolbar button: show or hide the dock. */
   toggle(): void {
-    if (this.el) this.close();
-    else this.show();
+    store.setSettings({ subjectDock: this.open ? false : true });
+    this.sync();
   }
 
-  close(): void {
-    if (!this.el) return;
-    fadeOut(this.el);
-    this.el = null;
-    this.onChange();
-  }
-
-  /** Show the tray of the chosen chapter (if one is chosen). */
-  show(): void {
+  /** Make the screen match the settings: dock shown when a chapter with pieces is chosen (and not switched off). */
+  sync(): void {
     const found = chapterById(store.settings.subject);
-    if (!found || !found.chapter.comps) return;
-    if (this.el) return;
-    const el = document.createElement('aside');
-    el.className = 'subj-panel';
-    el.setAttribute('aria-label', 'Pieces for ' + found.chapter.name);
+    const want = !!found?.chapter.comps && store.settings.subjectDock !== false;
+    if (want && !this.dock) this.showDock();
+    else if (!want && this.dock) this.hideDock();
+    if (!found?.chapter.comps && this.sheet) this.closeSheet();
+  }
+
+  // ------------------------------------------------------------------ the dock
+
+  private showDock(): void {
+    const found = chapterById(store.settings.subject);
+    if (!found?.chapter.comps || this.dock) return;
+    const ch = found.chapter;
+    const el = document.createElement('div');
+    el.className = 'subj-dock';
+    el.setAttribute('role', 'toolbar');
+    el.setAttribute('aria-label', 'Pieces for ' + ch.name);
+    this.fillDock(el, ch);
     this.host.appendChild(el);
-    this.el = el;
-    this.render(found.subject.name, found.chapter);
-    this.bind(el, found.chapter);
+    this.dock = el;
+    this.bind(el, ch, false);
+    this.placeDock();
+    window.dispatchEvent(new Event('resize')); // the colour bar moves out of its way
     this.onChange();
   }
 
-  /** Rebuild after the board colour changed. */
+  private hideDock(): void {
+    if (!this.dock) return;
+    fadeOut(this.dock, 160);
+    this.dock = null;
+    window.dispatchEvent(new Event('resize'));
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 220); // once it has faded away
+    this.onChange();
+  }
+
+  private fillDock(el: HTMLElement, ch: Chapter): void {
+    const ink = inkFor();
+    const bg = store.page.bg;
+    const tiles = (ch.quick ?? [])
+      .map((id) => ch.comps?.find((c) => c.id === id))
+      .filter((c): c is Comp => !!c)
+      .map((c) => {
+        const di = DOCK_ICONS[c.id];
+        const face = di ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${di[0]}</svg>` : `<span class="sp-prev" style="background:${bg}">${previewSvg(c.make(ink), bg)}</span>`;
+        return `<button class="sp-tile sd-tile" data-comp="${c.id}" title="${esc(c.name)}" aria-label="${esc(c.name)}" style="color:${di ? di[1] : 'inherit'}">${face}</button>`;
+      })
+      .join('');
+    el.innerHTML = `${tiles}<button class="sd-more" data-sp="more" title="All pieces" aria-label="All pieces">${icon('plus', 22)}</button>`;
+  }
+
+  /** Redraw the dock's little pictures (the board colour changed). */
   refresh(): void {
     const found = chapterById(store.settings.subject);
-    if (this.el && found?.chapter.comps) this.render(found.subject.name, found.chapter);
+    if (this.dock && found?.chapter.comps) this.fillDock(this.dock, found.chapter);
+    if (this.sheet && found?.chapter.comps) this.renderSheet(found.subject.name, found.chapter);
   }
 
-  private render(subject: string, ch: Chapter): void {
-    const el = this.el!;
+  /** Sit on the toolbar's own line between its two halves (smaller steps when it is tight); else just above the toolbar. */
+  private placeDock(): void {
+    const el = this.dock;
+    if (!el) return;
+    const app = this.host;
+    const l = app.querySelector('.tb-left')?.getBoundingClientRect();
+    const r = app.querySelector('.tb-right')?.getBoundingClientRect();
+    const qb = app.querySelector<HTMLElement>('.quickbar:not([hidden])');
+    const edge = app.dataset.tb;
+    const k = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+    const reset = () => {
+      el.classList.remove('inline');
+      delete el.dataset.fit;
+      for (const p of ['left', 'top', 'bottom']) el.style.removeProperty(p);
+    };
+    if (!l || !r) return reset();
+    const roomy = l.right < r.left && !app.classList.contains('tb-stacked') && (edge === 'bottom' || edge === 'top') && app.dataset.tbalign !== 'middle';
+    let fit = -1;
+    if (roomy) {
+      for (let level = 0; level <= 2 && fit < 0; level++) {
+        el.dataset.fit = String(level);
+        if (r.left - l.right >= el.offsetWidth * k + 24) fit = level;
+      }
+    }
+    if (fit < 0) {
+      // Above the toolbar (and above the pen bar when that is showing).
+      reset();
+      el.dataset.fit = '0';
+      const top = Math.min(l.top, r.top);
+      const lift = qb ? qb.getBoundingClientRect().height + 10 : 0;
+      if (edge === 'top') el.style.top = `${Math.max(l.bottom, r.bottom) + 12 + lift}px`;
+      else el.style.bottom = `${window.innerHeight - top + 12 + lift}px`;
+      el.style.left = '50%';
+      return;
+    }
+    el.classList.add('inline');
+    const c = (l.top + l.bottom) / 2, half = el.offsetHeight / 2; // the box is scaled around its middle
+    el.style.left = `${(l.right + r.left) / 2}px`;
+    if (edge === 'bottom') {
+      el.style.top = 'auto';
+      el.style.bottom = `${window.innerHeight - c - half}px`;
+    } else {
+      el.style.bottom = 'auto';
+      el.style.top = `${c - half}px`;
+    }
+  }
+
+  // ------------------------------------------------------------------ the big window
+
+  /** The big window: every piece of the chapter. */
+  openSheet(): void {
+    const found = chapterById(store.settings.subject);
+    if (!found?.chapter.comps || this.sheet) return;
+    store.clearSelection(); // the selection bar would show through the window
+    const el = document.createElement('aside');
+    el.className = 'subj-panel';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', 'All pieces: ' + found.chapter.name);
+    this.host.appendChild(el);
+    this.sheet = el;
+    this.host.classList.add('sheet-open');
+    this.renderSheet(found.subject.name, found.chapter);
+    this.bind(el, found.chapter, true);
+    this.onChange();
+  }
+
+  closeSheet(): void {
+    if (!this.sheet) return;
+    fadeOut(this.sheet);
+    this.sheet = null;
+    this.host.classList.remove('sheet-open');
+    this.onChange();
+  }
+
+  private renderSheet(subject: string, ch: Chapter): void {
+    const el = this.sheet!;
     const ink = inkFor();
     const bg = store.page.bg;
     const cls = SUBJECTS.flatMap((s) => s.classes).find((c) => c.chapters.includes(ch));
@@ -121,7 +256,7 @@ export class SubjectPanel {
         <button class="icon-btn small" data-sp="change" aria-label="Change subject" title="Change subject">${icon('settings', 18)}</button>
         <button class="icon-btn small" data-sp="close" aria-label="Close">${icon('close', 20)}</button>
       </header>
-      <p class="sp-hint">Tap a piece, or drag it onto the board. Double-tap a label to change it.</p>
+      <p class="sp-hint">Tap a piece to put it on the board, or drag it where you want it. Double-tap a label to change it.</p>
       <div class="sp-body">${(ch.cats ?? [...by.keys()])
         .filter((c) => by.has(c))
         .map(
@@ -133,6 +268,8 @@ export class SubjectPanel {
         .join('')}</div>`;
     (el.querySelector('.sp-body') as HTMLElement).scrollTop = scroll;
   }
+
+  // ------------------------------------------------------------------ putting pieces on the board
 
   /** Put a piece on the board with its middle at (wx, wy), grouped, selected. */
   private place(c: Comp, wx: number, wy: number, dropped = false): void {
@@ -154,14 +291,18 @@ export class SubjectPanel {
     store.select(placed.map((e) => e.id));
   }
 
-  private bind(el: HTMLElement, ch: Chapter): void {
+  /**
+   * Tap or drag on the pieces inside `el` (the dock or the sheet). `sheet`: the window hides itself
+   * while a piece is carried and closes once it is placed.
+   */
+  private bind(el: HTMLElement, ch: Chapter, sheet: boolean): void {
     const comp = (id: string | undefined) => ch.comps?.find((c) => c.id === id);
     el.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-sp]');
-      if (b?.dataset.sp === 'close') this.close();
+      if (b?.dataset.sp === 'close') this.closeSheet();
       if (b?.dataset.sp === 'change') this.openPicker();
+      if (b?.dataset.sp === 'more') this.sheet ? this.closeSheet() : this.openSheet();
     });
-    // Drag a piece out of the tray (or tap it to drop it in the middle of the board).
     let drag: { c: Comp; id: number; x: number; y: number; started: boolean; ghost: HTMLElement | null; touch: boolean } | null = null;
     const cleanup = () => {
       drag?.ghost?.remove();
@@ -178,8 +319,8 @@ export class SubjectPanel {
       if (!drag || e.pointerId !== drag.id) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (!drag.started) {
-        // A finger moving mostly up or down is scrolling the tray; sideways (out of the tray) is a drag.
-        const go = drag.touch ? Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.1 : Math.hypot(dx, dy) > 6;
+        // In the scrolling sheet a finger moving mostly up or down is scrolling; the dock never scrolls.
+        const go = drag.touch && sheet ? Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.1 : Math.hypot(dx, dy) > 6;
         if (!go) return;
         drag.started = true;
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -200,20 +341,26 @@ export class SubjectPanel {
       cleanup();
       if (cancel) return;
       if (d.started) {
+        // Let go on the dock itself = changed your mind. (The big window steps aside while carrying, so anywhere counts.)
         const r = el.getBoundingClientRect();
-        // Let go over the tray itself = changed your mind.
-        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+        if (!sheet && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
         const b = this.board.el.getBoundingClientRect();
         const [wx, wy] = this.board.toWorld(e.clientX - b.left, e.clientY - b.top);
         this.place(d.c, wx, wy, true);
+        if (sheet) this.closeSheet();
       } else if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) {
         const v = this.board.viewRect();
         const k = (this.count++ % 5) * 26; // each tap a little off, so pieces do not hide each other
         this.place(d.c, v.x + v.w / 2 + k, v.y + v.h / 2 + k);
+        if (sheet) this.closeSheet();
       }
     };
     el.addEventListener('pointerup', (e) => end(e, false));
     el.addEventListener('pointercancel', (e) => end(e, true));
+    if (sheet) {
+      // Escape while carrying a piece out of the window: nothing is placed.
+      window.addEventListener('keydown', (e) => e.key === 'Escape' && (drag ? cleanup() : this.closeSheet()));
+    }
   }
 
   // ------------------------------------------------------------------ choosing the subject
@@ -268,7 +415,7 @@ export class SubjectPanel {
       }
       if (b.dataset.s === 'none') {
         store.setSettings({ subject: null });
-        this.el && this.close();
+        this.sync();
         close();
         toast('Subject removed from the toolbar');
         return;
@@ -283,13 +430,12 @@ export class SubjectPanel {
       }
       if (b.dataset.ch) {
         const found = chapterById(b.dataset.ch);
-        store.setSettings({ subject: b.dataset.ch });
+        this.hideDock();
+        this.closeSheet();
+        store.setSettings({ subject: b.dataset.ch, subjectDock: true });
         close();
-        if (this.el) {
-          this.close();
-        }
         if (found) toast(`${found.subject.name} · ${found.chapter.short} is on the toolbar now`, 2600);
-        this.show();
+        this.sync();
       }
     });
     draw();
