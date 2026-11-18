@@ -8321,3 +8321,29 @@ button,
   width: 34px;
   height: 34px;
 }
+
+/* The dock and the pen bar grow to fill the free space of the toolbar line */
+.sd-tile[hidden] {
+  display: none;
+}
+.quickbar.mid .qb-range,
+.quickbar.mid .qb-prev,
+.quickbar.mid .qb-sep {
+  display: none;
+}
+.quickbar.noarrow .qb-arrow {
+  display: none !important;
+}
+.quickbar.mid {
+  gap: 6px;
+}
+
+.subj-dock.compact {
+  gap: 4px;
+  padding: 5px 6px;
+}
+.subj-dock.compact .sd-tile,
+.subj-dock.compact .sd-more {
+  width: 34px;
+  height: 34px;
+}

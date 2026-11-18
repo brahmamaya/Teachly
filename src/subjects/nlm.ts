@@ -293,9 +293,10 @@ add('Pulleys', 'ptwo', 'Block on wedge + hanging block', (k) => {
   const ux = Math.cos(th), uy = -Math.sin(th), nx = uy, ny = -ux;
   const t = hyp(w, h) * 0.45;
   const cx = bx + ux * t + nx * 35, cy = by + uy * t + ny * 35; // middle of the block on the slope
-  const pr = 24, px = tx + 28, py = ty - pr; // pulley at the top corner, hanging a little beyond it so the block clears the wedge
+  const pr = 24, px = tx + 44, py = ty - pr; // pulley on a short arm beyond the top corner, so the hanging block clears the wedge
   return [
     poly(pts, { fill: C.grey, size: 5, surf: true }, k),
+    line(tx, ty, px, py, { color: C.grey, size: 8 }, k),
     ...onSlope(bx, by, th, t, 120, 70, 'm₁', C.block1, k),
     ...pulley(px, py, pr, k),
     rope([[cx + ux * 60, cy + uy * 60], ...arcPts(px, py, pr, -Math.PI / 2, 0, 10), [px + pr, ty + h * 0.55]], k),

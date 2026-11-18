@@ -98,8 +98,15 @@ export class QuickBar {
   /** Small (a few colours and an arrow) while the subject dock is open and the bar is not opened up. Returns whether the dock is open. */
   private syncMode(): boolean {
     const dock = !!document.querySelector('.subj-dock');
+    // With the dock the bar takes the size the free space on the line allows (the dock decides: mini, mid or full);
+    // opened with its arrow it is the whole bar above the dock.
+    const qs = this.el.dataset.qs;
+    const size = !dock || this.expanded ? 'full' : qs === 'full' || qs === 'mid' ? qs : 'mini';
     this.el.classList.toggle('withdock', dock);
-    this.el.classList.toggle('mini', dock && !this.expanded);
+    this.el.classList.toggle('mini', size === 'mini');
+    this.el.classList.toggle('mid', size === 'mid');
+    this.el.classList.toggle('open', dock && this.expanded);
+    this.el.classList.toggle('noarrow', dock && !this.expanded && size === 'full');
     return dock;
   }
 

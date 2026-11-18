@@ -71,6 +71,15 @@ const DOCK_ICONS: Record<string, [string, string]> = {
   ground: ['<path d="M2.5 9h19"/><path d="M5.5 9l-2.5 4.5M9.5 9l-2.5 4.5M13.5 9l-2.5 4.5M17.5 9l-2.5 4.5M21.5 9l-2.5 4.5"/>', '#0f172a'],
   ceil: ['<path d="M2.5 14.5h19"/><path d="M5.5 14.5L3 10M9.5 14.5L7 10M13.5 14.5L11 10M17.5 14.5L15 10M21.5 14.5L19 10"/>', '#0f172a'],
   wall: ['<path d="M14 3v18"/><path d="M14 6.5l5-2.5M14 11l5-2.5M14 15.5l5-2.5M14 20l5-2.5"/>', '#0f172a'],
+  f: ['<path d="M4 12h15M13.5 6.5L19 12l-5.5 5.5"/>', '#dc2626'],
+  w: ['<path d="M12 4v15M6.5 13.5L12 19l5.5-5.5"/>', '#16a34a'],
+  n: ['<path d="M12 20V5M6.5 10.5L12 5l5.5 5.5"/>', '#2563eb'],
+  t: ['<path d="M4 12h15M13.5 6.5L19 12l-5.5 5.5"/>', '#d97706'],
+  fr: ['<path d="M20 12H5M10.5 6.5L5 12l5.5 5.5"/>', '#9333ea'],
+  atw: ['<path d="M6 2.5h12"/><circle cx="12" cy="8" r="3.6"/><path d="M8.4 8v7.5M15.6 8v10"/><rect x="5.6" y="15.5" width="5.6" height="4.4" rx=".8"/><rect x="12.8" y="18" width="5.6" height="4" rx=".8"/>', '#7c3aed'],
+  tab: ['<path d="M2 14.5h13.5v3"/><rect x="4" y="9.5" width="6" height="5" rx=".8"/><circle cx="17.6" cy="12.6" r="2.4"/><path d="M20 12.6v6.4"/><rect x="17.6" y="18.5" width="4.6" height="3.6" rx=".8"/>', '#7c3aed'],
+  w37: ['<path d="M3 19.5h18V5.5z"/><path d="M9 19.5a6 6 0 0 0-1.6-4.2"/>', '#475569'],
+  mk: ['<circle cx="12" cy="6.5" r="3.4"/><circle cx="8.4" cy="5.8" r="1.2"/><circle cx="15.6" cy="5.8" r="1.2"/><path d="M12 10v6.5M7 13.5l5-1.8 5 1.8M10 21l2-4.5 2 4.5"/>', '#a16207'],
   rope: ['<path d="M3.5 12h17"/><circle cx="3.5" cy="12" r="1.5" fill="currentColor"/><circle cx="20.5" cy="12" r="1.5" fill="currentColor"/>', '#b45309'],
 };
 
@@ -170,8 +179,9 @@ export class SubjectPanel {
   }
 
   /**
-   * Sit on the toolbar's own line between its two halves (smaller steps when it is tight). The pen's small colour bar
-   * goes beside it on the same line when both fit, else just above it; the whole colour bar (opened with its arrow) sits above.
+   * Sit on the toolbar's own line between its two halves and FILL the free space: the fewer buttons the toolbar has,
+   * the more pieces the dock shows and the more colours the pen bar shows (small bar with an arrow, then 7 colours,
+   * then the whole bar with its slider). When even the smallest mix does not fit, they sit just above the toolbar.
    */
   private placeDock(): void {
     const el = this.dock;
@@ -180,13 +190,24 @@ export class SubjectPanel {
     const l = app.querySelector('.tb-left')?.getBoundingClientRect();
     const r = app.querySelector('.tb-right')?.getBoundingClientRect();
     const qb = app.querySelector<HTMLElement>('.quickbar:not([hidden])');
-    const mini = !!qb && qb.classList.contains('mini');
+    const popup = !!qb && qb.classList.contains('open'); // opened with its arrow: the whole bar above
     const edge = app.dataset.tb;
     const k = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+    const tiles = [...el.querySelectorAll<HTMLElement>('.sd-tile')];
     const clear = (x: HTMLElement) => {
       x.classList.remove('inline');
-      delete x.dataset.fit;
       for (const p of ['left', 'top', 'bottom']) x.style.removeProperty(p);
+    };
+    const showN = (n: number) => {
+      tiles.forEach((t, i) => (t.hidden = i >= n));
+      el.classList.toggle('compact', n <= 4); // small steps when there are few pieces and little room
+    };
+    const setQb = (size: 'full' | 'mid' | 'mini') => {
+      if (!qb) return;
+      qb.dataset.qs = size;
+      qb.classList.toggle('mini', size === 'mini');
+      qb.classList.toggle('mid', size === 'mid');
+      qb.classList.toggle('noarrow', size === 'full');
     };
     clear(el);
     if (qb) clear(qb);
@@ -194,25 +215,37 @@ export class SubjectPanel {
     const roomy = l.right < r.left && !app.classList.contains('tb-stacked') && (edge === 'bottom' || edge === 'top') && app.dataset.tbalign !== 'middle';
     const gap = r.left - l.right;
     const W = (x: HTMLElement) => x.offsetWidth * k;
-    let fit = -1;
-    let beside = false;
+    const total = tiles.length;
+    const MIN = 3;
+    // The richest mix that fits: score = dock pieces + what the pen bar shows.
+    let best: { size: 'full' | 'mid' | 'mini' | null; n: number; score: number } | null = null;
     if (roomy) {
-      for (let level = 0; level <= 3 && fit < 0; level++) {
-        el.dataset.fit = String(level);
-        if (mini && qb && gap >= W(el) + 10 + W(qb) + 24) {
-          fit = level;
-          beside = true;
+      const sizes: ('full' | 'mid' | 'mini' | null)[] = qb && !popup ? ['full', 'mid', 'mini'] : [null];
+      for (const size of sizes) {
+        if (size) setQb(size);
+        for (let n = total; n >= MIN; n--) {
+          showN(n);
+          if (gap >= W(el) + (size && qb ? 10 + W(qb) : 0) + 24) {
+            const score = n + (size === 'full' ? 8 : size === 'mid' ? 4 : 0);
+            if (!best || score > best.score) best = { size, n, score };
+            break;
+          }
         }
       }
-      for (let level = 0; level <= 3 && fit < 0; level++) {
-        el.dataset.fit = String(level);
-        if (gap >= W(el) + 24) fit = level;
+    }
+    let beside = !!best?.size;
+    if (!best && roomy) {
+      // Not even the smallest pair fits: the dock alone on the line, the small pen bar just above it.
+      if (qb && !popup) setQb('mini');
+      for (let n = total; n >= MIN && !best; n--) {
+        showN(n);
+        if (gap >= W(el) + 24) best = { size: null, n, score: n };
       }
     }
-    if (fit < 0) {
+    if (!best) {
       // Above the toolbar (and above the pen bar when that is showing).
-      clear(el);
-      el.dataset.fit = '0';
+      showN(Math.min(total, 6));
+      if (qb && !popup) setQb('mini');
       const top = Math.min(l.top, r.top);
       const lift = qb ? qb.getBoundingClientRect().height + 10 : 0;
       if (edge === 'top') el.style.top = `${Math.max(l.bottom, r.bottom) + 12 + lift}px`;
@@ -220,6 +253,8 @@ export class SubjectPanel {
       el.style.left = '50%';
       return;
     }
+    if (best.size) setQb(best.size);
+    showN(best.n);
     el.classList.add('inline');
     const c = (l.top + l.bottom) / 2;
     const put = (x: HTMLElement, centreX: number, centreY: number) => {
@@ -241,8 +276,8 @@ export class SubjectPanel {
       put(qb, start + dW + 10 + qW / 2, c);
     } else {
       put(el, mid, c);
-      if (qb && mini) {
-        // No room beside it: the small colour bar sits just above the dock.
+      if (qb && !popup) {
+        // The small pen bar sits just above the dock.
         const above = el.getBoundingClientRect();
         qb.classList.add('inline');
         put(qb, mid, edge === 'top' ? above.bottom + 10 + qb.getBoundingClientRect().height / 2 : above.top - 10 - qb.getBoundingClientRect().height / 2);
