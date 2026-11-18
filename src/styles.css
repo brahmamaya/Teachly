@@ -7621,3 +7621,109 @@ button,
     animation: none;
   }
 }
+
+/* ---- My notebooks: floating side panel, big "New" button, starred favourites ---- */
+.library .lib-side {
+  margin: calc(10px + env(safe-area-inset-top, 0px)) 0 10px 10px;
+  padding-top: 14px;
+  border: 1px solid rgba(127, 127, 127, 0.22);
+  border-radius: 26px;
+  background: rgba(127, 127, 127, 0.1);
+}
+.library .ls-item {
+  border-radius: 16px;
+  transition: background 0.18s var(--ease, ease), transform 0.12s;
+}
+.library .ls-item:active {
+  transform: scale(0.97);
+}
+.library .ls-item.on {
+  background: rgba(59, 130, 246, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.45);
+}
+.library .lib-title {
+  font-size: clamp(26px, 3.2vw, 38px);
+  letter-spacing: -0.01em;
+}
+.lib-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  font: 800 16px system-ui, sans-serif;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+  transition: transform 0.15s var(--spring, ease), box-shadow 0.2s;
+}
+.lib-new:active {
+  transform: scale(0.94);
+}
+.nb-card {
+  position: relative;
+}
+.nb-star {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: rgba(0, 0, 0, 0.38);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.15s var(--spring, ease), background 0.2s;
+}
+.nb-card:hover .nb-star,
+.nb-star.on,
+.nb-card:focus-within .nb-star {
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  .nb-star {
+    opacity: 1;
+  }
+}
+.nb-star.on {
+  color: #fbbf24;
+}
+.nb-star.on svg {
+  fill: currentColor;
+}
+.nb-star:active {
+  transform: scale(0.85);
+}
+@media (max-width: 700px) {
+  .library .lib-side {
+    margin: 0;
+    border-radius: 0 0 22px 22px;
+    border-width: 0 0 1px;
+  }
+  .lib-new span {
+    display: none;
+  }
+  .lib-new {
+    padding: 0 14px;
+  }
+}
+/* Tablets in portrait: title and buttons on one line, the search box below. */
+@media (min-width: 701px) and (max-width: 1000px) {
+  .library .lib-head {
+    flex-wrap: wrap;
+  }
+  .library .lib-head h2 {
+    white-space: nowrap;
+    flex: 1 1 auto;
+  }
+  .library .lib-search {
+    order: 5;
+    flex: 1 1 100%;
+    width: auto;
+  }
+}

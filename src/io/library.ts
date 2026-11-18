@@ -26,6 +26,8 @@ export interface NotebookMeta {
   cover?: string;
   /** A tall (vertical) notebook? Decides the shape of its cover. Missing = wide. */
   portrait?: boolean;
+  /** Starred by the teacher (shows in Favorites). */
+  fav?: boolean;
 }
 
 export interface Folder {
@@ -109,6 +111,7 @@ async function writeNotebook(input: Doc, folder?: string): Promise<{ doc: Doc; s
           const meta: NotebookMeta = { id, title: doc.title, updated: Date.now(), pages: doc.pages.length, thumb: thumb || prev?.thumb || '', folder: folder ?? prev?.folder ?? '', portrait: isPortrait(doc) };
           if (prev?.trashed) meta.trashed = prev.trashed;
           if (prev?.cover) meta.cover = prev.cover;
+          if (prev?.fav) meta.fav = true;
           const refs = (gr.result as Record<string, string[]> | undefined) ?? {};
           for (const k of Object.keys(refs)) refs[k] = refs[k].filter((x) => x !== id);
           for (const k of uses) (refs[k] ??= []).push(id);
@@ -275,6 +278,14 @@ export async function setCover(id: string, cover: string): Promise<void> {
   return serial(async () => {
     const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
     await put([[INDEX, list.map((m) => (m.id === id ? { ...m, cover: cover || undefined } : m))]]);
+  });
+}
+
+/** Star / un-star a notebook. */
+export async function setFavorite(id: string, fav: boolean): Promise<void> {
+  return serial(async () => {
+    const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
+    await put([[INDEX, list.map((m) => (m.id === id ? { ...m, fav: fav || undefined } : m))]]);
   });
 }
 

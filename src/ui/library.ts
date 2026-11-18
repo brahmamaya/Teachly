@@ -17,6 +17,7 @@ import {
   saveNotebook,
   isPortrait,
   setCover,
+  setFavorite,
   setPortrait,
   trashNotebook,
 } from '../io/library';
@@ -185,7 +186,7 @@ export async function saveNotebookDialog(host: HTMLElement): Promise<void> {
 }
 
 /** Which list is shown: every notebook, the ones in no folder, one folder, or the trash. */
-type View = 'all' | 'unfiled' | 'trash' | `f:${string}`;
+type View = 'all' | 'fav' | 'unfiled' | 'trash' | `f:${string}`;
 
 export class Library {
   private el: HTMLElement | null = null;
@@ -231,6 +232,7 @@ export class Library {
           </button>
           <input class="lib-search" type="search" placeholder="Search" aria-label="Search notebooks">
           <button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('folderPlus', 24)}</button>
+          <button class="lib-new" data-lib="new">${icon('plus', 20)}<span>New</span></button>
           <button class="icon-btn" data-lib="close" title="Back to board" aria-label="Back to board">${icon('close', 22)}</button>
         </header>
         <div class="lib-bar"></div>
@@ -282,6 +284,7 @@ export class Library {
       `<button class="ls-item ${this.view === v ? 'on' : ''}" data-lib="view" data-v="${esc(v)}">${icon(ic, 20)}<span class="ls-l">${esc(label)}</span>${count(n)}</button>`;
     (el.querySelector('.lib-side') as HTMLElement).innerHTML = `
       ${item('all', 'notebook', 'All notebooks', live.length)}
+      ${item('fav', 'star', 'Favorites', live.filter((m) => m.fav).length)}
       ${item('unfiled', 'open', 'Not in a folder', live.filter((m) => !this.folderOf(m)).length)}
       <div class="ls-head"><span>Folders</span><button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('plus', 18)}</button></div>
       ${this.folders.map((f) => item(`f:${f.id}`, 'folder', f.name, live.filter((m) => m.folder === f.id).length)).join('') || '<p class="ls-empty">No folders yet</p>'}
@@ -289,7 +292,7 @@ export class Library {
       ${item('trash', 'trash', 'Trash', trash.length)}`;
 
     const folder = this.view.startsWith('f:') ? this.folders.find((f) => `f:${f.id}` === this.view) : undefined;
-    const title = this.view === 'all' ? 'All notebooks' : this.view === 'unfiled' ? 'Not in a folder' : this.view === 'trash' ? 'Trash' : (folder?.name ?? '');
+    const title = this.view === 'all' ? 'All notebooks' : this.view === 'fav' ? 'Favorites' : this.view === 'unfiled' ? 'Not in a folder' : this.view === 'trash' ? 'Trash' : (folder?.name ?? '');
     (el.querySelector('.lib-title') as HTMLElement).textContent = title;
     // Cards glide in only when the list is opened or another list is chosen
     // (not after every rename or move).
@@ -311,6 +314,7 @@ export class Library {
     const pool = this.view === 'trash' ? trash : live;
     const items = pool.filter((m) => {
       if (q) return m.title.toLowerCase().includes(q);
+      if (this.view === 'fav') return !!m.fav;
       if (this.view === 'unfiled') return !this.folderOf(m);
       if (folder) return m.folder === folder.id;
       return true;
@@ -330,6 +334,7 @@ export class Library {
           return `
         <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''} ${coverById(m.cover) ? 'has-cv' : ''}" data-o="${m.portrait ? 'p' : 'l'}" data-id="${m.id}" style="--n:${n + 1}">
           <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${coverById(m.cover) ? coverHTML(coverById(m.cover)!, m.title, !!m.portrait) : m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
+          ${inTrash ? '' : `<button class="nb-star ${m.fav ? 'on' : ''}" data-lib="star" aria-label="${m.fav ? 'Remove from' : 'Add to'} Favorites" aria-pressed="${!!m.fav}">${icon('star', 18)}</button>`}
           <span class="nb-row">
             <span class="nb-text">
               <span class="nb-title">${esc(m.title)}</span>
@@ -372,6 +377,11 @@ export class Library {
     this.armed = '';
     if (hadMenu && act !== 'more') this.render();
     switch (act) {
+      case 'star': {
+        const m = this.list.find((x) => x.id === id);
+        if (m) await setFavorite(id, !m.fav);
+        return this.refresh();
+      }
       case 'more':
         this.menuFor = hadMenu === id ? '' : id;
         return this.render();
