@@ -7543,3 +7543,81 @@ button,
   bottom: auto;
   top: calc(126px * var(--ui, 1) + 14px);
 }
+
+/* ---- Moving things to another page ---- */
+.page-thumb {
+  transition: transform 0.15s var(--ease, ease), box-shadow 0.15s, outline-color 0.15s;
+}
+.page-thumb.drop-on {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+  transform: scale(1.04);
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.25);
+}
+.drop-badge {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9000;
+  pointer-events: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #fff;
+  font: 700 13px system-ui, sans-serif;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  will-change: transform;
+}
+.drop-badge.over {
+  background: #2563eb;
+}
+.move-picker {
+  position: fixed;
+  z-index: 3000;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--bar);
+  border: 1px solid var(--bar-border);
+  box-shadow: var(--bar-shadow);
+  max-width: min(92vw, 340px);
+  animation: soft-in 0.22s var(--ease, ease) both;
+}
+.mp-title {
+  font: 700 13px system-ui, sans-serif;
+  margin: 0 4px 8px;
+  opacity: 0.7;
+}
+.mp-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mp-grid button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--bar-border);
+  background: rgba(127, 127, 127, 0.12);
+  color: inherit;
+  font: 700 15px system-ui, sans-serif;
+  transition: transform 0.12s, background 0.2s;
+}
+.mp-grid button:active {
+  transform: scale(0.92);
+}
+.mp-grid button:disabled {
+  opacity: 0.3;
+}
+.mp-grid .mp-new {
+  background: #2563eb;
+  color: #fff;
+  border-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-thumb,
+  .move-picker {
+    transition: none;
+    animation: none;
+  }
+}

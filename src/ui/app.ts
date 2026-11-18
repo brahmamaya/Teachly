@@ -269,7 +269,7 @@ export class App {
 
     this.toolbar = root.querySelector('.toolbars') as HTMLElement;
     this.grid = new PagesGrid(root, () => this.renderToolbar());
-    this.pages = new PagesPanel(root, () => this.renderToolbar(), () => this.grid.toggle());
+    this.pages = new PagesPanel(root, () => { this.renderToolbar(); requestAnimationFrame(() => this.positionProps()); }, () => this.grid.toggle());
     this.library = new Library(root);
     new QuickBar(root);
     this.props = root.querySelector('.props') as HTMLElement;
@@ -1298,6 +1298,7 @@ export class App {
         ${act('data-scale="0.85"', 'smaller', 'Smaller')}
         ${act('data-pact="copy"', 'copy', 'Copy (then Insert > Paste, on any page)')}
         ${act('data-pact="dup"', 'plus', 'Duplicate')}
+        ${act('data-pact="moveto"', 'pages', 'Move to page')}
         ${els.some((e) => e.group) ? act('data-pact="ungroup"', 'shapes', 'Ungroup') : ''}
         ${
           table
@@ -1351,7 +1352,8 @@ export class App {
     } else if (d.pact === 'copy') {
       const n = copySelection();
       toast(`${n} copied — open any page, then Insert > Paste`);
-    } else if (d.pact === 'dup') this.duplicate();
+    } else if (d.pact === 'moveto') this.movePicker(e.target as HTMLElement);
+    else if (d.pact === 'dup') this.duplicate();
     else if (d.pact === 'delete') this.deleteSelection();
   }
 
@@ -1387,6 +1389,35 @@ export class App {
     });
   }
 
+  /** "Move to page": a small grid of page numbers (and a new page) next to the selection bar. */
+  private movePicker(anchor: HTMLElement): void {
+    this.root.querySelector('.move-picker')?.remove();
+    const box = document.createElement('div');
+    box.className = 'move-picker';
+    const pages = store.doc.pages.length;
+    box.innerHTML = `<div class="mp-title">Move to page</div><div class="mp-grid">${Array.from({ length: pages }, (_, i) => `<button data-to="${i}" ${i === store.index ? 'disabled' : ''}>${i + 1}</button>`).join('')}<button data-to="${pages}" class="mp-new" aria-label="New page">+ New</button></div>`;
+    this.root.appendChild(box);
+    const r = anchor.closest('button')!.getBoundingClientRect();
+    box.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - box.offsetWidth, r.left - box.offsetWidth / 2 + r.width / 2))}px`;
+    box.style.top = `${Math.max(8, r.top - box.offsetHeight - 10)}px`;
+    const close = () => {
+      document.removeEventListener('pointerdown', away, true);
+      fadeOut(box);
+    };
+    const away = (ev: Event) => {
+      if (!box.contains(ev.target as Node)) close();
+    };
+    setTimeout(() => document.addEventListener('pointerdown', away, true), 0);
+    box.addEventListener('click', (ev) => {
+      const b = (ev.target as HTMLElement).closest<HTMLElement>('[data-to]');
+      if (!b || b.hasAttribute('disabled')) return;
+      const to = Number(b.dataset.to);
+      const n = store.moveElsToPage([...store.selection], to);
+      close();
+      if (n) toast(`Moved ${n} ${n === 1 ? 'item' : 'items'} to ${to === pages ? 'a new page' : `page ${to + 1}`}. Undo brings them back.`);
+    });
+  }
+
   private duplicate(): void {
     const off = 30 / this.board.cam.z;
     const copies = regroup(store.selectedEls().map((e) => ({ ...translateEl(e, off, off), id: uid() }) as El));
@@ -1410,7 +1441,9 @@ export class App {
     scaleFloating(bar);
     const k = ui();
     const bw = bar.offsetWidth * k, bh = bar.offsetHeight * k;
-    const W = this.board.w, H = this.board.h, gap = 26 * k;
+    // The open Pages panel covers the right edge: keep the bar clear of it.
+    const pp = this.root.querySelector('.pages-panel') as HTMLElement | null;
+    const W = pp ? Math.min(this.board.w, pp.getBoundingClientRect().left - 8) : this.board.w, H = this.board.h, gap = 26 * k;
     // Beside the selection: right if there is room, else left, else inside.
     let left = x2 + gap;
     if (left + bw > W - 8) left = x1 - gap - bw;
@@ -1430,8 +1463,10 @@ export class App {
     // A toolbar button reacts the moment the finger lands (not after it lifts), once.
     // A board that drops the browser's click still works; a real click (keyboard,
     // mouse without pointer events) is the fallback and is ignored when already handled.
-    let done: { b: HTMLElement; t: number } | null = null;
-    const handled = (b: HTMLElement): boolean => !!done && done.b === b && performance.now() - done.t < 900;
+    // (Matched by what the button DOES, not by the element: the toolbar may be rebuilt in between.)
+    let done: { k: string; t: number } | null = null;
+    const keyOf = (b: HTMLElement): string => b.dataset.tool ?? b.dataset.pop ?? b.dataset.act ?? '';
+    const handled = (b: HTMLElement): boolean => !!done && done.k === keyOf(b) && performance.now() - done.t < 900;
     const buttonOf = (e: Event) => (e.target as HTMLElement).closest('button') as HTMLElement | null;
     this.toolbar.addEventListener('pointerdown', (e) => {
       const b = buttonOf(e);
@@ -1447,14 +1482,14 @@ export class App {
       window.addEventListener('pointercancel', release, true);
       // Choosing another tool is instant; opening menus and the rest wait for the lift.
       if (b.dataset.tool && b.dataset.tool !== store.tool.tool) {
-        done = { b, t: performance.now() };
+        done = { k: keyOf(b), t: performance.now() };
         this.onToolbarClick(b);
       }
     });
     this.toolbar.addEventListener('pointerup', (e) => {
       const b = buttonOf(e);
       if (!b || b.hasAttribute('disabled') || e.button > 0 || handled(b)) return;
-      done = { b, t: performance.now() };
+      done = { k: keyOf(b), t: performance.now() };
       this.onToolbarClick(b);
     });
     this.toolbar.addEventListener('click', (e) => {

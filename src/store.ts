@@ -323,12 +323,14 @@ export class Store {
    */
   moveElsToPage(ids: string[], to: number): number {
     const from = this.index;
-    if (to === from || to < 0 || to >= this.doc.pages.length) return 0;
+    // `to` equal to the number of pages means "a new page at the end" (one undo step for both).
+    if (to === from || to < 0 || to > this.doc.pages.length) return 0;
     const want = new Set(ids);
     const moving = this.page.els.filter((e) => want.has(e.id) && !e.locked);
     if (!moving.length) return 0;
     const placed = fitIntoPage(moving);
     const pages = this.doc.pages.slice();
+    if (to === pages.length) pages.push(newPage(pages[from].bg, pages[from].pattern));
     pages[from] = { ...pages[from], els: pages[from].els.filter((e) => !want.has(e.id) || e.locked) };
     pages[to] = { ...pages[to], els: [...pages[to].els, ...placed] };
     this.selection.clear();

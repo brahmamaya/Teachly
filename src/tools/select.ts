@@ -2,6 +2,8 @@ import type { Board, Ptr, Tool } from '../board';
 import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, pathFromPoints, resizeEl, similarity, transformEl } from '../geometry';
 import { drawEl, isDarkColor } from '../renderer';
 import { ui } from '../ui/scale';
+import { dragCancel, dragEnd, dragOver, dropAvailable } from '../ui/pagedrop';
+import { toast } from '../ui/panel';
 import { toggleTape } from './tape';
 import { store } from '../store';
 import type { El, PathEl, Rect, TextEl } from '../types';
@@ -209,6 +211,11 @@ export class SelectTool implements Tool {
           this.guides = g.guides;
         }
         this.mat = [1, 0, 0, 1, dx, dy];
+        // The Pages panel is open: show where the things would land.
+        if (dropAvailable()) {
+          const b = this.board.el.getBoundingClientRect();
+          dragOver(p.sx + b.left, p.sy + b.top, store.selection.size);
+        }
         break;
       }
       case 'resize': {
@@ -279,6 +286,16 @@ export class SelectTool implements Tool {
     if (!m || p.id !== this.pid) return;
     this.mode = null;
     this.inkRect = null;
+    // Dropped on a page of the Pages panel: the things go there (one undo step).
+    const dropped = m.k === 'move' && m.moved ? dragEnd() : (dragCancel(), -1);
+    if (dropped >= 0 && dropped !== store.index) {
+      const n = store.moveElsToPage([...store.selection], dropped);
+      this.mat = IDENTITY;
+      this.guides = [];
+      this.board.invalidate('ink', 'overlay');
+      if (n) toast(`Moved ${n} ${n === 1 ? 'item' : 'items'} to page ${dropped + 1}. Undo brings them back.`);
+      return;
+    }
     if (m.k === 'bend') {
       const pv = m.preview;
       if (pv) store.mapEls(new Set([m.el.id]), () => pv);
@@ -318,6 +335,7 @@ export class SelectTool implements Tool {
   }
 
   cancel(): void {
+    dragCancel();
     this.mode = null;
     this.inkRect = null;
     this.mat = IDENTITY;
