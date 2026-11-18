@@ -16,6 +16,8 @@ import {
 } from '../io/files';
 import { isDarkColor, measureText } from '../renderer';
 import { QuickBar } from './quickbar';
+import { SubjectPanel } from './subjectpanel';
+import { chapterById } from '../subjects/catalog';
 import { SIMPLE_HIDDEN, store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
 import { saveNow, startAutosave } from '../io/autosave';
@@ -233,6 +235,7 @@ export class App {
   private propSection: PropSection = null;
   private selectTool: SelectTool;
   private pages: PagesPanel;
+  private subject: SubjectPanel;
   private grid: PagesGrid;
   private library: Library;
   private tableEditor: TableEditor;
@@ -272,6 +275,7 @@ export class App {
     this.toolbar = root.querySelector('.toolbars') as HTMLElement;
     this.grid = new PagesGrid(root, () => this.renderToolbar());
     this.pages = new PagesPanel(root, () => { this.renderToolbar(); requestAnimationFrame(() => this.positionProps()); }, () => this.grid.toggle());
+    this.subject = new SubjectPanel(root, this.board, () => this.renderToolbar());
     this.library = new Library(root);
     new QuickBar(root);
     this.pasteChip();
@@ -289,6 +293,7 @@ export class App {
       this.updateUndo();
     });
     store.on('page', () => {
+      this.subject.refresh();
       this.updatePageLabel();
       this.updateZoom(false);
       this.updateBoardTone();
@@ -330,7 +335,7 @@ export class App {
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && window.setTimeout(relayout, 200));
     window.setTimeout(relayout, 600);
     // Only a new button size needs a re-layout (other settings keep the menu open).
-    const tbKey = () => `${store.settings.tbHidden.join()}|${(store.settings.tbShown ?? []).join()}`;
+    const tbKey = () => `${store.settings.tbHidden.join()}|${(store.settings.tbShown ?? []).join()}|${store.settings.subject ?? ''}`;
     let layout = tbKey();
     store.on('settings', () => {
       const now = tbKey();
@@ -367,7 +372,7 @@ export class App {
 
   private toolbarKey(): string {
     const t = store.tool;
-    return JSON.stringify([store.settings.tbHidden, store.settings.tbShown, store.settings.hexItems, t.penStyle, t.color, t.hlColor, t.fillColor, t.tapeColor, isRecording(), this.popFor, this.pages.open, store.index, store.doc.pages.length]);
+    return JSON.stringify([store.settings.tbHidden, store.settings.tbShown, store.settings.hexItems, t.penStyle, t.color, t.hlColor, t.fillColor, t.tapeColor, isRecording(), this.popFor, this.pages.open, store.index, store.doc.pages.length, store.settings.subject, this.subject.open]);
   }
 
   /** Quick path: only mark the active tool and the slide switch (no markup rebuild, a few class changes). */
@@ -397,6 +402,8 @@ export class App {
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
     const hide = new Set(store.settings.tbHidden);
     const on = new Set(store.settings.tbShown ?? []);
+    const sub = chapterById(store.settings.subject);
+    const subjectBtn = sub ? `<button class="tb-btn tb-subject ${this.subject.open ? 'open' : ''}" data-act="subject-tray" title="${sub.subject.name}: ${sub.chapter.name}">${sub.subject.name} · ${sub.chapter.short}</button>` : '';
     const show = (k: string, html: string) => ((TB_OPT_IN.has(k) ? !on.has(k) : hide.has(k)) ? '' : html);
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       ${show('select', tool('select', 'select', 'Select'))}
@@ -410,6 +417,7 @@ export class App {
       ${show('tape', tool('tape', 'tape', 'Tape — hide answers, tap to show', `<span class="swatch-dot" style="background:${t.tapeColor}"></span>`))}
       ${show('laser', tool('laser', 'laser', 'Laser pointer'))}`;
     right.innerHTML = `
+      ${subjectBtn}
       ${show('undo', `<button class="tb-btn" data-act="undo" title="Undo">${icon('undo', 22)}</button>`)}
       ${show('redo', `<button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 22)}</button>`)}
       ${show('insert', `<button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 22)}</button>`)}
@@ -896,6 +904,7 @@ export class App {
             ${tile('share-app', 'share', 'Share')}
             ${isInstalled() ? tile('tbedit', 'settings', 'Toolbar') : tile('install', 'download', 'Install')}
           </div>
+          <button class="mt-wide" data-act="subject">${icon('atom', 18)} Subject: ${(() => { const s = chapterById(store.settings.subject); return s ? `${s.subject.name} · ${s.chapter.short}` : 'none'; })()}</button>
           ${isInstalled() ? '' : `<button class="mt-wide" data-act="tbedit">${icon('settings', 18)} Edit toolbar</button>`}
           <details class="mt-settings" data-resize>
             <summary>${icon('settings', 18)} Settings</summary>
@@ -1097,6 +1106,14 @@ export class App {
       case 'delete-page':
         store.deletePage();
         return toast('Page deleted — tap Undo to bring it back');
+      case 'subject':
+        this.closePopover();
+        this.subject.openPicker();
+        return;
+      case 'subject-tray':
+        if (!store.settings.subject) return this.subject.openPicker();
+        this.subject.toggle();
+        return;
       case 'tool-laser':
       case 'tool-tape':
       case 'tool-fill':

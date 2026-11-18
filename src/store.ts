@@ -32,6 +32,8 @@ export interface Settings {
   tbAlign?: 'middle' | 'sides';
   /** Floating hexagon opacity, 0.2 to 1. */
   hexAlpha?: number;
+  /** Chosen chapter with ready-made pieces (see subjects/catalog.ts); none = no subject. */
+  subject?: string | null;
   /** The simple toolbar was applied once (so a teacher's own later choice is never overwritten). */
   tbSimpleDone?: boolean;
   /** Look of My notebooks: dark (default) or light. */
