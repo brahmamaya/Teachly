@@ -734,7 +734,9 @@ export class Board {
     // (that is a resting hand), for a palm-sized touch, or in slide mode (fingers slide the board).
     const fingerEdits = FINGER_TOOLS.has(store.tool.tool) && !slide && now - this.lastPenAt > 1200 && !this.isPalm(p);
     const fingerRest = !laser && !multi && store.settings.penOnly && p.type === 'touch' && !fingerEdits;
-    const slidePan = slide && (p.button === 2 || fingerRest);
+    // The hand (✋) means "move the board": a finger (or the mouse) slides it on every board, with or
+    // without a stylus; the stylus keeps writing. Many-writers mode and the laser are left alone.
+    const slidePan = slide && (p.button === 2 || fingerRest || (!laser && !multi && p.type !== 'pen'));
     if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
       if (slide) {
         // Double-tap: zoom in 2× there, or back to the whole page.

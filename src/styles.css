@@ -5295,6 +5295,17 @@ button,
 .cam-use[hidden] {
   display: none;
 }
+.cam-fallback {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  height: auto;
+  min-height: 52px;
+  padding: 10px 22px;
+  text-align: center;
+  cursor: pointer;
+}
 .cam-snap {
   width: 72px;
   height: 72px;

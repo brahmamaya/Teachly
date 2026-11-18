@@ -315,13 +315,22 @@ export async function exportPdf(_board: Board): Promise<void> {
 /** Paste handler: images from clipboard, or internal element clipboard. */
 let elementClipboard: El[] = [];
 
-export function copySelection(): void {
+/** The page the clipboard was copied from: pasting on another page keeps the same place. */
+let copiedFrom = '';
+
+/** Copy the selected things (they can be pasted on any page, also after the page changes). */
+export function copySelection(): number {
   elementClipboard = store.selectedEls().map((e) => structuredClone(e));
+  copiedFrom = store.page.id;
+  return elementClipboard.length;
 }
+
+export const hasClipboard = (): boolean => elementClipboard.length > 0;
 
 export function pasteElements(board: Board): boolean {
   if (!elementClipboard.length) return false;
-  const off = 24 / board.cam.z;
+  // Same page: a little to the side so the copy is visible; another page: exactly the same place.
+  const off = copiedFrom === store.page.id ? 24 / board.cam.z : 0;
   const els = regroup(elementClipboard).map((e) => {
     const c = structuredClone(e) as El;
     c.id = uid();
@@ -333,6 +342,7 @@ export function pasteElements(board: Board): boolean {
     return c;
   });
   elementClipboard = els.map((e) => structuredClone(e));
+  copiedFrom = store.page.id;
   store.addEls(els);
   store.setTool({ tool: 'select' });
   store.select(els.map((e) => e.id));

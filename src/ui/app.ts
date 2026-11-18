@@ -2,6 +2,7 @@ import { Board, type Tool } from '../board';
 import { bbox, regroup, resizeEl, similarity, transformEl, translateEl, uid, unionRects } from '../geometry';
 import {
   copySelection,
+  hasClipboard,
   exportPdf,
   importPdf,
   insertImages,
@@ -28,14 +29,14 @@ import { PenTool } from '../tools/pen';
 import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
 import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types';
-import { toggleCurtain, toggleSpotlight } from '../widgets/focus';
+import { closeSpotlight, toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openCamera } from '../widgets/camera';
 import { openPoll } from '../widgets/poll';
 import { openTimer } from '../widgets/timer';
 import { isRecording, onRecordingChange, toggleRecording } from '../widgets/recorder';
 import { openCalculator, openPicker, openScoreboard } from '../widgets/classroom';
 import { openGraph } from '../widgets/graph';
-import { toggleMagnifier } from '../widgets/magnifier';
+import { closeMagnifier, toggleMagnifier } from '../widgets/magnifier';
 import { icon } from './icons';
 import { installApp, isInstalled, shareApp } from './install';
 import { Library, saveNotebookDialog } from './library';
@@ -519,6 +520,9 @@ export class App {
   private onToolbarClick(b: HTMLElement): void {
     if (b.dataset.tool) {
       const id = b.dataset.tool as ToolId;
+      // Back to writing / erasing: the spotlight and magnifier go away by themselves.
+      closeSpotlight();
+      closeMagnifier();
       const hasOptions = id === 'pen' || id === 'eraser' || id === 'shape' || id === 'fill' || id === 'tape' || id === 'laser';
       if (store.tool.tool === id && hasOptions) this.togglePopover(id, b);
       else {
@@ -753,6 +757,7 @@ export class App {
             ${this.menuItem('table', 'table', 'Table')}
             ${this.menuItem('graph', 'graph', 'Graph y = f(x)')}
             ${this.menuItem('page', 'pages', 'New page')}
+            ${hasClipboard() ? this.menuItem('paste', 'paste', 'Paste copied items') : ''}
           </div>
           <div class="pm-sep"></div>
           <div class="pm-list">${this.menuItem('camera', 'camera', 'Take Photo')}</div>`;
@@ -1083,6 +1088,10 @@ export class App {
       case 'delete-page':
         store.deletePage();
         return toast('Page deleted — tap Undo to bring it back');
+      case 'paste':
+        this.closePopover();
+        if (!pasteElements(this.board)) toast('Nothing copied yet — select something and tap Copy');
+        return;
       case 'camera':
         return openCamera(this.root, (src) => {
           void insertImageSrc(b, src).then((el) => {
@@ -1270,7 +1279,8 @@ export class App {
         ${fillable ? btn('fill', 'Fill', `${icon('bucket', 22)}<i class="pv-dot ${fill ? '' : 'empty'}" style="background:${fill ?? 'transparent'}"></i>`) : ''}
         ${act('data-scale="1.18"', 'bigger', 'Bigger')}
         ${act('data-scale="0.85"', 'smaller', 'Smaller')}
-        ${act('data-pact="dup"', 'copy', 'Copy')}
+        ${act('data-pact="copy"', 'copy', 'Copy (then Insert > Paste, on any page)')}
+        ${act('data-pact="dup"', 'plus', 'Duplicate')}
         ${els.some((e) => e.group) ? act('data-pact="ungroup"', 'shapes', 'Ungroup') : ''}
         ${
           table
@@ -1321,6 +1331,9 @@ export class App {
       const ids = new Set(store.selection);
       store.mapEls(ids, (e) => ({ ...e, group: undefined }) as El);
       store.clearSelection();
+    } else if (d.pact === 'copy') {
+      const n = copySelection();
+      toast(`${n} copied — open any page, then Insert > Paste`);
     } else if (d.pact === 'dup') this.duplicate();
     else if (d.pact === 'delete') this.deleteSelection();
   }

@@ -44,6 +44,7 @@ export function openCamera(host: HTMLElement, onPhoto: (dataUrl: string) => void
       <video class="cam-video" autoplay playsinline muted></video>
       <img class="cam-shot" alt="Photo taken" hidden>
       <div class="cam-msg" data-msg>Starting camera…</div>
+      <label class="cam-use cam-fallback" data-fallback hidden>${icon('camera', 20)} Use the phone's camera app / pick a photo<input type="file" accept="image/*" capture="environment" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer"></label>
     </div>
     <div class="cam-bar">
       <button class="cam-btn" data-c="close" aria-label="Close">${icon('close', 22)}<span>Close</span></button>
@@ -76,13 +77,28 @@ export function openCamera(host: HTMLElement, onPhoto: (dataUrl: string) => void
     mode(false);
     msg.hidden = false;
     msg.textContent = 'Starting camera…';
+    (box.querySelector('[data-fallback]') as HTMLElement).hidden = true;
     btn('snap').disabled = true;
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new DOMException('', 'NotFoundError');
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: facing }, width: { ideal: 2560 }, height: { ideal: 1440 } },
-        audio: false,
-      });
+      // Some boards / older tablets refuse the detailed request: try simpler ones before giving up.
+      const tries: MediaStreamConstraints[] = [
+        { video: { facingMode: { ideal: facing }, width: { ideal: 2560 }, height: { ideal: 1440 } }, audio: false },
+        { video: { facingMode: { ideal: facing } }, audio: false },
+        { video: true, audio: false },
+      ];
+      let last: unknown = null;
+      for (const c of tries) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(c);
+          break;
+        } catch (err) {
+          last = err;
+          const n = (err as DOMException)?.name;
+          if (n === 'NotAllowedError' || n === 'SecurityError' || n === 'NotReadableError') break; // asking again will not help
+        }
+      }
+      if (!stream) throw last;
       if (!open) return stop(); // closed while the permission question was showing
       video.srcObject = stream;
       await video.play().catch(() => {});
@@ -96,6 +112,8 @@ export function openCamera(host: HTMLElement, onPhoto: (dataUrl: string) => void
       stop();
       msg.hidden = false;
       msg.textContent = cameraError(e);
+      // Whatever went wrong, a photo can still come from the device's own camera app or gallery.
+      (box.querySelector('[data-fallback]') as HTMLElement).hidden = false;
     }
   };
   // The app goes to the background: switch the camera off at once.
@@ -143,6 +161,20 @@ export function openCamera(host: HTMLElement, onPhoto: (dataUrl: string) => void
       onPhoto(photo);
       close();
     }
+  });
+  // Photo from the device's own camera app / gallery (works where live camera cannot start).
+  box.querySelector('[data-fallback] input')!.addEventListener('change', (e) => {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      photo = String(r.result);
+      shot.src = photo;
+      msg.hidden = true;
+      (box.querySelector('[data-fallback]') as HTMLElement).hidden = true;
+      mode(true);
+    };
+    r.readAsDataURL(f);
   });
   box.addEventListener('keydown', (e) => {
     e.stopPropagation();
