@@ -1,5 +1,6 @@
 import type { Board } from '../board';
-import { translateEl, uid } from '../geometry';
+import { transformEl, translateEl, uid } from '../geometry';
+import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { isDarkColor } from '../renderer';
 import { chapterById, SUBJECTS, type Chapter } from '../subjects/catalog';
 import type { Comp } from '../subjects/nlm';
@@ -134,10 +135,20 @@ export class SubjectPanel {
   }
 
   /** Put a piece on the board with its middle at (wx, wy), grouped, selected. */
-  private place(c: Comp, wx: number, wy: number): void {
+  private place(c: Comp, wx: number, wy: number, dropped = false): void {
     const els = c.make(inkFor());
     const g = uid();
-    const placed = els.map((e) => ({ ...translateEl(e, wx, wy), ...(els.length > 1 ? { group: g } : {}) }) as El);
+    let placed = els.map((e) => ({ ...translateEl(e, wx, wy), ...(els.length > 1 ? { group: g } : {}) }) as El);
+    // A block dropped near a surface (ground, table, a wedge's slope, another block) lies along it and sits on it.
+    if (dropped && c.snap) {
+      const rect = placed.find((e) => e.type === 'path' && e.snap) as PathEl | undefined;
+      const info = rect && blockInfo(rect);
+      const hit = info && nearest(surfaces(store.page.els), wx, wy, 130);
+      if (info && hit) {
+        const m = seat(info, hit.s, hit.t);
+        placed = placed.map((e) => transformEl(e, m));
+      }
+    }
     store.addEls(placed);
     store.setTool({ tool: 'select' });
     store.select(placed.map((e) => e.id));
@@ -194,7 +205,7 @@ export class SubjectPanel {
         if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
         const b = this.board.el.getBoundingClientRect();
         const [wx, wy] = this.board.toWorld(e.clientX - b.left, e.clientY - b.top);
-        this.place(d.c, wx, wy);
+        this.place(d.c, wx, wy, true);
       } else if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) {
         const v = this.board.viewRect();
         const k = (this.count++ % 5) * 26; // each tap a little off, so pieces do not hide each other

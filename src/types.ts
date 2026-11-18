@@ -32,6 +32,12 @@ export interface PathEl {
   region?: boolean;
   rings?: number[][];
   locked?: boolean;
+  /** Other things (a block) can sit on this edge / outline (ground, table, wedge slope, top of a block). */
+  surf?: boolean;
+  /** A block that seats itself on the nearest surface (Auto set). */
+  snap?: 'block';
+  /** A spring: rebuilt from its two ends when stretched or squeezed, so the coils keep their size. */
+  spring?: { coils: number; amp: number; lead: number };
 }
 
 export interface BoxBase {

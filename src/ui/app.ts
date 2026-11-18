@@ -17,6 +17,7 @@ import {
 import { isDarkColor, measureText } from '../renderer';
 import { QuickBar } from './quickbar';
 import { SubjectPanel } from './subjectpanel';
+import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { chapterById } from '../subjects/catalog';
 import { SIMPLE_HIDDEN, store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
@@ -1308,6 +1309,7 @@ export class App {
         ${colorable ? btn('color', 'Colour', `${icon('palette', 22)}<i class="pv-dot" style="background:${color}"></i>`) : ''}
         ${paths.length ? btn('width', 'Thickness', icon('thick', 22)) : ''}
         ${fillable ? btn('fill', 'Fill', `${icon('bucket', 22)}<i class="pv-dot ${fill ? '' : 'empty'}" style="background:${fill ?? 'transparent'}"></i>`) : ''}
+        ${this.autoSetBlock() ? act('data-pact="autoset"', 'magic', 'Auto set: lie along the nearest surface and sit on it') : ''}
         ${els.length && els.every((e) => e.type === 'path') ? `${act('data-pact="flipx"', 'flipH', 'Flip left-right')}${act('data-pact="flipy"', 'flipV', 'Flip up-down')}` : ''}
         ${act('data-scale="1.18"', 'bigger', 'Bigger')}
         ${act('data-scale="0.85"', 'smaller', 'Smaller')}
@@ -1367,7 +1369,8 @@ export class App {
     } else if (d.pact === 'copy') {
       const n = copySelection();
       toast(`${n} copied. Go to any page and tap the Paste button.`, 3500);
-    } else if (d.pact === 'flipx' || d.pact === 'flipy') this.flip(d.pact === 'flipx');
+    } else if (d.pact === 'autoset') this.autoSet();
+    else if (d.pact === 'flipx' || d.pact === 'flipy') this.flip(d.pact === 'flipx');
     else if (d.pact === 'moveto') this.movePicker(e.target as HTMLElement);
     else if (d.pact === 'dup') this.duplicate();
     else if (d.pact === 'delete') this.deleteSelection();
@@ -1461,6 +1464,24 @@ export class App {
       if (b.dataset.pc === 'x') return hide();
       if (pasteElements(this.board)) toast('Pasted', 1500);
     });
+  }
+
+  /** The one block (with its label) that Auto set can seat, when exactly that is selected. */
+  private autoSetBlock(): PathEl | null {
+    const els = store.selectedEls();
+    const blocks = els.filter((e): e is PathEl => e.type === 'path' && e.snap === 'block');
+    return blocks.length === 1 && els.every((e) => e === blocks[0] || e.type === 'text') ? blocks[0] : null;
+  }
+
+  /** Auto set: the selected block turns to lie along the nearest surface and sits on it. */
+  private autoSet(): void {
+    const blk = this.autoSetBlock();
+    const info = blk && blockInfo(blk);
+    if (!blk || !info) return;
+    const hit = nearest(surfaces(store.page.els, store.selection), info.cx, info.cy, 260);
+    if (!hit) return void toast('No surface close by (ground, table, wedge or another block)', 2600);
+    const m = seat(info, hit.s, hit.t);
+    store.mapEls(store.selection, (e) => transformEl(e, m));
   }
 
   /** Mirror the selected shapes / lines around the middle of the selection (left-right or up-down). */
