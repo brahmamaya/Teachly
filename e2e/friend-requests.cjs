@@ -37,15 +37,10 @@ const { check, finish, scr, anchor, where } = require('./lib.cjs');
   const p1 = await page.evaluate(() => window.__teachly.store.doc.pages[0].els.length);
   check('page 1 still has its own items', p1 === 2);
 
-  // 3. Camera: when the live camera cannot start, the phone-camera / gallery button is offered
-  await page.evaluate(() => { navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('', 'NotReadableError')); });
-  await page.click('[data-pop=insert]'); await page.waitForTimeout(250); await page.click('.pm-item[data-act=camera]'); await page.waitForTimeout(500);
-  const vis = await page.$eval('[data-fallback]', (e) => !e.hidden);
-  check('camera that cannot start offers the camera-app / gallery button', vis);
-  await page.setInputFiles('[data-fallback] input', `${require('./lib.cjs').IMG}/photo1.png`); await page.waitForTimeout(500);
-  check('a picked photo shows up with "Add to page"', await page.$eval('[data-c=use]', (e) => !e.hidden));
-  await page.click('[data-c=use]'); await page.waitForTimeout(600);
-  check('photo is on the page', await page.evaluate(() => window.__teachly.store.page.els.some((e) => e.type === 'image')));
+  // 3. No camera feature any more
+  await page.click('[data-pop=insert]'); await page.waitForTimeout(250);
+  check('the Insert menu has no camera item', !(await page.$('.pm-item[data-act=camera]')) && (await page.$$('.pm-item')).length >= 5);
+  await page.keyboard.press('Escape'); await page.mouse.click(900, 500); await page.waitForTimeout(200);
 
   // 4. Hand (slide) mode: one finger slides the board (no stylus, no pen-only)
   await page.evaluate(() => { const { store } = window.__teachly; store.setSettings({ penOnly: false }); store.setTool({ tool: 'pen', slide: true }); });

@@ -36,7 +36,6 @@ import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
 import type { BgPattern, El, PathEl, ShapeKind, TableEl, TextEl, ToolId } from '../types';
 import { closeSpotlight, toggleCurtain, toggleSpotlight } from '../widgets/focus';
-import { openCamera } from '../widgets/camera';
 import { openPoll } from '../widgets/poll';
 import { openTimer } from '../widgets/timer';
 import { isRecording, onRecordingChange, toggleRecording } from '../widgets/recorder';
@@ -758,7 +757,7 @@ export class App {
           <div class="n3-colors">${this.swatches(boardColors(), t.shapeColor, 'scolor')}</div>`;
         break;
       case 'insert':
-        // A tidy list with a title; the camera sits apart at the bottom.
+        // A tidy list with a title.
         pop.className = 'popover pop-list';
         pop.innerHTML = `<div class="pm-title">Insert</div>
           <div class="pm-list">
@@ -769,9 +768,7 @@ export class App {
             ${this.menuItem('graph', 'graph', 'Graph y = f(x)')}
             ${this.menuItem('page', 'pages', 'New page')}
             ${hasClipboard() ? this.menuItem('paste', 'paste', 'Paste copied items') : ''}
-          </div>
-          <div class="pm-sep"></div>
-          <div class="pm-list">${this.menuItem('camera', 'camera', 'Take Photo')}</div>`;
+          </div>`;
         break;
       case 'table':
         // Word-style picker: slide over the grid to choose rows × columns.
@@ -1125,13 +1122,6 @@ export class App {
         this.closePopover();
         if (!pasteElements(this.board)) toast('Nothing copied yet — select something and tap Copy');
         return;
-      case 'camera':
-        return openCamera(this.root, (src) => {
-          void insertImageSrc(b, src).then((el) => {
-            store.setTool({ tool: 'select' });
-            store.select([el.id]);
-          });
-        });
       case 'image':
         void insertImages(b);
         return;

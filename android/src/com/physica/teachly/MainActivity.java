@@ -65,7 +65,7 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private ValueCallback<Uri[]> fileCallback;
-    /** A microphone / camera request from the page, waiting for the user's answer. */
+    /** A microphone request from the page, waiting for the user's answer. */
     private PermissionRequest pendingMedia;
     private byte[] pendingData;
     private String pendingName;
@@ -149,7 +149,7 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         // Only Teachly's own page, and only the microphone
-                        // (Record lesson) or the camera (Insert > Camera).
+                        // (Record lesson). The camera is never allowed.
                         Uri o = request.getOrigin();
                         if (o == null || !HOST.equals(o.getHost())) {
                             request.deny();
@@ -331,7 +331,6 @@ public class MainActivity extends Activity {
     /** The Android permission a web request needs; null = never allowed. */
     private static String androidPermission(String resource) {
         if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) return Manifest.permission.RECORD_AUDIO;
-        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) return Manifest.permission.CAMERA;
         return null;
     }
 
