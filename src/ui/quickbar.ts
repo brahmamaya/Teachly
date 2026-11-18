@@ -27,8 +27,50 @@ export class QuickBar {
       const hl = t.tool === 'pen' && t.penStyle === 'highlighter';
       if (b.dataset.qc) store.setTool(t.tool === 'shape' ? { shapeColor: b.dataset.qc } : hl ? { hlColor: b.dataset.qc } : { color: b.dataset.qc });
     });
-    store.on('tool', () => this.update());
+    store.on('tool', () => {
+      this.update();
+      this.place();
+    });
+    store.on('settings', () => this.place());
+    window.addEventListener('resize', () => this.place());
+    // The toolbar may be rebuilt or moved: follow it.
+    const bars = document.querySelector('.toolbars');
+    if (bars) new ResizeObserver(() => this.place()).observe(bars);
     this.update();
+    this.place();
+  }
+
+  /**
+   * Sit on the same line as the toolbar, in the free space between its two halves.
+   * Where there is no such space (phones, bars together in the middle, bars on a side) it stays just above the toolbar (CSS).
+   */
+  private place(): void {
+    const el = this.el;
+    const app = el.parentElement as HTMLElement;
+    const reset = () => {
+      el.classList.remove('inline');
+      el.style.removeProperty('left');
+      el.style.removeProperty('top');
+      el.style.removeProperty('bottom');
+    };
+    if (el.hidden) return;
+    const edge = app.dataset.tb;
+    const l = app.querySelector('.tb-left')?.getBoundingClientRect();
+    const r = app.querySelector('.tb-right')?.getBoundingClientRect();
+    if (!l || !r || app.classList.contains('tb-stacked') || (edge !== 'bottom' && edge !== 'top') || app.dataset.tbalign === 'middle' || l.right > r.left) return reset();
+    const need = el.offsetWidth * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1) + 24;
+    if (r.left - l.right < need) return reset();
+    el.classList.add('inline');
+    // (The box is scaled around its middle, so line up the middles.)
+    const c = (l.top + l.bottom) / 2, half = el.offsetHeight / 2;
+    el.style.left = `${(l.right + r.left) / 2}px`;
+    if (edge === 'bottom') {
+      el.style.top = 'auto';
+      el.style.bottom = `${window.innerHeight - c - half}px`;
+    } else {
+      el.style.bottom = 'auto';
+      el.style.top = `${c - half}px`;
+    }
   }
 
   private update(): void {

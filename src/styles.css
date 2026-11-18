@@ -7842,3 +7842,9 @@ button,
     bottom: calc(86px + env(safe-area-inset-bottom, 0px) + 12px);
   }
 }
+
+/* Quick bar on the toolbar's own line (between its two halves) */
+.quickbar.inline {
+  transform-origin: 50% 50%;
+  animation: none;
+}
