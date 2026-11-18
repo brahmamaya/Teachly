@@ -7727,3 +7727,89 @@ button,
     width: auto;
   }
 }
+
+/* ---- Phones (two-row toolbar): one tidy dock, both rows full width, buttons spread evenly ---- */
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-left,
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-right {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  transform: none !important;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 0;
+  padding: 5px 6px calc(5px + env(safe-area-inset-bottom, 0px) * 0);
+  border-width: 0;
+  box-shadow: none;
+  background: var(--bar);
+}
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-left {
+  bottom: 0 !important;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  border-radius: 0;
+  border-top: 1px solid var(--bar-border);
+}
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-right {
+  bottom: calc(51px + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
+}
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar .tb-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 54px;
+}
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar .tb-pagenav {
+  flex: 0 0 auto;
+}
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .quickbar {
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px) + 12px);
+  scale: 1;
+}
+
+/* Phones: the colour / size pill fits the width. */
+@media (max-width: 480px) {
+  .quickbar {
+    gap: 5px;
+    padding: 7px 10px;
+    max-width: calc(100vw - 16px);
+  }
+  .quickbar .qb-c {
+    width: 28px;
+    height: 28px;
+  }
+  .quickbar .qb-c:nth-child(7) {
+    display: none;
+  }
+  .quickbar .qb-s {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ---- Shape / pen menus: the colour panel is only as tall as its colours ---- */
+.popover.pop-n3 .n3-colors {
+  align-self: flex-start;
+  background: rgba(127, 127, 127, 0.14);
+}
+.popover.pop-n3 .n3-colors .swatch.on {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #0f172a;
+}
+.popover.pop-n3 .shape-grid {
+  gap: 2px;
+}
+.popover.pop-n3 .shape-btn {
+  width: 40px;
+  height: 40px;
+}
+/* ---- Selection bar: options closer together ---- */
+.props-v .props-row {
+  gap: 0;
+  padding: 4px;
+}
+.props-v .pv-btn {
+  width: 40px;
+  height: 40px;
+}

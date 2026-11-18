@@ -746,7 +746,6 @@ export class App {
               <span class="pen-prev"><i data-shapeprev style="width:${Math.min(20, t.shapeSize + 3)}px;height:${Math.min(20, t.shapeSize + 3)}px;background:${t.shapeColor}"></i></span>
             </div>
             <div class="shape-grid">${SHAPES.map(([k, n, svg]) => `<button class="shape-btn ${t.shape === k ? 'on' : ''}" data-shape="${k}" title="${n}" aria-label="${n}"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${svg}</svg></button>`).join('')}</div>
-            <button class="btn wide" data-act="graph">${icon('graph', 20)} Graph from an equation</button>
           </div>
           <div class="n3-colors">${this.swatches(boardColors(), t.shapeColor, 'scolor')}</div>`;
         break;
@@ -1294,6 +1293,7 @@ export class App {
         ${colorable ? btn('color', 'Colour', `${icon('palette', 22)}<i class="pv-dot" style="background:${color}"></i>`) : ''}
         ${paths.length ? btn('width', 'Thickness', icon('thick', 22)) : ''}
         ${fillable ? btn('fill', 'Fill', `${icon('bucket', 22)}<i class="pv-dot ${fill ? '' : 'empty'}" style="background:${fill ?? 'transparent'}"></i>`) : ''}
+        ${els.length && els.every((e) => e.type === 'path') ? `${act('data-pact="flipx"', 'flipH', 'Flip left-right')}${act('data-pact="flipy"', 'flipV', 'Flip up-down')}` : ''}
         ${act('data-scale="1.18"', 'bigger', 'Bigger')}
         ${act('data-scale="0.85"', 'smaller', 'Smaller')}
         ${act('data-pact="copy"', 'copy', 'Copy (then Insert > Paste, on any page)')}
@@ -1352,7 +1352,8 @@ export class App {
     } else if (d.pact === 'copy') {
       const n = copySelection();
       toast(`${n} copied — open any page, then Insert > Paste`);
-    } else if (d.pact === 'moveto') this.movePicker(e.target as HTMLElement);
+    } else if (d.pact === 'flipx' || d.pact === 'flipy') this.flip(d.pact === 'flipx');
+    else if (d.pact === 'moveto') this.movePicker(e.target as HTMLElement);
     else if (d.pact === 'dup') this.duplicate();
     else if (d.pact === 'delete') this.deleteSelection();
   }
@@ -1416,6 +1417,15 @@ export class App {
       close();
       if (n) toast(`Moved ${n} ${n === 1 ? 'item' : 'items'} to ${to === pages ? 'a new page' : `page ${to + 1}`}. Undo brings them back.`);
     });
+  }
+
+  /** Mirror the selected shapes / lines around the middle of the selection (left-right or up-down). */
+  private flip(horizontal: boolean): void {
+    const r = this.board.selectionBounds();
+    if (!r) return;
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    const m: [number, number, number, number, number, number] = horizontal ? [-1, 0, 0, 1, 2 * cx, 0] : [1, 0, 0, -1, 0, 2 * cy];
+    store.mapEls(store.selection, (e) => (e.type === 'path' ? transformEl(e, m) : e));
   }
 
   private duplicate(): void {
