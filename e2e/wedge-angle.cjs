@@ -20,7 +20,7 @@ const { check, finish } = require('./lib.cjs');
     const label = sel.find((e) => e.type === 'text');
     const arc = sel.find((e) => e.ang && e.type === 'path');
     const w = p[3] - p[0], h = p[1] - p[7];
-    return { label: label.text, expected: Math.round((Math.atan2(h, w) * 180) / Math.PI), w, h, arcR: Math.hypot(arc.pts[0] - p[0], arc.pts[1] - p[1]), lx: label.x + label.w / 2, ly: label.y + label.h / 2, vx: p[0], vy: p[1] };
+    return { fs: label.fontSize, label: label.text, expected: Math.round((Math.atan2(h, w) * 180) / Math.PI), w, h, arcR: Math.hypot(arc.pts[0] - p[0], arc.pts[1] - p[1]), lx: label.x + label.w / 2, ly: label.y + label.h / 2, vx: p[0], vy: p[1] };
   });
   await page.click('.sd-tile[data-comp="w30"]');
   await page.waitForTimeout(400);
@@ -44,6 +44,7 @@ const { check, finish } = require('./lib.cjs');
   await grip(0.5, 0, 0, -160);
   let i2 = await info();
   check(`taller wedge: the number follows (${i2.label}, real ${i2.expected}°)`, i2.label === `${i2.expected}°` && i2.expected > i1.expected, JSON.stringify(i2));
+  check('the number stays readable however the wedge is stretched (font size 30)', i2.fs === 30 && i1.fs === 30, `${i1.fs} ${i2.fs}`);
   check('the arc stays at the corner with a sensible size', i2.arcR > 10 && i2.arcR <= 70.01, String(i2.arcR));
   // the label stays inside the angle: on the line that halves it, at some distance from the corner
   const ang = Math.atan2(i2.vy - i2.ly, i2.lx - i2.vx);

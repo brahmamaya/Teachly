@@ -60,9 +60,11 @@ export function refreshAngles(els: El[]): El[] {
       const text = `${Math.round((theta * 180) / Math.PI)}°`;
       const d = Math.min(Math.max(ra + 52, 28 / Math.max(0.2, Math.sin(theta / 2))), shortest * 0.9);
       const mid = a1 + delta / 2;
-      const w = t.w * (text.length / t.text.length);
-      const x = V[0] + Math.cos(mid) * d - w / 2, y = V[1] + Math.sin(mid) * d - t.h / 2;
-      if (text !== t.text || Math.abs(x - t.x) > 0.01 || Math.abs(y - t.y) > 0.01) next = { ...t, text, w, x, y, ang };
+      // The number keeps its size however the wedge is stretched (stretching shrinks writing, which made it vanish).
+      const fs = 30, k = fs / t.fontSize;
+      const w = t.w * k * (text.length / t.text.length), h = t.h * k;
+      const x = V[0] + Math.cos(mid) * d - w / 2, y = V[1] + Math.sin(mid) * d - h / 2;
+      if (text !== t.text || Math.abs(fs - t.fontSize) > 0.01 || Math.abs(x - t.x) > 0.01 || Math.abs(y - t.y) > 0.01) next = { ...t, text, fontSize: fs, w, h, x, y, ang };
     }
     if (next !== e) changed = true;
     return next;
