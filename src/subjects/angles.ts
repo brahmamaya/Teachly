@@ -20,7 +20,9 @@ const same = (a: number[], b: number[]): boolean => a.length === b.length && a.e
 
 /** The same elements with every angle mark made true again (the very same array when nothing changed). */
 export function refreshAngles(els: El[]): El[] {
-  if (!els.some((e) => (e as { ang?: unknown }).ang)) return els;
+  // (Wedges placed before angle marks were tagged are recognised by their look: a degree number or a 15-point arc next to a corner.)
+  const isNumber = (e: El): boolean => e.type === 'text' && /^\d+(\.\d+)?°$/.test(e.text);
+  if (!els.some((e) => (e as { ang?: unknown }).ang || isNumber(e))) return els;
   const tri = new Map<string, Pt[]>();
   for (const e of els) if (e.type === 'path' && e.group && e.closed && !tri.has(e.group)) {
     const c = corners(e);
@@ -28,9 +30,17 @@ export function refreshAngles(els: El[]): El[] {
   }
   let changed = false;
   const out = els.map((e) => {
-    const ang = (e as { ang?: { v: number } }).ang;
-    const c = ang && e.group ? tri.get(e.group) : undefined;
-    if (!ang || !c) return e;
+    let ang = (e as { ang?: { v: number } }).ang;
+    const c = e.group ? tri.get(e.group) : undefined;
+    if (!c) return e;
+    if (!ang) {
+      // An older wedge: the corner nearest to its number or arc.
+      const [px, py] = e.type === 'text' ? [e.x + e.w / 2, e.y + e.h / 2] : e.type === 'path' && !e.closed && !e.surf && e.pts.length === 45 ? [e.pts[0], e.pts[1]] : [NaN, NaN];
+      if (Number.isNaN(px) || (e.type === 'text' && !isNumber(e))) return e;
+      const near = c.map((q, i) => ({ i, d: Math.hypot(q[0] - px, q[1] - py) })).sort((a, b) => a.d - b.d)[0];
+      if (near.d > (e.type === 'text' ? 260 : 90)) return e;
+      ang = { v: near.i };
+    }
     const V = c[ang.v], A = c[(ang.v + 1) % 3], B = c[(ang.v + 2) % 3];
     const a1 = Math.atan2(A[1] - V[1], A[0] - V[0]), a2 = Math.atan2(B[1] - V[1], B[0] - V[0]);
     let delta = a2 - a1;
@@ -44,7 +54,7 @@ export function refreshAngles(els: El[]): El[] {
       const pts: Pt[] = [];
       for (let i = 0; i <= 14; i++) pts.push([V[0] + Math.cos(a1 + (delta * i) / 14) * ra, V[1] + Math.sin(a1 + (delta * i) / 14) * ra]);
       const flat = pathFromPoints(pts, false);
-      if (!same(flat, e.pts)) next = { ...e, pts: flat };
+      if (!same(flat, e.pts)) next = { ...e, pts: flat, ang };
     } else if (e.type === 'text' && /^\d+(\.\d+)?°$/.test(e.text)) {
       const t = e as TextEl;
       const text = `${Math.round((theta * 180) / Math.PI)}°`;
@@ -52,7 +62,7 @@ export function refreshAngles(els: El[]): El[] {
       const mid = a1 + delta / 2;
       const w = t.w * (text.length / t.text.length);
       const x = V[0] + Math.cos(mid) * d - w / 2, y = V[1] + Math.sin(mid) * d - t.h / 2;
-      if (text !== t.text || Math.abs(x - t.x) > 0.01 || Math.abs(y - t.y) > 0.01) next = { ...t, text, w, x, y };
+      if (text !== t.text || Math.abs(x - t.x) > 0.01 || Math.abs(y - t.y) > 0.01) next = { ...t, text, w, x, y, ang };
     }
     if (next !== e) changed = true;
     return next;
