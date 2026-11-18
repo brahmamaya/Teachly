@@ -7848,3 +7848,53 @@ button,
   transform-origin: 50% 50%;
   animation: none;
 }
+
+/* Paste button that appears after Copy */
+.paste-chip {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px 5px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(79, 70, 229, 0.4);
+}
+.paste-chip[hidden] {
+  display: none;
+}
+.paste-chip.pc-in {
+  animation: soft-in 0.28s var(--ease, ease) both;
+}
+.paste-chip button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 700 15px system-ui, sans-serif;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  transition: transform 0.12s, background 0.2s;
+}
+.paste-chip .pc-x {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.18);
+}
+.paste-chip button:active {
+  transform: scale(0.92);
+}
+@media (prefers-reduced-motion: reduce) {
+  .paste-chip.pc-in {
+    animation: none;
+  }
+}

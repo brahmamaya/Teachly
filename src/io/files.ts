@@ -322,10 +322,16 @@ let copiedFrom = '';
 export function copySelection(): number {
   elementClipboard = store.selectedEls().map((e) => structuredClone(e));
   copiedFrom = store.page.id;
+  clipListeners.forEach((fn) => fn());
   return elementClipboard.length;
 }
 
 export const hasClipboard = (): boolean => elementClipboard.length > 0;
+export const clipboardCount = (): number => elementClipboard.length;
+
+/** Told whenever something is copied (so a Paste button can show up). */
+const clipListeners = new Set<() => void>();
+export const onClipboardChange = (fn: () => void): void => void clipListeners.add(fn);
 
 export function pasteElements(board: Board): boolean {
   if (!elementClipboard.length) return false;

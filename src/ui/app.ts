@@ -2,7 +2,9 @@ import { Board, type Tool } from '../board';
 import { bbox, regroup, resizeEl, similarity, transformEl, translateEl, uid, unionRects } from '../geometry';
 import {
   copySelection,
+  clipboardCount,
   hasClipboard,
+  onClipboardChange,
   exportPdf,
   importPdf,
   insertImages,
@@ -272,6 +274,7 @@ export class App {
     this.pages = new PagesPanel(root, () => { this.renderToolbar(); requestAnimationFrame(() => this.positionProps()); }, () => this.grid.toggle());
     this.library = new Library(root);
     new QuickBar(root);
+    this.pasteChip();
     this.props = root.querySelector('.props') as HTMLElement;
     this.renderToolbar();
     this.bindChrome();
@@ -1346,7 +1349,7 @@ export class App {
       store.clearSelection();
     } else if (d.pact === 'copy') {
       const n = copySelection();
-      toast(`${n} copied — open any page, then Insert > Paste`);
+      toast(`${n} copied. Go to any page and tap the Paste button.`, 3500);
     } else if (d.pact === 'flipx' || d.pact === 'flipy') this.flip(d.pact === 'flipx');
     else if (d.pact === 'moveto') this.movePicker(e.target as HTMLElement);
     else if (d.pact === 'dup') this.duplicate();
@@ -1411,6 +1414,35 @@ export class App {
       const n = store.moveElsToPage([...store.selection], to);
       close();
       if (n) toast(`Moved ${n} ${n === 1 ? 'item' : 'items'} to ${to === pages ? 'a new page' : `page ${to + 1}`}. Undo brings them back.`);
+    });
+  }
+
+  /** After Copy: a "Paste" button floats at the top of the board until it is used or closed. */
+  private pasteChip(): void {
+    const chip = document.createElement('div');
+    chip.className = 'paste-chip';
+    chip.hidden = true;
+    chip.innerHTML = `<button class="pc-go" data-pc="go">${icon('paste', 20)}<span></span></button><button class="pc-x" data-pc="x" aria-label="Close">${icon('close', 16)}</button>`;
+    this.root.appendChild(chip);
+    let timer = 0;
+    const hide = () => {
+      chip.hidden = true;
+      clearTimeout(timer);
+    };
+    onClipboardChange(() => {
+      (chip.querySelector('.pc-go span') as HTMLElement).textContent = `Paste ${clipboardCount()} ${clipboardCount() === 1 ? 'item' : 'items'} here`;
+      chip.hidden = false;
+      chip.classList.remove('pc-in');
+      void chip.offsetWidth;
+      chip.classList.add('pc-in');
+      clearTimeout(timer);
+      timer = window.setTimeout(hide, 120_000);
+    });
+    chip.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-pc]');
+      if (!b) return;
+      if (b.dataset.pc === 'x') return hide();
+      if (pasteElements(this.board)) toast('Pasted', 1500);
     });
   }
 
