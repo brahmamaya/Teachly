@@ -58,7 +58,7 @@ const CLASS12 = [
 
 const c11 = soon(CLASS11, '11');
 // Chapter 4: Laws of Motion (Newton's laws) has its pieces ready.
-c11[3] = { id: 'phy-11-nlm', name: "Laws of Motion (Newton's laws)", short: 'NLM', cats: NLM_CATEGORIES, comps: NLM_COMPONENTS, quick: ['b1', 'w30', 'sp', 'p1', 'ground', 'ceil', 'wall', 'rope'] };
+c11[3] = { id: 'phy-11-nlm', name: "Laws of Motion (Newton's laws)", short: 'NLM', cats: NLM_CATEGORIES, comps: NLM_COMPONENTS, quick: ['b1', 'w30', 'sp', 'p0', 'p1', 'ground', 'ceil', 'wall', 'rope'] };
 
 export const SUBJECTS: Subject[] = [
   {

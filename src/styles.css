@@ -8264,3 +8264,60 @@ button,
 #app.sheet-open .paste-chip {
   display: none;
 }
+
+/* Pen colours beside the subject dock: only a few colours and a faint arrow that opens the whole bar */
+.quickbar .qb-arrow {
+  display: none;
+}
+.quickbar.withdock .qb-arrow {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  opacity: 0.45;
+  transition: opacity 0.15s, transform 0.2s;
+}
+.quickbar.withdock .qb-arrow:hover,
+.quickbar.withdock .qb-arrow:active {
+  opacity: 0.9;
+}
+.quickbar.withdock:not(.mini) .qb-arrow svg {
+  transform: rotate(180deg);
+}
+.quickbar.mini .qb-c:not(.qb-keep),
+.quickbar.mini .qb-sep,
+.quickbar.mini .qb-range,
+.quickbar.mini .qb-prev {
+  display: none;
+}
+.quickbar.mini {
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
+}
+
+.subj-dock[data-fit='3'] .sd-tile:nth-child(n + 4) {
+  display: none;
+}
+
+/* tighter steps so the dock and the small colour bar can share the line on more tablets */
+.quickbar.mini .qb-c {
+  width: 24px;
+  height: 24px;
+}
+.quickbar.mini {
+  gap: 4px;
+  padding: 5px 6px 5px 8px;
+}
+.subj-dock[data-fit='3'] {
+  gap: 4px;
+  padding: 5px 6px;
+}
+.subj-dock[data-fit='3'] .sd-tile,
+.subj-dock[data-fit='3'] .sd-more {
+  width: 34px;
+  height: 34px;
+}

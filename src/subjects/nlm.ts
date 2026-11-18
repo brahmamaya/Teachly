@@ -113,6 +113,13 @@ const onSlope = (bx: number, by: number, th: number, t: number, w: number, h: nu
 
 const pulley = (cx: number, cy: number, r: number, ink: string): El[] => [circle(cx, cy, r, { fill: C.pulley, size: 4 }, ink), dot(cx, cy, 5, ink, ink)];
 
+/** Points on a circle's rim from angle `from` to `to` (radians, y down: -π/2 is the top). */
+const arcPts = (cx: number, cy: number, r: number, from: number, to: number, n = 18): P[] => Array.from({ length: n + 1 }, (_, i): P => [cx + Math.cos(from + ((to - from) * i) / n) * r, cy + Math.sin(from + ((to - from) * i) / n) * r]);
+/** A string: one thick line (so it can be stretched or recoloured as one piece). */
+const rope = (pts: P[], ink: string): PathEl => path(pts, false, { color: C.orange, size: 6 }, ink);
+/** A string hanging over a pulley: down the left side to `lEnd`, along the rim over the top, down the right side to `rEnd`. */
+const ropeOver = (cx: number, cy: number, r: number, lEnd: number, rEnd: number, ink: string): PathEl => rope([[cx - r, lEnd], [cx - r, cy], ...arcPts(cx, cy, r, Math.PI, 2 * Math.PI), [cx + r, rEnd]], ink);
+
 /** A wedge with a right angle at the bottom right; the slope rises to the right from the lower left (angle `deg`). */
 const wedgePts = (deg: number, hyp = 360): { pts: P[]; w: number; h: number } => {
   const th = (deg * Math.PI) / 180;
@@ -130,7 +137,7 @@ const wedge = (deg: number, ink: string, withBlock: boolean, label = 'm'): El[] 
   const arc: P[] = [];
   for (let i = 0; i <= 14; i++) arc.push([bx + Math.cos((-th * i) / 14) * ra, by + Math.sin((-th * i) / 14) * ra]);
   const d = Math.max(ra + 52, 28 / Math.sin(th / 2));
-  els.push(path(arc, false, { size: 3 }, ink), text(`${deg}°`, bx + Math.cos(th / 2) * d, by - Math.sin(th / 2) * d, ink, 30));
+  els.push({ ...path(arc, false, { size: 3 }, ink), ang: { v: 0 } }, { ...text(`${deg}°`, bx + Math.cos(th / 2) * d, by - Math.sin(th / 2) * d, ink, 30), ang: { v: 0 } });
   if (withBlock) els.push(...onSlope(bx, by, th, hyp(w, h) * 0.55, 120, 70, label, C.block1, ink));
   return els;
 };
@@ -253,31 +260,30 @@ add('Springs', 'sp2', 'Two blocks with spring', (k) => [
 ]);
 
 // ---------------------------------------------------------------- Pulleys
-add('Pulleys', 'p1', 'Fixed pulley', (k) => [...support(-70, -170, 70, -170, -1, k), line(0, -170, 0, -110, { size: 5 }, k), ...pulley(0, -80, 40, k), line(-40, -80, -40, 100, { color: C.orange, size: 3 }, k), line(40, -80, 40, 100, { color: C.orange, size: 3 }, k)]);
+add('Pulleys', 'p0', 'Pulley (empty)', (k) => [...support(-60, -110, 60, -110, -1, k), line(0, -110, 0, -40, { size: 5 }, k), ...pulley(0, 0, 42, k)]);
+add('Pulleys', 'pw', 'Pulley wheel only', (k) => pulley(0, 0, 42, k));
+add('Pulleys', 'p1', 'Pulley with string', (k) => [...support(-70, -170, 70, -170, -1, k), line(0, -170, 0, -110, { size: 5 }, k), ...pulley(0, -80, 40, k), ropeOver(0, -80, 40, 10, 100, k)]);
 add('Pulleys', 'atw', 'Atwood machine (m₁, m₂)', (k) => [
   ...support(-90, -200, 90, -200, -1, k),
   line(0, -200, 0, -150, { size: 5 }, k),
   ...pulley(0, -100, 58, k),
-  line(-58, -100, -58, 20, { color: C.orange, size: 3 }, k),
-  line(58, -100, 58, 80, { color: C.orange, size: 3 }, k),
-  ...block(-58, 62, 100, 84, 'm₁', C.block1, k),
-  ...block(58, 122, 110, 84, 'm₂', C.block2, k),
+  ropeOver(0, -100, 58, 40, 130, k),
+  ...block(-58, 82, 100, 84, 'm₁', C.block1, k),
+  ...block(58, 172, 110, 84, 'm₂', C.block2, k),
 ]);
 add('Pulleys', 'tab', 'Block on table + hanging block', (k) => [
   rect(-340, 0, 470, 34, { fill: C.grey, size: 4, surf: true }, k),
   rect(130, -4, 22, 56, { fill: C.grey, size: 3 }, k),
   ...pulley(172, -10, 30, k),
-  line(-30, -40, 172, -40, { color: C.orange, size: 3 }, k),
-  line(202, -10, 202, 110, { color: C.orange, size: 3 }, k),
+  rope([[-30, -40], [172, -40], ...arcPts(172, -10, 30, -Math.PI / 2, 0, 10), [202, 130]], k),
   ...block(-100, -45, 140, 90, 'm₁', C.block1, k),
-  ...block(202, 150, 110, 80, 'm₂', C.block2, k),
+  ...block(202, 172, 110, 84, 'm₂', C.block2, k),
 ]);
 add('Pulleys', 'mov', 'Movable pulley with load', (k) => [
   ...support(-100, -200, 100, -200, -1, k),
-  line(-40, -200, -40, -10, { color: C.orange, size: 3 }, k),
-  line(40, -200, 40, -10, { color: C.orange, size: 3 }, k),
-  ...vec(40, -200, 40, -290, C.red, 'F', 36, 0, k),
   ...pulley(0, -10, 40, k),
+  rope([[-40, -200], [-40, -10], ...arcPts(0, -10, 40, Math.PI, 0), [40, -200]], k),
+  ...vec(40, -200, 40, -290, C.red, 'F', 36, 0, k),
   line(0, 30, 0, 80, { size: 4 }, k),
   ...block(0, 130, 130, 100, 'M', C.block2, k),
 ]);
@@ -287,14 +293,13 @@ add('Pulleys', 'ptwo', 'Block on wedge + hanging block', (k) => {
   const ux = Math.cos(th), uy = -Math.sin(th), nx = uy, ny = -ux;
   const t = hyp(w, h) * 0.45;
   const cx = bx + ux * t + nx * 35, cy = by + uy * t + ny * 35; // middle of the block on the slope
-  const pr = 24, px = tx + 4, py = ty - pr; // pulley at the top corner
+  const pr = 24, px = tx + 28, py = ty - pr; // pulley at the top corner, hanging a little beyond it so the block clears the wedge
   return [
     poly(pts, { fill: C.grey, size: 5, surf: true }, k),
     ...onSlope(bx, by, th, t, 120, 70, 'm₁', C.block1, k),
-    line(cx + ux * 60, cy + uy * 60 + 0, px - pr * 0.5, py - pr * 0.85, { color: C.orange, size: 3 }, k),
     ...pulley(px, py, pr, k),
-    line(px + pr, py, px + pr, ty + h * 0.45, { color: C.orange, size: 3 }, k),
-    ...block(px + pr, ty + h * 0.45 + 45, 100, 80, 'm₂', C.block2, k),
+    rope([[cx + ux * 60, cy + uy * 60], ...arcPts(px, py, pr, -Math.PI / 2, 0, 10), [px + pr, ty + h * 0.55]], k),
+    ...block(px + pr, ty + h * 0.55 + 45, 100, 80, 'm₂', C.block2, k),
   ];
 });
 
@@ -307,23 +312,21 @@ add('Monkey', 'mk', 'Monkey', (k) => monkey(0, 0, k));
 add('Monkey', 'mkr', 'Monkey on a rope', (k) => [...support(-80, -190, 80, -190, -1, k), line(0, -190, 0, 40, { color: C.orange, size: 4 }, k), ...monkey(0, 70, k)]);
 add('Monkey', 'mkp', 'Monkey and block over a pulley', (k) => [
   ...support(-80, -230, 80, -230, -1, k),
-  line(0, -230, 0, -180, { size: 5 }, k),
+  line(0, -230, 0, -184, { size: 5 }, k),
   ...pulley(0, -140, 44, k),
-  line(-44, -140, -44, -10, { color: C.orange, size: 4 }, k),
-  line(44, -140, 44, 60, { color: C.orange, size: 4 }, k),
+  ropeOver(0, -140, 44, -20, 90, k),
   ...monkey(-44, 50, k),
-  ...block(44, 110, 120, 100, 'M', C.block2, k),
+  ...block(44, 140, 120, 100, 'M', C.block2, k),
   text('m', -112, 50, k, 34),
 ]);
 add('Monkey', 'mkb', 'Monkey climbing, two equal blocks', (k) => [
   ...support(-80, -230, 80, -230, -1, k),
-  line(0, -230, 0, -180, { size: 5 }, k),
+  line(0, -230, 0, -184, { size: 5 }, k),
   ...pulley(0, -140, 44, k),
-  line(-44, -140, -44, 20, { color: C.orange, size: 4 }, k),
-  line(44, -140, 44, 60, { color: C.orange, size: 4 }, k),
+  ropeOver(0, -140, 44, 58, 90, k),
   ...monkey(-44, -30, k),
-  ...block(-46, 100, 80, 84, 'M', C.block2, k),
-  ...block(46, 105, 80, 84, 'M', C.block2, k),
+  ...block(-44, 100, 80, 84, 'M', C.block2, k),
+  ...block(44, 132, 80, 84, 'M', C.block2, k),
   ...vec(112, -20, 112, -100, C.teal, 'v', 30, 0, k),
 ]);
 

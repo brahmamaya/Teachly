@@ -1,3 +1,4 @@
+import { refreshAngles } from './subjects/angles';
 import { fitIntoPage, uid } from './geometry';
 import { setPageShape } from './page';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } from './types';
@@ -193,7 +194,13 @@ export class Store {
     if (this.undoStack.length > 150) this.undoStack.shift();
     this.redoStack = [];
     const pageChanged = index !== this.index;
-    this.doc = { ...this.doc, pages, rev: (this.doc.rev ?? 0) + 1 };
+    // Angle marks follow a stretched wedge (only on pages that changed).
+    const fixed = pages.map((p, i) => {
+      if (p === this.doc.pages[i]) return p;
+      const els = refreshAngles(p.els);
+      return els === p.els ? p : { ...p, els };
+    });
+    this.doc = { ...this.doc, pages: fixed, rev: (this.doc.rev ?? 0) + 1 };
     this.index = Math.max(0, Math.min(index, pages.length - 1));
     this.pruneSelection();
     this.emit('doc');

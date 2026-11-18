@@ -66,6 +66,7 @@ const DOCK_ICONS: Record<string, [string, string]> = {
   b1: ['<rect x="3.5" y="7" width="17" height="11" rx="1.6"/><text x="12" y="15.2" font-size="8.5" text-anchor="middle" fill="currentColor" stroke="none" font-weight="800" font-family="system-ui">m</text>', '#2563eb'],
   w30: ['<path d="M3 19.5h18V8z"/><path d="M9.5 19.5a6.5 6.5 0 0 0-1.7-4.1"/>', '#475569'],
   sp: ['<path d="M2 12h3.2l1.6-5 3.2 10 3.2-10 3.2 10 1.6-5H22"/>', '#d97706'],
+  p0: ['<path d="M7 2.5h10"/><path d="M12 2.5v4"/><circle cx="12" cy="13" r="5.5"/><circle cx="12" cy="13" r=".9" fill="currentColor"/>', '#7c3aed'],
   p1: ['<path d="M7 2.5h10"/><path d="M12 2.5v3.5"/><circle cx="12" cy="11" r="4.6"/><circle cx="12" cy="11" r=".8" fill="currentColor"/><path d="M7.4 11v10M16.6 11v10"/>', '#7c3aed'],
   ground: ['<path d="M2.5 9h19"/><path d="M5.5 9l-2.5 4.5M9.5 9l-2.5 4.5M13.5 9l-2.5 4.5M17.5 9l-2.5 4.5M21.5 9l-2.5 4.5"/>', '#0f172a'],
   ceil: ['<path d="M2.5 14.5h19"/><path d="M5.5 14.5L3 10M9.5 14.5L7 10M13.5 14.5L11 10M17.5 14.5L15 10M21.5 14.5L19 10"/>', '#0f172a'],
@@ -168,7 +169,10 @@ export class SubjectPanel {
     if (this.sheet && found?.chapter.comps) this.renderSheet(found.subject.name, found.chapter);
   }
 
-  /** Sit on the toolbar's own line between its two halves (smaller steps when it is tight); else just above the toolbar. */
+  /**
+   * Sit on the toolbar's own line between its two halves (smaller steps when it is tight). The pen's small colour bar
+   * goes beside it on the same line when both fit, else just above it; the whole colour bar (opened with its arrow) sits above.
+   */
   private placeDock(): void {
     const el = this.dock;
     if (!el) return;
@@ -176,25 +180,38 @@ export class SubjectPanel {
     const l = app.querySelector('.tb-left')?.getBoundingClientRect();
     const r = app.querySelector('.tb-right')?.getBoundingClientRect();
     const qb = app.querySelector<HTMLElement>('.quickbar:not([hidden])');
+    const mini = !!qb && qb.classList.contains('mini');
     const edge = app.dataset.tb;
     const k = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
-    const reset = () => {
-      el.classList.remove('inline');
-      delete el.dataset.fit;
-      for (const p of ['left', 'top', 'bottom']) el.style.removeProperty(p);
+    const clear = (x: HTMLElement) => {
+      x.classList.remove('inline');
+      delete x.dataset.fit;
+      for (const p of ['left', 'top', 'bottom']) x.style.removeProperty(p);
     };
-    if (!l || !r) return reset();
+    clear(el);
+    if (qb) clear(qb);
+    if (!l || !r) return;
     const roomy = l.right < r.left && !app.classList.contains('tb-stacked') && (edge === 'bottom' || edge === 'top') && app.dataset.tbalign !== 'middle';
+    const gap = r.left - l.right;
+    const W = (x: HTMLElement) => x.offsetWidth * k;
     let fit = -1;
+    let beside = false;
     if (roomy) {
-      for (let level = 0; level <= 2 && fit < 0; level++) {
+      for (let level = 0; level <= 3 && fit < 0; level++) {
         el.dataset.fit = String(level);
-        if (r.left - l.right >= el.offsetWidth * k + 24) fit = level;
+        if (mini && qb && gap >= W(el) + 10 + W(qb) + 24) {
+          fit = level;
+          beside = true;
+        }
+      }
+      for (let level = 0; level <= 3 && fit < 0; level++) {
+        el.dataset.fit = String(level);
+        if (gap >= W(el) + 24) fit = level;
       }
     }
     if (fit < 0) {
       // Above the toolbar (and above the pen bar when that is showing).
-      reset();
+      clear(el);
       el.dataset.fit = '0';
       const top = Math.min(l.top, r.top);
       const lift = qb ? qb.getBoundingClientRect().height + 10 : 0;
@@ -204,14 +221,32 @@ export class SubjectPanel {
       return;
     }
     el.classList.add('inline');
-    const c = (l.top + l.bottom) / 2, half = el.offsetHeight / 2; // the box is scaled around its middle
-    el.style.left = `${(l.right + r.left) / 2}px`;
-    if (edge === 'bottom') {
-      el.style.top = 'auto';
-      el.style.bottom = `${window.innerHeight - c - half}px`;
+    const c = (l.top + l.bottom) / 2;
+    const put = (x: HTMLElement, centreX: number, centreY: number) => {
+      x.style.left = `${centreX}px`;
+      const half = x.offsetHeight / 2; // the box is scaled around its middle
+      if (edge === 'bottom') {
+        x.style.top = 'auto';
+        x.style.bottom = `${window.innerHeight - centreY - half}px`;
+      } else {
+        x.style.bottom = 'auto';
+        x.style.top = `${centreY - half}px`;
+      }
+    };
+    const mid = (l.right + r.left) / 2;
+    if (beside && qb) {
+      const dW = W(el), qW = W(qb), start = mid - (dW + 10 + qW) / 2;
+      put(el, start + dW / 2, c);
+      qb.classList.add('inline');
+      put(qb, start + dW + 10 + qW / 2, c);
     } else {
-      el.style.bottom = 'auto';
-      el.style.top = `${c - half}px`;
+      put(el, mid, c);
+      if (qb && mini) {
+        // No room beside it: the small colour bar sits just above the dock.
+        const above = el.getBoundingClientRect();
+        qb.classList.add('inline');
+        put(qb, mid, edge === 'top' ? above.bottom + 10 + qb.getBoundingClientRect().height / 2 : above.top - 10 - qb.getBoundingClientRect().height / 2);
+      }
     }
   }
 
@@ -276,11 +311,11 @@ export class SubjectPanel {
     const els = c.make(inkFor());
     const g = uid();
     let placed = els.map((e) => ({ ...translateEl(e, wx, wy), ...(els.length > 1 ? { group: g } : {}) }) as El);
-    // A block dropped near a surface (ground, table, a wedge's slope, another block) lies along it and sits on it.
-    if (dropped && c.snap) {
+    // A block put near a surface (ground, table, a wedge's slope, another block), by drop or by tap, lies along it and sits on it.
+    if (c.snap) {
       const rect = placed.find((e) => e.type === 'path' && e.snap) as PathEl | undefined;
       const info = rect && blockInfo(rect);
-      const hit = info && nearest(surfaces(store.page.els), wx, wy, 130);
+      const hit = info && nearest(surfaces(store.page.els), wx, wy, dropped ? 130 : 220);
       if (info && hit) {
         const m = seat(info, hit.s, hit.t);
         placed = placed.map((e) => transformEl(e, m));

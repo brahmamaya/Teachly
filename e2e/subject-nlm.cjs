@@ -27,7 +27,7 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   check('toolbar shows "Physics · NLM"', label === 'Physics · NLM', label);
   check('a dock of small symbols shows at the toolbar (not a big window)', !!(await page.$('.subj-dock')) && !(await page.$('.subj-panel')));
   const tiles = await page.$$eval('.subj-dock .sd-tile', (a) => a.map((x) => x.getAttribute('aria-label')));
-  const need = ['Block m', 'Wedge 30°', 'Spring', 'Fixed pulley', 'Ground', 'Ceiling', 'Wall', 'String / rope'];
+  const need = ['Block m', 'Wedge 30°', 'Spring', 'Pulley (empty)', 'Pulley with string', 'Ground', 'Ceiling', 'Wall', 'String / rope'];
   check('the dock has pulley, block, wedge, spring, ground, roof, wall, rope', need.every((x) => tiles.includes(x)), tiles.join());
   const dockBox = await page.$eval('.subj-dock', (e) => { const r = e.getBoundingClientRect(); return [r.top, r.bottom]; });
   const barBox = await page.$eval('.tb-left', (e) => { const r = e.getBoundingClientRect(); return [r.top, r.bottom]; });

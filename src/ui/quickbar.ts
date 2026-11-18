@@ -7,10 +7,14 @@ import { store } from '../store';
 
 const COLORS = ['#f2f2f0', '#db0000', '#ed6d00', '#febf00', '#4ceb45', '#174ebd', '#d500a6'];
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
+/** The few colours shown while the subject dock shares the line (white, yellow, green, blue). */
+const KEEP = new Set(['#f2f2f0', '#febf00', '#4ceb45', '#174ebd', ...HL_COLORS]);
 
 export class QuickBar {
   private el: HTMLElement;
   private key = '';
+  /** With the subject dock open the bar shows only a few colours; the little arrow opens the whole bar. */
+  private expanded = false;
 
   constructor(host: HTMLElement) {
     this.el = document.createElement('div');
@@ -23,6 +27,12 @@ export class QuickBar {
       const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
       if (!b) return;
       e.preventDefault(); // the board keeps the focus; no text selection
+      if (b.dataset.qa) {
+        this.expanded = !this.expanded;
+        this.syncMode();
+        window.dispatchEvent(new Event('resize')); // the dock lays both out again
+        return;
+      }
       const t = store.tool;
       const hl = t.tool === 'pen' && t.penStyle === 'highlighter';
       if (b.dataset.qc) store.setTool(t.tool === 'shape' ? { shapeColor: b.dataset.qc } : hl ? { hlColor: b.dataset.qc } : { color: b.dataset.qc });
@@ -55,8 +65,8 @@ export class QuickBar {
       el.style.removeProperty('bottom');
     };
     if (el.hidden) return;
-    // The subject dock owns the toolbar's line; the colour bar then sits just above it.
-    if (document.querySelector('.subj-dock')) return reset();
+    // While the subject dock is open it lays out the line (this bar beside it, or the whole bar above it).
+    if (this.syncMode()) return void delete el.dataset.fit;
     const edge = app.dataset.tb;
     const l = app.querySelector('.tb-left')?.getBoundingClientRect();
     const r = app.querySelector('.tb-right')?.getBoundingClientRect();
@@ -85,10 +95,19 @@ export class QuickBar {
     }
   }
 
+  /** Small (a few colours and an arrow) while the subject dock is open and the bar is not opened up. Returns whether the dock is open. */
+  private syncMode(): boolean {
+    const dock = !!document.querySelector('.subj-dock');
+    this.el.classList.toggle('withdock', dock);
+    this.el.classList.toggle('mini', dock && !this.expanded);
+    return dock;
+  }
+
   private update(): void {
     const t = store.tool;
     const show = t.tool === 'pen' || t.tool === 'shape';
     this.el.hidden = !show;
+    this.syncMode();
     if (!show) return;
     const hl = t.tool === 'pen' && t.penStyle === 'highlighter';
     const color = t.tool === 'shape' ? t.shapeColor : hl ? t.hlColor : t.color;
@@ -98,9 +117,10 @@ export class QuickBar {
     if (key !== this.key) {
       this.key = key;
       this.el.innerHTML =
-        colors.map((c) => `<button class="qb-c" data-qc="${c}" style="--c:${c}" aria-label="Colour ${c}"></button>`).join('') +
+        colors.map((c) => `<button class="qb-c${KEEP.has(c) ? ' qb-keep' : ''}" data-qc="${c}" style="--c:${c}" aria-label="Colour ${c}"></button>`).join('') +
         '<i class="qb-sep" aria-hidden="true"></i>' +
-        `<input class="qb-range" type="range" min="1" max="${hl ? 60 : 40}" step="1" aria-label="Line thickness"><span class="qb-prev" aria-hidden="true"><b></b></span>`;
+        `<input class="qb-range" type="range" min="1" max="${hl ? 60 : 40}" step="1" aria-label="Line thickness"><span class="qb-prev" aria-hidden="true"><b></b></span>` +
+        '<button class="qb-arrow" data-qa="1" aria-label="More colours and thickness" title="More"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>';
       (this.el.querySelector('.qb-range') as HTMLInputElement).addEventListener('input', (e) => {
         const v = Number((e.target as HTMLInputElement).value);
         const t = store.tool;

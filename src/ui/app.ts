@@ -34,7 +34,7 @@ import { CompassTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
 import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
-import type { BgPattern, El, PathEl, ShapeKind, TableEl, ToolId } from '../types';
+import type { BgPattern, El, PathEl, ShapeKind, TableEl, TextEl, ToolId } from '../types';
 import { closeSpotlight, toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openCamera } from '../widgets/camera';
 import { openPoll } from '../widgets/poll';
@@ -1310,6 +1310,7 @@ export class App {
         ${colorable ? btn('color', 'Colour', `${icon('palette', 22)}<i class="pv-dot" style="background:${color}"></i>`) : ''}
         ${paths.length ? btn('width', 'Thickness', icon('thick', 22)) : ''}
         ${fillable ? btn('fill', 'Fill', `${icon('bucket', 22)}<i class="pv-dot ${fill ? '' : 'empty'}" style="background:${fill ?? 'transparent'}"></i>`) : ''}
+        ${texts.length === 1 && paths.length ? act('data-pact="edittext"', 'text', 'Edit the label (mass, name …)') : ''}
         ${this.autoSetBlock() ? act('data-pact="autoset"', 'magic', 'Auto set: lie along the nearest surface and sit on it') : ''}
         ${els.length && els.every((e) => e.type === 'path') ? `${act('data-pact="flipx"', 'flipH', 'Flip left-right')}${act('data-pact="flipy"', 'flipV', 'Flip up-down')}` : ''}
         ${act('data-scale="1.18"', 'bigger', 'Bigger')}
@@ -1371,6 +1372,13 @@ export class App {
       const n = copySelection();
       toast(`${n} copied. Go to any page and tap the Paste button.`, 3500);
     } else if (d.pact === 'autoset') this.autoSet();
+    else if (d.pact === 'edittext') {
+      const t = store.selectedEls().find((e) => e.type === 'text') as TextEl | undefined;
+      if (t) {
+        store.clearSelection();
+        this.editor.open(t, false);
+      }
+    }
     else if (d.pact === 'flipx' || d.pact === 'flipy') this.flip(d.pact === 'flipx');
     else if (d.pact === 'moveto') this.movePicker(e.target as HTMLElement);
     else if (d.pact === 'dup') this.duplicate();

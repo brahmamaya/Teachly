@@ -38,6 +38,8 @@ export interface PathEl {
   snap?: 'block';
   /** A spring: rebuilt from its two ends when stretched or squeezed, so the coils keep their size. */
   spring?: { coils: number; amp: number; lead: number };
+  /** An angle mark (the arc): redrawn when the triangle in its group is stretched, so it always shows the real angle at corner `v`. */
+  ang?: { v: number };
 }
 
 export interface BoxBase {
@@ -62,6 +64,8 @@ export interface TextEl extends BoxBase {
   /** Typeface: default (Inter), 'orbitron' (numbers, futuristic) or 'exo' (Exo 2). */
   font?: 'orbitron' | 'exo';
   bg?: string | null;
+  /** An angle value (like 30°): kept equal to the real angle at corner `v` of the triangle in its group. */
+  ang?: { v: number };
 }
 
 export interface ImageEl extends BoxBase {

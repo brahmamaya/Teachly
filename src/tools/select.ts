@@ -3,6 +3,7 @@ import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, pathFromPoint
 import { drawEl, isDarkColor } from '../renderer';
 import { ui } from '../ui/scale';
 import { dragCancel, dragEnd, dragOver, dropAvailable } from '../ui/pagedrop';
+import { blockInfo, nearest, seat, surfaces, type Surface } from '../subjects/snap';
 import { toast } from '../ui/panel';
 import { toggleTape } from './tape';
 import { store } from '../store';
@@ -13,7 +14,7 @@ import { cellAt, type TableEditor } from './table';
 import type { TextEditor } from './text';
 
 type Mode =
-  | { k: 'move'; sx: number; sy: number; moved: boolean; clicked: El | null; r0: Rect | null; targets: Rect[] | null }
+  | { k: 'move'; sx: number; sy: number; moved: boolean; clicked: El | null; r0: Rect | null; targets: Rect[] | null; segs?: Surface[] }
   /** hx / hy: which side is dragged (-1 left/top, 1 right/bottom, 0 untouched). */
   | { k: 'resize'; r: Rect; hx: number; hy: number; keep: boolean }
   | { k: 'rotate'; cx: number; cy: number; a0: number }
@@ -35,6 +36,8 @@ export class SelectTool implements Tool {
   private lastTap = { t: 0, id: '' };
   /** Alignment guides shown while moving. */
   private guides: Guide[] = [];
+  /** A block being moved near a surface: that surface (lit up) while it is being seated. */
+  private seatOn: Surface | null = null;
   /** Anchor and stretch factors while resizing. */
   private resizeArgs: [number, number, number, number] | null = null;
 
@@ -87,6 +90,13 @@ export class SelectTool implements Tool {
     const els = store.selectedEls();
     const e = els.length === 1 ? els[0] : null;
     return e && e.type === 'path' && e.arc && !e.locked && e.pts.length >= 9 ? e : null;
+  }
+
+  /** The one block (plus its labels) that seats itself on a surface, when exactly that is selected. */
+  private loneBlock(): PathEl | null {
+    const els = store.selectedEls();
+    const blocks = els.filter((e): e is PathEl => e.type === 'path' && e.snap === 'block');
+    return blocks.length === 1 && els.every((e) => e === blocks[0] || e.type === 'text') ? blocks[0] : null;
   }
 
   /** One straight line, arrow or spring (plus its text labels) is selected: its two ends can be dragged. */
@@ -195,7 +205,9 @@ export class SelectTool implements Tool {
     // Inside the current selection: move all of it together (never just the
     // one piece under the finger).
     if (r && !p.shift && store.selection.size > 1 && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
-      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: null, r0: null, targets: null };
+      // (`clicked` = the piece under the finger, so a double-tap on a label inside a group can still edit it.)
+      const under = this.topHit(p.x, p.y);
+      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: under && store.selection.has(under.id) ? under : null, r0: null, targets: null };
       return;
     }
     const hit = this.topHit(p.x, p.y);
@@ -236,6 +248,22 @@ export class SelectTool implements Tool {
           this.guides = g.guides;
         }
         this.mat = [1, 0, 0, 1, dx, dy];
+        // A block carried near a surface (ground, table, a slope, another block) is drawn seated on it:
+        // turned to lie along it and resting on it. Letting go keeps it there (Alt: no magnet).
+        this.seatOn = null;
+        const blk = p.alt ? null : this.loneBlock();
+        const info = blk && blockInfo(blk);
+        if (info) {
+          m.segs ??= surfaces(store.page.els, store.selection);
+          const hit = nearest(m.segs, info.cx + dx, info.cy + dy, 110);
+          if (hit) {
+            const moved: Mat = [1, 0, 0, 1, dx, dy];
+            const s2 = seat({ ...info, cx: info.cx + dx, cy: info.cy + dy }, hit.s, hit.t);
+            this.mat = [s2[0] * moved[0] + s2[2] * moved[1], s2[1] * moved[0] + s2[3] * moved[1], s2[0] * moved[2] + s2[2] * moved[3], s2[1] * moved[2] + s2[3] * moved[3], s2[0] * moved[4] + s2[2] * moved[5] + s2[4], s2[1] * moved[4] + s2[3] * moved[5] + s2[5]];
+            this.seatOn = hit.s;
+            this.guides = [];
+          }
+        }
         // The Pages panel is open: show where the things would land.
         if (dropAvailable()) {
           const b = this.board.el.getBoundingClientRect();
@@ -386,11 +414,13 @@ export class SelectTool implements Tool {
     this.mat = IDENTITY;
     this.resizeArgs = null;
     this.guides = [];
+    this.seatOn = null;
     this.board.invalidate('ink', 'overlay');
   }
 
   cancel(): void {
     dragCancel();
+    this.seatOn = null;
     this.mode = null;
     this.inkRect = null;
     this.mat = IDENTITY;
@@ -460,6 +490,20 @@ export class SelectTool implements Tool {
       ctx.lineWidth = 1.5 * px;
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+    if (this.seatOn) {
+      // The surface the block is seating on.
+      const t = this.seatOn;
+      ctx.save();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 5 * px;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(t.ax, t.ay);
+      ctx.lineTo(t.ax + t.ux * t.len, t.ay + t.uy * t.len);
+      ctx.stroke();
+      ctx.restore();
     }
     drawGuides(ctx, this.guides, px);
     const r = this.bounds();
