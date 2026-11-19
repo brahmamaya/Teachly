@@ -2,6 +2,7 @@
 // needs from it. One store, plain keys:
 //   library, folders, srcrefs     small lists
 //   nb:<id>                       a notebook (pages and elements; pictures are referenced)
+//   rv:<id>                       the notebook's revision number (small: read on every save instead of the whole notebook)
 //   asset:<time>:<hash>           a picture of a page element (stored once, as a file)
 //   src:… / pimg:…                an opened PDF and its page pictures
 //   bak:<id>:v<n>                 the untouched original of a notebook that was migrated

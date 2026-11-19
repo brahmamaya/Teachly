@@ -11,6 +11,7 @@ async function run(heavy, rate, lite) {
   const page = await ctx.newPage();
   if (lite) await page.addInitScript(() => { Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 2 }); });
   await page.goto(URL); await page.waitForTimeout(1500);
+  await page.evaluate(() => window.__teachly.store.setSettings({ tbHidden: [], tbShown: [] })); await page.waitForTimeout(500); // the simple toolbar hides Tape; this test uses every tool
   if (heavy) await page.evaluate(() => {
     const { store } = window.__teachly; const els = [];
     for (let i = 0; i < 1500; i++) { const pts = []; const x = Math.random() * 1500, y = Math.random() * 850; for (let k = 0; k < 60; k++) pts.push(x + k * 3, y + Math.sin(k / 4) * 20, 0.5); els.push({ id: 'h' + i, type: 'path', pts, style: 'pen', color: '#ffffff', size: 3, opacity: 1 }); }
