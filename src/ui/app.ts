@@ -19,6 +19,7 @@ import {
 import { isDarkColor, measureText } from '../renderer';
 import { nameControls, syncToolbarState } from './a11y';
 import { QuickBar } from './quickbar';
+import { openCrop } from './cropper';
 import { SubjectPanel } from './subjectpanel';
 import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { chapterById } from '../subjects/catalog';
@@ -1396,6 +1397,7 @@ export class App {
         ${texts.length === 1 && paths.length ? act('data-pact="edittext"', 'text', 'Edit the label (mass, name …)') : ''}
         ${this.autoSetBlock() ? act('data-pact="autoset"', 'magic', 'Auto set: lie along the nearest surface and sit on it') : ''}
         ${els.length && els.every((e) => e.type === 'path') ? `${act('data-pact="flipx"', 'flipH', 'Flip left-right')}${act('data-pact="flipy"', 'flipV', 'Flip up-down')}` : ''}
+        ${els.length === 1 && els[0].type === 'image' && !els[0].locked && !els[0].pdf ? act('data-pact="crop"', 'crop', 'Crop the picture') : ''}
         ${act('data-scale="1.18"', 'bigger', 'Bigger')}
         ${act('data-scale="0.85"', 'smaller', 'Smaller')}
         ${act('data-pact="copy"', 'copy', 'Copy (then Insert > Paste, on any page)')}
@@ -1444,6 +1446,9 @@ export class App {
       store.setTool({ shapeFill: f });
     } else if (d.trows || d.tcols) {
       store.mapEls(store.selection, (el) => (el.type === 'table' ? resizeTable(el, Number(d.trows ?? 0), Number(d.tcols ?? 0)) : el));
+    } else if (d.pact === 'crop') {
+      const one = store.selectedEls()[0];
+      if (one?.type === 'image') openCrop(this.root, this.board, one);
     } else if (d.pact === 'header') {
       store.mapEls(store.selection, (el) => (el.type === 'table' ? { ...el, header: !el.header } : el));
     } else if (d.scale) this.scaleSelection(Number(d.scale));
