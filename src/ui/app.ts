@@ -727,6 +727,7 @@ export class App {
             </div>
             <div class="n3-kinds">${PEN_TYPES.map(([k, n]) => `<button class="n3-kind ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 24)}</button>`).join('')}</div>
             <div class="seg n3-smooth"><span>Steady</span>${['Exact', 'Light', 'Strong'].map((n, i) => `<button class="${(t.inkSmooth ?? 0) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
+            ${this.presetRow()}
           </div>
           <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>`;
         break;
@@ -978,11 +979,45 @@ export class App {
     return `<button class="pm-item ${on ? 'on' : ''}" data-act="${act}" role="menuitem">${icon(ic, 22)}<span>${label}</span></button>`;
   }
 
+  /** "My pens": four saved pens. Tap a full slot to use it; tap Save, then a slot, to store the pen in use. */
+  private presetArmed = false;
+  private presetRow(): string {
+    const slots = [0, 1, 2, 3].map((i) => (store.settings.penPresets ?? [])[i] ?? null);
+    const dots = slots
+      .map((p, i) =>
+        p
+          ? `<button class="n3-preset${this.presetArmed ? ' arm' : ''}" data-pslot="${i}" aria-label="My pen ${i + 1}: ${p.style}, thickness ${p.size}"><i style="background:${p.color};width:${Math.min(18, p.size + 6)}px;height:${Math.min(18, p.size + 6)}px"></i></button>`
+          : `<button class="n3-preset empty${this.presetArmed ? ' arm' : ''}" data-pslot="${i}" aria-label="My pen ${i + 1}: empty, tap to save the pen in use here">+</button>`,
+      )
+      .join('');
+    return `<div class="n3-presets"><span>My pens</span>${dots}<button class="n3-psave${this.presetArmed ? ' on' : ''}" data-pset="1" aria-pressed="${this.presetArmed}">Save</button></div>`;
+  }
+
   private onPopoverClick(e: MouseEvent): void {
     const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
     if (!b) return;
     const d = b.dataset;
     const t = store.tool;
+    if (d.pset !== undefined) {
+      this.presetArmed = !this.presetArmed;
+      this.fillPopover();
+      return;
+    }
+    if (d.pslot !== undefined) {
+      const i = Number(d.pslot);
+      const list = [0, 1, 2, 3].map((k) => (store.settings.penPresets ?? [])[k] ?? null);
+      const hl = t.penStyle === 'highlighter';
+      if (this.presetArmed || !list[i]) {
+        list[i] = { style: t.penStyle, color: hl ? t.hlColor : t.color, size: hl ? t.hlSize : t.size, smooth: t.inkSmooth ?? 0 };
+        this.presetArmed = false;
+        store.setSettings({ penPresets: list });
+      } else {
+        const p = list[i]!;
+        store.setTool(p.style === 'highlighter' ? { penStyle: p.style, hlColor: p.color, hlSize: p.size, inkSmooth: p.smooth } : { penStyle: p.style, color: p.color, size: p.size, inkSmooth: p.smooth });
+      }
+      this.fillPopover();
+      return;
+    }
     if (d.style) store.setTool({ penStyle: d.style as 'pen' });
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
     else if (d.scolor) store.setTool({ shapeColor: d.scolor });
