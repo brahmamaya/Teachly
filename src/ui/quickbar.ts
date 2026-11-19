@@ -1,5 +1,5 @@
 import { store } from '../store';
-import { viewportBottom } from './subjectpanel';
+import { alignMiddle, viewportBottom } from './subjectpanel';
 
 // Quick bar: while a pen (or shape) is chosen, a small pill floats next to the toolbar with a
 // few colours and three line sizes, so changing colour or thickness is ONE tap (the full menu
@@ -48,6 +48,7 @@ export class QuickBar {
       this.place();
     });
     window.addEventListener('resize', () => this.place());
+    window.addEventListener('teachly-ui', () => requestAnimationFrame(() => this.place()));
     // The toolbar may be rebuilt or moved: follow it.
     const ro = new ResizeObserver(() => this.place());
     document.querySelectorAll('.toolbars .toolbar, .toolbars').forEach((el) => ro.observe(el));
@@ -98,6 +99,7 @@ export class QuickBar {
       el.style.bottom = 'auto';
       el.style.top = `${c - half}px`;
     }
+    alignMiddle(el, c, edge === 'bottom');
   }
 
   /** Small (a few colours and an arrow) while the subject dock is open and the bar is not opened up. Returns whether the dock is open. */
