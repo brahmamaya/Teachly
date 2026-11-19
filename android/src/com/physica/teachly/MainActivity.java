@@ -181,11 +181,11 @@ public class MainActivity extends Activity {
         // app's own storage and are not touched).
         web.clearCache(true);
         // A new version downloaded last time? Switch to it before the page loads.
-        if (state == null && Updater.applyPending(this)) toast("Teachly updated to the newest version");
+        if (!Flavor.PLAY && state == null && Updater.applyPending(this)) toast("Teachly updated to the newest version");
         if (state != null) web.restoreState(state);
         else web.loadUrl(START);
         // Quietly look for a newer version (used from the next start).
-        Updater.checkInBackground(getApplicationContext());
+        if (!Flavor.PLAY) Updater.checkInBackground(getApplicationContext());
     }
 
     /** Serve the app's own files (packed in assets/www) on a secure address. */

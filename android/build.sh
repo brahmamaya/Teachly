@@ -10,12 +10,18 @@
 # The signing key is NOT in this repository. Pass it in:
 #   KEY=/path/to/teachly-release.p12 KEY_PASS='…' TOOLS=… ./android/build.sh
 # Always use the same key, so new versions install over old ones.
+#
+# PLAY=1 builds the Google Play version: no INTERNET permission, no self-updater
+# (Google Play delivers updates), so the app cannot send or fetch anything.
+# TARGET_SDK defaults to 35; Play asks for the newest level, set it (e.g. 36) and test on that Android.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$HERE")"
 : "${TOOLS:?Set TOOLS to the android tools folder}"
 VERSION_NAME="${VERSION_NAME:-$(node -p "require('$ROOT/package.json').version")}"
 VERSION_CODE="${VERSION_CODE:-$(date +%y%m%d%H)}"
+PLAY="${PLAY:-0}"
+TARGET_SDK="${TARGET_SDK:-35}"
 KEY="${KEY:?Set KEY to the signing key file (teachly-release.p12)}"
 KEY_PASS="${KEY_PASS:?Set KEY_PASS to the signing key password}"
 OUT="$HERE/build"
@@ -35,13 +41,20 @@ rm -f "$OUT/assets/www/Teachly.html" "$OUT/assets/www/Teachly.apk" "$OUT/assets/
 
 # 2. Resources + manifest.
 "$AAPT2" compile --dir "$HERE/res" -o "$OUT/res.zip"
-"$AAPT2" link -I "$FRAMEWORK" --manifest "$HERE/AndroidManifest.xml" \
-  --min-sdk-version 24 --target-sdk-version 35 \
+MANIFEST="$HERE/AndroidManifest.xml"
+if [ "$PLAY" = 1 ]; then
+  MANIFEST="$OUT/AndroidManifest.xml"
+  grep -v 'android.permission.INTERNET' "$HERE/AndroidManifest.xml" > "$MANIFEST"
+fi
+"$AAPT2" link -I "$FRAMEWORK" --manifest "$MANIFEST" \
+  --min-sdk-version 24 --target-sdk-version "$TARGET_SDK" \
   --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" \
   -A "$OUT/assets" -o "$OUT/base.apk" "$OUT/res.zip"
 
 # 3. Code.
-javac -nowarn --release 8 -cp "$ANDROID_JAR" -d "$OUT/classes" $(find "$HERE/src" -name '*.java') 2>&1 | grep -v "^warning\|^Note" || true
+mkdir -p "$OUT/gen/com/physica/teachly"
+echo "package com.physica.teachly; final class Flavor { static final boolean PLAY = $([ "$PLAY" = 1 ] && echo true || echo false); private Flavor() {} }" > "$OUT/gen/com/physica/teachly/Flavor.java"
+javac -nowarn --release 8 -cp "$ANDROID_JAR" -d "$OUT/classes" $(find "$HERE/src" "$OUT/gen" -name '*.java') 2>&1 | grep -v "^warning\|^Note" || true
 java -cp "$DX" com.android.dx.command.Main --dex --min-sdk-version=24 --output="$OUT/classes.dex" "$OUT/classes"
 
 # 4. Pack and sign (APK signature v2, for Android 7.0 and newer).
