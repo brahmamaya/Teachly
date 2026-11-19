@@ -1,0 +1,60 @@
+// Pen tray: 10 realistic pens, each draws its own look (even lines, grain, see-through), the touched pen lifts, nothing breaks in PDF.
+const { chromium } = require('playwright');
+const { check, finish } = require('./lib.cjs');
+const SHOT = process.env.SHOT;
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 1194, height: 834 }, hasTouch: true });
+  const page = await ctx.newPage();
+  await page.addInitScript(() => Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 }));
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(e.message));
+  await page.goto(process.env.URL || 'http://localhost:5173/');
+  await page.waitForTimeout(1600);
+  await page.click('[data-tool=pen]');
+  await page.waitForTimeout(300);
+  if (!(await page.$('.pen-tray'))) await page.click('[data-tool=pen]');
+  await page.waitForTimeout(500);
+  const kinds = await page.$$eval('.pt-pen', (n) => n.map((x) => x.dataset.style));
+  check('the tray lists 10 pens', kinds.length === 10, kinds.join(','));
+  if (SHOT) await page.screenshot({ path: SHOT + '/tray.png' });
+  // lift: pressing a pen moves its picture up
+  const box = await (await page.$('.pt-pen[data-style=marker] .pt-svg')).boundingBox();
+  const before = box.y;
+  const h = await page.$('.pt-pen[data-style=marker]');
+  const hb = await h.boundingBox();
+  await page.mouse.move(hb.x + 40, hb.y + 12);
+  await page.mouse.down();
+  await page.waitForTimeout(400);
+  const lifted = (await (await page.$('.pt-pen[data-style=marker] .pt-svg')).boundingBox()).y;
+  check('a pressed pen lifts up', lifted < before - 2, `${before} -> ${lifted}`);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  const styles = ['pencil', 'fineliner', 'pen', 'crayon', 'fountain', 'marker', 'watercolor', 'brush', 'calligraphy', 'highlighter'];
+  let row = 0;
+  for (const k of styles) {
+    await page.evaluate((k) => window.__teachly.store.setTool({ tool: 'pen', penStyle: k, size: 8 }), k);
+    const y = 120 + row * 60;
+    await page.mouse.move(200, y);
+    await page.mouse.down();
+    for (let i = 1; i <= 24; i++) await page.mouse.move(200 + i * 14, y + Math.sin(i / 3) * 14);
+    await page.mouse.up();
+    row++;
+  }
+  await page.waitForTimeout(500);
+  const n = await page.evaluate(() => window.__teachly.store.page.els.filter((e) => e.type === 'path').map((e) => e.style));
+  check('every pen made a stroke with its own style', styles.every((k) => n.includes(k)), n.join(','));
+  const ink = await page.evaluate(() => { const c = window.teachly.board.ink; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let k = 0; for (let i = 3; i < d.length; i += 4 * 97) if (d[i] > 0) k++; return k; });
+  check('ink is on the canvas', ink > 50, String(ink));
+  const pdf = await page.evaluate(async () => { const m = await import('/src/io/pdfvector.ts'); const r = await m.makePdf(window.__teachly.store.doc.pages, 1); return r.blob.size; });
+  check('saving a PDF with all pens works', pdf > 1000, String(pdf));
+  if (SHOT) await page.screenshot({ path: SHOT + '/strokes.png' });
+  await page.evaluate(() => window.__teachly.autosave.saveNow());
+  await page.reload();
+  await page.waitForTimeout(2200);
+  const again = await page.evaluate(() => window.__teachly.store.page.els.filter((e) => e.type === 'path').length);
+  check('strokes survive reopening', again >= 10, String(again));
+  check('no page errors', errs.length === 0, errs.join('|'));
+  await b.close();
+  finish();
+})();

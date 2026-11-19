@@ -1,11 +1,11 @@
 import { refreshAngles } from './subjects/angles';
 import { fitIntoPage, regroup, uid } from './geometry';
 import { setPageShape } from './page';
-import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } from './types';
+import type { BgPattern, Camera, Doc, El, EraserMode, Page, PenKind, ShapeKind, ToolId } from './types';
 
 /** A saved pen: kind, colour, thickness and steadiness ("My pens" in the pen menu). */
 export interface PenPreset {
-  style: 'pen' | 'brush' | 'calligraphy' | 'highlighter';
+  style: PenKind;
   color: string;
   size: number;
   smooth: number;
@@ -61,7 +61,7 @@ export interface Settings {
 
 export interface ToolState {
   tool: ToolId;
-  penStyle: 'pen' | 'brush' | 'calligraphy' | 'highlighter';
+  penStyle: PenKind;
   color: string;
   size: number;
   hlColor: string;

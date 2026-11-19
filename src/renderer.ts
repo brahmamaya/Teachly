@@ -10,6 +10,13 @@ export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last
   switch (el.style) {
     case 'highlighter':
       return { size: el.size, thinning: 0, smoothing: 0.55, streamline: 0.3, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
+    case 'marker':
+      return { size: el.size * 1.9, thinning: 0, smoothing: 0.55, streamline: 0.3, simulatePressure: false, last, start: { cap: true }, end: { cap: true } };
+    case 'fountain':
+      // Ink pen: swells with pressure / slow movement, thin when fast.
+      return { size: el.size * 1.3, thinning: 0.7, smoothing: 0.6, streamline: 0.4, simulatePressure: !!el.sim, last, start: { taper: el.size, cap: true }, end: { taper: el.size * 2.5, cap: true } };
+    case 'watercolor':
+      return { size: el.size * 2.8, thinning: 0.3, smoothing: 0.65, streamline: 0.4, simulatePressure: !!el.sim, last, start: { cap: true }, end: { taper: el.size * 3, cap: true } };
     case 'brush':
       // Soft brush: thick when slow, thin when fast, tapered ends.
       return {
@@ -240,7 +247,7 @@ function regionPath(el: PathEl): Path2D {
 }
 
 export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
-  ctx.globalAlpha = el.style === 'highlighter' ? 0.38 * el.opacity : el.opacity;
+  ctx.globalAlpha = styleAlpha(el.style) * el.opacity;
   if (el.region) {
     if (el.fill) {
       ctx.fillStyle = el.fill;
@@ -276,8 +283,9 @@ export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
     }
     if (isMarker(el)) {
       // Pen (finger, board touch or stylus): an even line exactly along the hand.
-      ctx.strokeStyle = el.color;
-      ctx.lineWidth = el.size;
+      const look = lineLook(ctx, el.style, el.color, el.size);
+      ctx.strokeStyle = look.stroke;
+      ctx.lineWidth = look.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke(getPath(el));
@@ -296,7 +304,46 @@ export function drawPathEl(ctx: CanvasRenderingContext2D, el: PathEl): void {
  * writing (smooth on every device).
  */
 export function isMarker(el: Pick<PathEl, 'style' | 'sim'>): boolean {
-  return el.style === 'pen';
+  return el.style === 'pen' || el.style === 'fineliner' || el.style === 'pencil' || el.style === 'crayon';
+}
+
+/** Width factor and grain (0 = smooth) of the even-line pens. */
+const LINE_LOOK: Record<string, [number, number]> = { pen: [1, 0], fineliner: [0.55, 0], pencil: [0.95, 0.5], crayon: [1.6, 0.8] };
+/** Opacity of the see-through pens (filled strokes). */
+export function styleAlpha(style: string): number {
+  return style === 'highlighter' ? 0.38 : style === 'marker' ? 0.78 : style === 'watercolor' ? 0.42 : 1;
+}
+const grainCache = new Map<string, CanvasPattern>();
+/** A speckled tile in the pen colour (pencil / crayon texture); plain colour where patterns do not exist (PDF export). */
+function grainFill(ctx: CanvasRenderingContext2D, color: string, grain: number): string | CanvasPattern {
+  if (!grain || typeof ctx.createPattern !== 'function') return color;
+  const key = color + grain;
+  let pat = grainCache.get(key);
+  if (!pat) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 48;
+    const g = c.getContext('2d');
+    if (!g) return color;
+    g.fillStyle = color;
+    let s = 7;
+    const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    g.globalAlpha = 1 - grain * 0.35;
+    g.fillRect(0, 0, 48, 48);
+    g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 48 * 48 * grain * 0.5; i++) {
+      g.globalAlpha = 0.5 + rnd() * 0.5;
+      g.fillRect(Math.floor(rnd() * 48), Math.floor(rnd() * 48), 1, 1);
+    }
+    pat = ctx.createPattern(c, 'repeat') ?? undefined;
+    if (!pat) return color;
+    grainCache.set(key, pat);
+  }
+  return pat;
+}
+/** Colour and width an even-line pen draws with (shared by the wet layer, the redraw and the export). */
+export function lineLook(ctx: CanvasRenderingContext2D, style: string, color: string, size: number): { stroke: string | CanvasPattern; width: number } {
+  const [w, grain] = LINE_LOOK[style] ?? LINE_LOOK.pen;
+  return { stroke: grainFill(ctx, color, grain), width: size * w };
 }
 
 /**

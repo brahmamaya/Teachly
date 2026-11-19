@@ -3,7 +3,8 @@
 // caches be keyed by object identity.
 
 /** pen: smooth ink · brush: soft tapered strokes · calligraphy: flat slanted nib. */
-export type PathStyle = 'pen' | 'brush' | 'calligraphy' | 'highlighter' | 'shape';
+export type PenKind = 'pen' | 'fineliner' | 'pencil' | 'crayon' | 'marker' | 'fountain' | 'watercolor' | 'brush' | 'calligraphy' | 'highlighter';
+export type PathStyle = PenKind | 'shape';
 
 export interface PathEl {
   id: string;
