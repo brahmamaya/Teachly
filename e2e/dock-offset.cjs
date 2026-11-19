@@ -8,6 +8,7 @@ const { check, finish } = require('./lib.cjs');
     for (const lost of [0, 40, -30]) {
       const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: true });
       const page = await ctx.newPage();
+    await page.addInitScript(() => { try { const k = 'teachly.settings'; const o = JSON.parse(localStorage.getItem(k) || '{}'); o.quickBar = true; localStorage.setItem(k, JSON.stringify(o)); } catch (e) { /* ignore */ } });
       // innerHeight lies by `lost` pixels; the screen's real bottom edge stays where it is
       await page.addInitScript((lost) => { const real = Object.getOwnPropertyDescriptor(Window.prototype, 'innerHeight') || Object.getOwnPropertyDescriptor(window, 'innerHeight'); Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => (real.get ? real.get.call(window) : real.value) - lost }); }, lost);
       await page.goto(process.env.URL || 'http://localhost:5173/');

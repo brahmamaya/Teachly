@@ -16,6 +16,7 @@ export class QuickBar {
   private key = '';
   /** With the subject dock open the bar shows only a few colours; the little arrow opens the whole bar. */
   private expanded = false;
+  private shownOnce = false;
 
   constructor(host: HTMLElement) {
     this.el = document.createElement('div');
@@ -42,7 +43,10 @@ export class QuickBar {
       this.update();
       this.place();
     });
-    store.on('settings', () => this.place());
+    store.on('settings', () => {
+      this.update();
+      this.place();
+    });
     window.addEventListener('resize', () => this.place());
     // The toolbar may be rebuilt or moved: follow it.
     const bars = document.querySelector('.toolbars');
@@ -113,8 +117,12 @@ export class QuickBar {
 
   private update(): void {
     const t = store.tool;
-    const show = t.tool === 'pen' || t.tool === 'shape';
+    const show = (t.tool === 'pen' || t.tool === 'shape') && store.settings.quickBar === true;
+    const was = this.el.hidden;
     this.el.hidden = !show;
+    // The dock and the toolbar share the line with this bar: lay them out again when it appears or goes away.
+    if (was !== this.el.hidden && this.shownOnce) window.dispatchEvent(new Event('resize'));
+    this.shownOnce = true;
     this.syncMode();
     if (!show) return;
     const hl = t.tool === 'pen' && t.penStyle === 'highlighter';
