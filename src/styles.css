@@ -9618,3 +9618,8 @@ button,
 @media (prefers-reduced-motion: reduce) {
   .pop-n3 .pt-svg { transition: none; }
 }
+/* each pen stands half out of the tray: only its tip half shows, the rest is hidden; the touched pen lifts and slides out a little more */
+.pop-n3 .pt-clip { display: block; flex: none; width: 96px; height: 30px; clip-path: inset(-14px 0 -14px 0); transition: width 0.18s; }
+.pop-n3 .pt-pen.on .pt-clip, .pop-n3 .pt-pen:active .pt-clip { width: 112px; }
+.lite .pop-n3 .pt-clip { transition: none; }
+@media (prefers-reduced-motion: reduce) { .pop-n3 .pt-clip { transition: none; } }

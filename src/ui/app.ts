@@ -715,7 +715,7 @@ export class App {
               <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
               <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
             </div>
-            <div class="pen-tray" role="listbox" aria-label="Pen type">${PEN_DEFS}${PEN_TYPES.map(([k, n]) => `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}">${penSvg(k, k === 'highlighter' ? t.hlColor : t.color)}<span>${n}</span></button>`).join('')}</div>
+            <div class="pen-tray" role="listbox" aria-label="Pen type">${PEN_DEFS}${PEN_TYPES.map(([k, n]) => `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}"><i class="pt-clip">${penSvg(k, k === 'highlighter' ? t.hlColor : t.color)}</i><span>${n}</span></button>`).join('')}</div>
             <div class="seg n3-smooth"><span>Steady</span>${['Exact', 'Light', 'Strong'].map((n, i) => `<button class="${(t.inkSmooth ?? 0) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
             ${this.presetRow()}
           </div>
