@@ -39,6 +39,7 @@ import { CompassTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
 import { SelectTool } from '../tools/select';
 import { TextEditor, TextTool } from '../tools/text';
+import type { PenKind } from '../types';
 import type { BgPattern, El, PathEl, ShapeKind, TableEl, TextEl, ToolId } from '../types';
 import { closeSpotlight, toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openPoll } from '../widgets/poll';
@@ -715,7 +716,7 @@ export class App {
               <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
               <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
             </div>
-            <div class="pen-tray" role="listbox" aria-label="Pen type">${PEN_DEFS}${PEN_TYPES.map(([k, n]) => `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}"><i class="pt-clip">${penSvg(k, k === 'highlighter' ? t.hlColor : t.color)}</i><span>${n}</span></button>`).join('')}</div>
+            <div class="pen-tray" role="listbox" aria-label="Pen type">${PEN_DEFS}${this.trayPens()}</div>
             <div class="seg n3-smooth"><span>Steady</span>${['Exact', 'Light', 'Strong'].map((n, i) => `<button class="${(t.inkSmooth ?? 0) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
             ${this.presetRow()}
           </div>
@@ -977,6 +978,18 @@ export class App {
 
   /** "My pens": four saved pens. Tap a full slot to use it; tap Save, then a slot, to store the pen in use. */
   private presetArmed = false;
+  private penMore = false;
+
+  /** The three main pens (ball pen, marker, highlighter) always show; the others sit under a "More" arrow. */
+  private trayPens(): string {
+    const t = store.tool;
+    const main = ['pen', 'marker', 'highlighter'];
+    const one = ([k, n]: [string, string]) => `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}"><i class="pt-clip">${penSvg(k as PenKind, k === 'highlighter' ? t.hlColor : t.color)}</i><span>${n}</span></button>`;
+    const open = this.penMore || !main.includes(t.penStyle);
+    const rest = PEN_TYPES.filter(([k]) => !main.includes(k));
+    return `<div class="pt-list">${PEN_TYPES.filter(([k]) => main.includes(k)).map(one).join('')}${open ? rest.map(one).join('') : ''}</div>` +
+      `<button class="pt-more${open ? ' open' : ''}" data-penmore aria-expanded="${open}" aria-label="${open ? 'Fewer pens' : 'More pens'}">${icon('down', 18)}<span>${open ? 'Less' : 'More'}</span></button>`;
+  }
   private presetRow(): string {
     const slots = [0, 1, 2, 3].map((i) => (store.settings.penPresets ?? [])[i] ?? null);
     const dots = slots
@@ -994,6 +1007,14 @@ export class App {
     if (!b) return;
     const d = b.dataset;
     const t = store.tool;
+    if (d.penmore !== undefined) {
+      this.penMore = !this.penMore;
+      this.fillPopover();
+      // the menu got taller or shorter: put it back on the toolbar so it never goes off the screen
+      const a = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="pen"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="pen"]`) as HTMLElement | null;
+      if (a) this.positionPopover(a);
+      return;
+    }
     if (d.pset !== undefined) {
       this.presetArmed = !this.presetArmed;
       this.fillPopover();

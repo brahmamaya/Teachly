@@ -16,7 +16,16 @@ const SHOT = process.env.SHOT;
   if (!(await page.$('.pen-tray'))) await page.click('[data-tool=pen]');
   await page.waitForTimeout(500);
   const kinds = await page.$$eval('.pt-pen', (n) => n.map((x) => x.dataset.style));
-  check('the tray lists 10 pens', kinds.length === 10, kinds.join(','));
+  check('at first only ball pen, marker and highlighter show', kinds.join(',') === 'pen,marker,highlighter', kinds.join(','));
+  await page.click('[data-penmore]');
+  await page.waitForTimeout(300);
+  const all = await page.$$eval('.pt-pen', (n) => n.map((x) => x.dataset.style));
+  check('the arrow opens the other pens (10 in all)', all.length === 10, all.join(','));
+  await page.click('[data-penmore]');
+  await page.waitForTimeout(300);
+  check('and closes them again', (await page.$$('.pt-pen')).length === 3);
+  await page.click('[data-penmore]');
+  await page.waitForTimeout(300);
   if (SHOT) await page.screenshot({ path: SHOT + '/tray.png' });
   // lift: pressing a pen moves its picture up
   const box = await (await page.$('.pt-pen[data-style=marker] .pt-svg')).boundingBox();
