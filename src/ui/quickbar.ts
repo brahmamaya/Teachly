@@ -1,4 +1,5 @@
 import { store } from '../store';
+import { viewportBottom } from './subjectpanel';
 
 // Quick bar: while a pen (or shape) is chosen, a small pill floats next to the toolbar with a
 // few colours and three line sizes, so changing colour or thickness is ONE tap (the full menu
@@ -88,7 +89,7 @@ export class QuickBar {
     el.style.left = `${(l.right + r.left) / 2}px`;
     if (edge === 'bottom') {
       el.style.top = 'auto';
-      el.style.bottom = `${window.innerHeight - c - half}px`;
+      el.style.bottom = `${viewportBottom() - c - half}px`;
     } else {
       el.style.bottom = 'auto';
       el.style.top = `${c - half}px`;
