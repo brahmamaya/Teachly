@@ -105,7 +105,13 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                return serve(request.getUrl());
+                Uri u = request.getUrl();
+                // Teachly's own files are served from the app. A request to any other website (a picture, a font, a
+                // script) is refused here, so the device's address is never shared with another site.
+                if (!HOST.equals(u.getHost())) {
+                    return new WebResourceResponse("text/plain", "utf-8", 403, "Blocked", null, new ByteArrayInputStream(new byte[0]));
+                }
+                return serve(u);
             }
 
             @Override

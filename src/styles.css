@@ -8438,7 +8438,48 @@ button,
   background: var(--ci);
   -webkit-mask: var(--ca) center / contain no-repeat;
   mask: var(--ca) center / contain no-repeat;
-  opacity: 0.88;
+  opacity: 0.9;
+  transform: scale(1.22);
+}
+
+/* Cover picker: one tab per subject */
+.cv-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.cv-tabs::-webkit-scrollbar {
+  display: none;
+}
+.cv-tab {
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid rgba(127, 127, 127, 0.28);
+  border-radius: 999px;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.cv-tab.on {
+  background: rgba(127, 127, 127, 0.22);
+  font-weight: 600;
+}
+[data-tabs]:has(.cv-tabs) {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+/* the strip scrolls sideways inside the dialog; it must never make the dialog wider */
+.cv-tabs {
+  width: 0;
+  min-width: 100%;
+  max-width: 100%;
+  contain: inline-size;
 }
 
 /* Cover picker: one tab per subject */
@@ -8592,4 +8633,530 @@ button,
 }
 .cv-tabs {
   flex: none;
+}
+
+/* ---- Subject covers: a soft two-colour face, a fine gloss and ten layouts (data-s). Only opacity/colour: no images are loaded ---- */
+.nbc[data-m] {
+  background: linear-gradient(150deg, var(--cv), var(--cv2));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 24px rgba(0, 0, 0, 0.32);
+}
+.nbc[data-m]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 38%, rgba(0, 0, 0, 0.1));
+}
+.nbc[data-m]::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+/* 1: emblem (the drawing inside a ring, centred) */
+.nbc[data-s='1']::before {
+  left: 22cqw;
+  right: 22cqw;
+  top: 12cqw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 0.7cqw solid currentColor;
+  opacity: 0.4;
+}
+.nbc[data-s='1'] .nbc-art {
+  left: 26cqw;
+  right: 26cqw;
+  top: 16cqw;
+  bottom: auto;
+  aspect-ratio: 1;
+}
+.nbc[data-s='1'] .nbc-tw,
+.nbc[data-s='4'] .nbc-tw {
+  text-align: center;
+}
+.nbc[data-s='1'] .nbc-rule,
+.nbc[data-s='4'] .nbc-rule {
+  margin-left: auto;
+  margin-right: auto;
+}
+.nbc[data-s='1'][data-o='l']::before {
+  left: 33cqw;
+  right: 33cqw;
+  top: 9cqw;
+}
+.nbc[data-s='1'][data-o='l'] .nbc-art {
+  left: 34cqw;
+  right: 34cqw;
+  top: 10cqw;
+}
+/* 2: band (the name sits on a darker band) */
+.nbc[data-s='2']::before {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 36cqw;
+  background: rgba(0, 0, 0, 0.3);
+}
+.nbc[data-s='2'] .nbc-art {
+  left: 14cqw;
+  right: 14cqw;
+  top: 14cqw;
+  bottom: 46cqw;
+}
+.nbc[data-s='2'] .nbc-tw {
+  bottom: 8cqw;
+}
+.nbc[data-s='2'][data-o='l']::before {
+  height: 30cqw;
+}
+.nbc[data-s='2'][data-o='l'] .nbc-art {
+  top: 11cqw;
+  bottom: 36cqw;
+}
+.nbc[data-s='2'][data-o='l'] .nbc-tw {
+  bottom: 6cqw;
+}
+/* 3: dots (a fine dotted texture) */
+.nbc[data-s='3']::before {
+  inset: 0;
+  background: radial-gradient(circle, currentColor 0.7cqw, transparent 0.9cqw) 0 0 / 5.5cqw 5.5cqw;
+  opacity: 0.16;
+}
+/* 4: frame (a thin line inside the edge, centred) */
+.nbc[data-s='4']::before {
+  inset: 4.5cqw;
+  border: 0.55cqw solid currentColor;
+  border-radius: 2.5cqw;
+  opacity: 0.5;
+}
+.nbc[data-s='4'] .nbc-brand {
+  left: 0;
+  right: 0;
+  top: 9cqw;
+  text-align: center;
+}
+.nbc[data-s='4'] .nbc-art {
+  left: 18cqw;
+  right: 18cqw;
+  top: 20cqw;
+  bottom: 42cqw;
+}
+.nbc[data-s='4'] .nbc-tw {
+  left: 12cqw;
+  right: 12cqw;
+  bottom: 12cqw;
+}
+.nbc[data-s='4'][data-o='l'] .nbc-art {
+  top: 18cqw;
+  bottom: 36cqw;
+}
+.nbc[data-s='4'][data-o='l'] .nbc-tw {
+  bottom: 10cqw;
+}
+/* 5: watermark (a big faint drawing, a bold name) */
+.nbc[data-s='5'] .nbc-art {
+  left: 2cqw;
+  right: 2cqw;
+  top: 10cqw;
+  bottom: 18cqw;
+  opacity: 0.2;
+}
+.nbc[data-s='5'] .nbc-t {
+  font-size: 10.5cqw;
+}
+.nbc[data-m] .nbc-t {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+/* 6: spine (a notebook spine with a stitched line) */
+.nbc[data-s='6']::before {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 13cqw;
+  background: rgba(0, 0, 0, 0.26);
+}
+.nbc[data-s='6'] .nbc-art {
+  left: 22cqw;
+  right: 8cqw;
+}
+.nbc[data-s='6'] .nbc-brand,
+.nbc[data-s='6'] .nbc-tw {
+  left: 21cqw;
+  right: 8cqw;
+}
+.nbc[data-s='6'] .nbc-rule {
+  background: currentColor;
+}
+/* 7: arc (a large soft circle in the corner) */
+.nbc[data-s='7']::before {
+  right: -20cqw;
+  top: -20cqw;
+  width: 74cqw;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.13;
+}
+.nbc[data-s='7'] .nbc-art {
+  left: 34cqw;
+  right: 4cqw;
+  top: 8cqw;
+  bottom: 40cqw;
+}
+.nbc[data-s='7'][data-o='l'] .nbc-art {
+  bottom: 38cqw;
+}
+/* 8: label (ruled paper and a name on a label) */
+.nbc[data-s='8']::before {
+  inset: 0;
+  background: repeating-linear-gradient(180deg, transparent 0 7cqw, currentColor 7cqw 7.4cqw);
+  opacity: 0.1;
+}
+.nbc[data-s='8'] .nbc-art {
+  top: 16cqw;
+  bottom: 46cqw;
+}
+.nbc[data-s='8'] .nbc-tw {
+  left: 9cqw;
+  right: 9cqw;
+  bottom: 9cqw;
+  padding: 3.4cqw 4cqw;
+  border-radius: 2cqw;
+  background: var(--ci);
+  color: var(--cv);
+}
+.nbc[data-s='8'] .nbc-rule {
+  display: none;
+}
+.nbc[data-s='8'] .nbc-t {
+  font-size: 8.6cqw;
+  -webkit-line-clamp: 2;
+}
+.nbc[data-s='8'][data-o='l'] .nbc-art {
+  top: 12cqw;
+  bottom: 40cqw;
+}
+/* 9: diagonal (the face is cut in two, the name sits on the right) */
+.nbc[data-s='9']::before {
+  inset: 0;
+  background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, 0.26) 50%);
+}
+.nbc[data-s='9'] .nbc-art {
+  left: 4cqw;
+  right: 34cqw;
+  top: 12cqw;
+  bottom: 40cqw;
+}
+.nbc[data-s='9'] .nbc-tw {
+  text-align: right;
+}
+.nbc[data-s='9'] .nbc-rule {
+  margin-left: auto;
+}
+.nbc[data-m] .nbc-brand,
+.nbc[data-m] .nbc-tw,
+.nbc[data-m] .nbc-art {
+  z-index: 1;
+}
+
+/* Trash: a soft coral bin */
+.library .ls-item[data-v='trash'] svg {
+  color: #fb7185;
+  stroke-width: 1.8;
+}
+.nbc[data-m][data-o='l'][data-s='2'] .nbc-art,
+.nbc[data-m][data-o='l'][data-s='4'] .nbc-art,
+.nbc[data-m][data-o='l'][data-s='8'] .nbc-art,
+.nbc[data-m][data-o='l'][data-s='9'] .nbc-art {
+  transform: scale(1.5);
+}
+.nbc[data-m][data-o='l'][data-s='1'] .nbc-art,
+.nbc[data-m][data-o='l'][data-s='7'] .nbc-art {
+  transform: scale(1.35);
+}
+
+/* My notebooks: smaller cards again (same box for all, as before the size was raised) */
+.library .lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 16px 14px;
+  padding: 14px 24px calc(28px + env(safe-area-inset-bottom, 0px));
+}
+.library .lib-grid .nb-card,
+.library .lib-grid .nb-card.has-cv {
+  padding: 8px 8px 2px;
+  border-radius: 16px;
+  gap: 4px;
+}
+.library .lib-grid .nb-card:not(.nb-new) .nb-cover,
+.library .lib-grid .nb-card.has-cv .nb-cover {
+  border-radius: 11px;
+}
+.library .lib-grid .nb-card .nb-row {
+  min-height: 36px;
+}
+.library .lib-grid .nb-card .nb-star {
+  right: 14px;
+  top: 14px;
+  width: 30px;
+  height: 30px;
+}
+.library .lib-grid {
+  grid-auto-rows: auto;
+  align-items: stretch;
+  align-content: start;
+}
+.library .lib-grid .nb-card,
+.library .lib-grid .nb-card.has-cv {
+  height: auto;
+}
+
+/* ---- My notebooks, premium pass: no boxes, books on the black, names under them (the calm GoodNotes way) ---- */
+.library {
+  --lb-premium-bg: #000;
+}
+.library .lib-side {
+  border: 0;
+  background: #101012;
+  border-radius: 28px;
+}
+.library .ls-item.on {
+  background: #2b2b30;
+}
+.library .lib-head h2 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.library .lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 30px 18px;
+  padding: 22px 34px calc(36px + env(safe-area-inset-bottom, 0px));
+}
+.library .lib-grid .nb-card,
+.library .lib-grid .nb-card.has-cv,
+.library .lib-grid .nb-card.current,
+.library .lib-grid .nb-card.has-cv.current {
+  padding: 0;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.library .lib-grid .nb-card:not(.nb-new) .nb-cover,
+.library .lib-grid .nb-card.has-cv .nb-cover {
+  aspect-ratio: 1 / 1.08;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  align-items: flex-end;
+}
+/* the open notebook is marked by a soft ring around the book, not around a box */
+.library .lib-grid .nb-card.current .nbc,
+.library .lib-grid .nb-card.has-cv.current .nbc {
+  box-shadow: 0 0 0 3px var(--lb-accent), 0 14px 30px rgba(0, 0, 0, 0.55);
+}
+.library .lib-grid .nb-card.current:not(.has-cv) .nb-cover > img,
+.library .lib-grid .nb-card.current:not(.has-cv) .nb-cover {
+  outline: 0;
+}
+/* a plain first-page picture sits like a sheet of paper */
+.library .lib-grid .nb-card:not(.has-cv):not(.nb-new) .nb-cover > img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  margin: 0 auto;
+  border-radius: 4px 8px 8px 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28), 0 14px 28px rgba(0, 0, 0, 0.5);
+  background: #111;
+}
+.library .lib-grid .nb-card:not(.has-cv):not(.nb-new) .nb-cover {
+  align-items: flex-end;
+  justify-content: center;
+}
+/* names and dates, centred under the book */
+.library .lib-grid .nb-card .nb-row {
+  min-height: 44px;
+  padding: 0 0 0 32px;
+  align-items: flex-start;
+}
+.library .lib-grid .nb-card .nb-text {
+  align-items: center;
+  text-align: center;
+}
+.library .lib-grid .nb-card .nb-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+.library .lib-grid .nb-card .nb-meta {
+  font-size: 12.5px;
+  text-align: center;
+}
+.library .lib-grid .nb-card .nb-more {
+  margin-top: -4px;
+}
+.library .lib-grid .nb-card .nb-star {
+  top: 8px;
+  right: 8px;
+}
+.library .lib-grid .nb-card.nb-new {
+  border: 2px dashed rgba(127, 127, 127, 0.4);
+  border-radius: 18px;
+  background: transparent;
+  align-self: stretch;
+}
+
+/* ---- A real notebook look for every cover: a binding on the left, page edges on the right, soft light ---- */
+.nbc {
+  border-radius: 3px 9px 9px 3px;
+}
+.nbc[data-m] {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0, rgba(0, 0, 0, 0.3) 4.2%, rgba(255, 255, 255, 0.2) 4.2%, rgba(255, 255, 255, 0.2) 4.9%, rgba(255, 255, 255, 0.05) 4.9%, rgba(255, 255, 255, 0) 12%),
+    linear-gradient(150deg, var(--cv), var(--cv2));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    2px 0 0 -0.5px #f1efe9,
+    4px 1px 0 -1px #cfcbc2,
+    6px 3px 0 -2px #e8e5de,
+    0 14px 26px rgba(0, 0, 0, 0.5);
+}
+.nbc[data-m] .nbc-brand {
+  left: 10cqw;
+}
+.nbc[data-m] .nbc-tw {
+  left: 10cqw;
+}
+#app .library .lib-grid .nb-card:not(.nb-new) .nb-cover {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* ---- My notebooks side panel: lighter, calmer, smoother ---- */
+.library .lib-side {
+  width: 272px;
+  margin: calc(12px + env(safe-area-inset-top, 0px)) 0 12px 12px;
+  padding: calc(26px + env(safe-area-inset-top, 0px) * 0) 14px 20px;
+  background: #0f0f12;
+  border: 0;
+  border-radius: 30px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+  gap: 6px;
+}
+.library .ls-item {
+  min-height: 50px;
+  padding: 0 16px;
+  gap: 15px;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: rgba(255, 255, 255, 0.92);
+  transition: background 0.22s ease, transform 0.14s ease, color 0.22s ease;
+}
+.library .ls-item svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.22s ease, transform 0.22s ease;
+}
+.library .ls-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.library .ls-item:active {
+  transform: scale(0.98);
+}
+.library .ls-item.on {
+  background: #26262b;
+  font-weight: 500;
+  box-shadow: none;
+}
+.library .ls-item.on svg {
+  color: var(--lb-accent);
+  transform: scale(1.04);
+}
+.library .ls-n {
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+}
+.library .ls-head {
+  margin: 30px 8px 6px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
+}
+.library .ls-head .icon-btn {
+  color: rgba(255, 255, 255, 0.55);
+}
+.library .ls-empty {
+  margin: 8px 16px;
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.38);
+}
+.library .ls-sep {
+  margin: 16px 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.library .ls-item[data-v='trash'] svg {
+  color: #fb7185;
+}
+.library .ls-item[data-v^='f:'] svg {
+  color: #fbbf24;
+}
+@media (prefers-reduced-motion: reduce) {
+  .library .ls-item,
+  .library .ls-item svg {
+    transition: none;
+  }
+}
+.lite .library .ls-item,
+.lite .library .ls-item svg {
+  transition: none;
+}
+
+/* smaller books: about the size GoodNotes shows them (the picture area follows the column width) */
+.library .lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 26px 10px;
+  padding: 18px 28px calc(32px + env(safe-area-inset-bottom, 0px));
+}
+.library .lib-grid .nb-card .nb-title {
+  font-size: 14px;
+}
+.library .lib-grid .nb-card .nb-meta {
+  font-size: 12px;
+}
+.library .lib-grid .nb-card .nb-row {
+  padding-left: 28px;
+}
+.library .lib-grid .nb-card .nb-star {
+  width: 28px;
+  height: 28px;
+}
+.library .lib-grid .nb-card .nb-row {
+  position: relative;
+  padding: 0 14px;
+}
+.library .lib-grid .nb-card .nb-more {
+  position: absolute;
+  right: -8px;
+  top: -6px;
+  width: 28px;
+  height: 30px;
+  margin: 0;
+}
+.library .lib-grid .nb-card .nb-meta {
+  white-space: normal;
+  line-height: 1.25;
 }

@@ -27,6 +27,8 @@ const P: Record<string, string> = {
   next: '<path d="M9 18l6-6-6-6"/>',
   // All pages: four page thumbnails, each with a few lines of writing.
   pages: '<rect x="3" y="3" width="7.5" height="8" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="8" rx="1.5"/><rect x="3" y="13" width="7.5" height="8" rx="1.5"/><rect x="13.5" y="13" width="7.5" height="8" rx="1.5"/><path d="M5.2 6h3M5.2 8.2h2M15.7 6h3M15.7 8.2h2M5.2 16h3M5.2 18.2h2M15.7 16h3M15.7 18.2h2" stroke-width="1.4"/>',
+  // a friendlier bin: round lid with a knob, soft body, a small smile
+  bin: '<path d="M4.5 7.5h15"/><path d="M9.5 7.5V6a2.5 2.5 0 0 1 5 0v1.5"/><path d="M6.3 7.5l.9 11.2a2 2 0 0 0 2 1.8h5.6a2 2 0 0 0 2-1.8l.9-11.2"/><path d="M9.7 13c.6 1.1 1.4 1.6 2.3 1.6s1.7-.5 2.3-1.6"/>',
   trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/>',
   copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
   front: '<rect x="8" y="8" width="13" height="13" rx="2" fill="currentColor" fill-opacity=".25"/><path d="M4 16V4h12"/>',

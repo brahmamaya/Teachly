@@ -49,8 +49,8 @@ export class QuickBar {
     });
     window.addEventListener('resize', () => this.place());
     // The toolbar may be rebuilt or moved: follow it.
-    const bars = document.querySelector('.toolbars');
-    if (bars) new ResizeObserver(() => this.place()).observe(bars);
+    const ro = new ResizeObserver(() => this.place());
+    document.querySelectorAll('.toolbars .toolbar, .toolbars').forEach((el) => ro.observe(el));
     this.update();
     this.place();
   }
@@ -81,7 +81,7 @@ export class QuickBar {
     let fit = -1;
     for (let level = 0; level <= 2 && fit < 0; level++) {
       el.dataset.fit = String(level);
-      if (r.left - l.right >= el.offsetWidth * k + 24) fit = level;
+      if (r.left - l.right >= el.offsetWidth * k + 64) fit = level;
     }
     if (fit < 0) {
       delete el.dataset.fit;

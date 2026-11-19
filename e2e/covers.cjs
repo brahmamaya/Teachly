@@ -16,13 +16,13 @@ const { check, finish } = require('./lib.cjs');
       general: m.COVER_GROUPS[0].covers.length,
       subjects: subj.map((g) => g.name),
       counts: subj.map((g) => g.covers.length),
-      allDistinct: subj.every((g) => new Set(g.covers.map((c) => c.sub.pair)).size === 20 && new Set(g.covers.map((c) => c.sub.drawing + ':' + c.sub.variant)).size === 20),
+      allDistinct: subj.every((g) => new Set(g.covers.map((c) => c.sub.pair)).size === 20 && new Set(g.covers.map((c) => c.sub.drawing + ':' + c.sub.style)).size === 20),
       ids: new Set(m.COVER_GROUPS.flatMap((g) => g.covers.map((c) => c.id))).size,
     };
   });
   check('12 subjects', info.subjects.length === 12 && ['Physics', 'Chemistry', 'Maths', 'History', 'Geography', 'Social science', 'Drawing', 'Zoology', 'Botany'].every((s) => info.subjects.includes(s)), info.subjects.join(','));
   check('20 covers in every subject (240) and the 12 general ones are kept', info.counts.every((n) => n === 20) && info.general === 12 && info.ids === 252, JSON.stringify([info.counts, info.general, info.ids]));
-  check('inside a subject no two covers share colours, and none repeats a drawing + placement', info.allDistinct);
+  check('inside a subject no two covers share colours, and none repeats a drawing + layout', info.allDistinct);
 
   // the new-notebook dialog: tabs, a cover from another subject
   await page.click('.doc-title');
@@ -53,8 +53,8 @@ const { check, finish } = require('./lib.cjs');
   await page.waitForTimeout(1200);
   const boxes = await page.$$eval('.lib-grid .nb-card', (cs) => cs.map((c) => { const r = c.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
   check('every card in My notebooks is the same size (within a pixel)', boxes.length >= 6 && boxes.every((x) => Math.abs(x[0] - boxes[0][0]) <= 1 && Math.abs(x[1] - boxes[0][1]) <= 1), JSON.stringify(boxes));
-  const covers = await page.$$eval('.lib-grid .nb-cover', (cs) => cs.map((c) => { const r = c.getBoundingClientRect(); return Math.round((r.width / r.height) * 100); }));
-  check('and so is every picture area (4 : 3)', covers.filter((a, i) => i > 0).every((a) => Math.abs(a - 133) <= 2), JSON.stringify(covers));
+  const covers = await page.$$eval('.lib-grid .nb-card:not(.nb-new) .nb-cover', (cs) => cs.map((c) => { const r = c.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+  check('and so is the area every book stands in', covers.length >= 5 && covers.every((a) => Math.abs(a[0] - covers[0][0]) <= 1 && Math.abs(a[1] - covers[0][1]) <= 1), JSON.stringify(covers));
   const fits = await page.$$eval('.lib-grid .nb-card .nbc', (cs) => cs.every((c) => { const p = c.parentElement.getBoundingClientRect(), r = c.getBoundingClientRect(); return r.width > 20 && r.left >= p.left - 1 && r.right <= p.right + 1 && r.top >= p.top - 1 && r.bottom <= p.bottom + 1; }));
   check('wide and tall covers sit whole inside the area', fits);
 

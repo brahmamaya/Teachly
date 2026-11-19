@@ -36,6 +36,7 @@ const PRIVACY = `
 
 <h2>3. When Teachly uses the internet</h2>
 <ul>
+  <li><b>No other websites.</b> Teachly's fonts, pictures and code are part of Teachly itself. The app never asks Google, a content network or any other site for anything while you use it, and it tells the browser not to pass on where you came from. So no other website learns your device's address or anything about your use.</li>
   <li><b>Website version:</b> your browser downloads Teachly's files from the website host. Like every website host, it receives the technical details needed to send the files (such as your IP address, browser type and time) and may keep them in its own logs under its own privacy policy. Teachly adds nothing to this. After the first visit Teachly also works without internet.</li>
   <li><b>Android app from Google Play:</b> the app does not use the internet. It contains all its files, and Google Play delivers updates. (Only a copy of the app installed outside Google Play may check the website for newer app files; nothing about you or your lessons is sent.)</li>
   <li><b>Share Teachly:</b> only when you tap it, your device's share menu opens with a link to physica.in.</li>
