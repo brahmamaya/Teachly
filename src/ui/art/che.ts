@@ -116,7 +116,7 @@ const tiles = () => {
     const t = c === 0 ? 0.32 : c === 4 ? 0.2 : 0.1;
     s += `<rect x='${x}' y='${y}' width='${size}' height='${size}' rx='2' ${F(hot ? 0.7 : t)}/><rect x='${x}' y='${y}' width='${size}' height='${size}' rx='2' ${S(hot ? 1 : 0.8, hot ? 1.6 : 1.1)}/>` +
       `<path d='M${x + 2.4} ${y + 3.2}h3.2M${x + 2.4} ${y + size - 2.6}h${5 + (c % 3) * 2}' ${S(hot ? 0.5 : 0.55, 1)}/>` +
-      (c % 2 ? `<circle cx='${n1(x + size / 2 + 1.2)}' cy='${n1(y + size / 2)}' r='3.4' ${S(0.8, 1.1)}/><circle cx='${n1(x + size / 2 + 1.2)}' cy='${n1(y + size / 2)}' r='1.3' ${F(0.8)}/>` : `<path d='M${n1(x + 8.6)} ${n1(y + 4.8)}l3.6 3.2v4l-3.6 3.2l-3.6-3.2v-4Z' ${S(0.8, 1.1)}/>`);
+      (c % 2 ? `<circle cx='${n1(x + size / 2 + 1.2)}' cy='${n1(y + size / 2)}' r='3.4' ${S(0.8, 1.1)}/><circle cx='${n1(x + size / 2 + 1.2)}' cy='${n1(y + size / 2)}' r='1.3' ${F(0.8)}/>` : `<path d='M${n1(x + 8.8)} ${n1(y + 4.6)}l2.8 2.2v3.2l-2.8 2.2l-2.8-2.2v-3.2Z' ${S(0.8, 1.1)}/>`);
   }
   return s + `<g ${S(0.4, 1)}><path d='M7 90H93M7 94H60' stroke-dasharray='1.6 2.4'/></g>`;
 };
