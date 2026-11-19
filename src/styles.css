@@ -9503,3 +9503,26 @@ button,
   --lb-shadow-up: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 16px 36px rgba(0, 0, 0, 0.7);
   background: #000;
 }
+
+/* "New" and "New notebook": no blue wash or glow behind them */
+.library .lib-head .lib-new,
+#app .library .lib-head .lib-new {
+  box-shadow: none;
+  filter: none;
+}
+.library .lib-grid .nb-card.nb-new,
+#app .library .lib-grid .nb-card.nb-new,
+#app[data-board] .library:not([data-theme='light']) .nb-card.nb-new {
+  background: transparent;
+  box-shadow: none;
+  border-color: rgba(127, 127, 127, 0.45);
+  color: var(--lb-text);
+}
+.library .lib-grid .nb-card.nb-new .nb-cover,
+#app .library .lib-grid .nb-card.nb-new .nb-cover,
+#app[data-board] .library:not([data-theme='light']) .nb-new .nb-cover {
+  box-shadow: none;
+}
+.library .lib-grid .nb-card.nb-new .nb-title {
+  color: var(--lb-text);
+}
