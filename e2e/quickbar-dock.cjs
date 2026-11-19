@@ -69,7 +69,7 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   await page.click('.qb-arrow');
   await page.waitForTimeout(500);
   check('and closes it again', await page.evaluate(() => !document.querySelector('.quickbar').classList.contains('open')));
-  await page.click('.tb-subject');
+  await page.click('.sd-name');
   await page.waitForTimeout(600);
   check('without the dock the bar is the normal full one', await page.evaluate(() => { const q = document.querySelector('.quickbar'); return !q.classList.contains('mini') && !q.classList.contains('mid') && !q.classList.contains('withdock'); }));
   await ctx.close();
