@@ -41,42 +41,6 @@
   outline-offset: 4px;
 }
 
-/* The notebook's name, top left */
-.doc-title {
-  position: fixed;
-  z-index: 40;
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  left: calc(14px + env(safe-area-inset-left, 0px));
-  max-width: min(46vw, 360px);
-  padding: 6px 12px;
-  border: 1px solid rgba(127, 127, 127, 0.35);
-  border-radius: var(--tk-radius-pill, 999px);
-  background: rgba(20, 20, 22, 0.55);
-  color: #f1f5f9;
-  font: 700 13px/1.2 var(--tk-font, system-ui);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-  transition: background var(--tk-motion, 0.18s), transform 0.12s;
-}
-.doc-title:hover {
-  background: rgba(20, 20, 22, 0.8);
-}
-.doc-title:active {
-  transform: scale(0.97);
-}
-#app[data-board='light'] .doc-title,
-#app:not([data-board='dark']) .doc-title {
-  background: rgba(255, 255, 255, 0.8);
-  color: #0f172a;
-}
-@media (max-width: 480px) {
-  .doc-title {
-    max-width: 38vw;
-    font-size: 12px;
-  }
-}
 
 /* Move / Copy switch in the "to page" picker */
 .mp-seg {
@@ -116,7 +80,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .doc-title,
   .mp-seg button {
     transition: none;
   }

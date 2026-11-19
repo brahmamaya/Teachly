@@ -361,7 +361,6 @@ export class App {
     // Autosave (io/autosave.ts): shortly after each change, at once when the app is hidden or closed.
     startAutosave(() => this.board.busyInput);
     new SaveBadge(this.root.querySelector('.corner') as HTMLElement);
-    this.documentTitle();
     // Back exactly where the lesson stopped: notebook, page, spot, pen.
     restoreTools();
     void loadLastNotebook().then((doc) => {
@@ -379,23 +378,6 @@ export class App {
 
   // ---------------------------------------------------------------------------
   // Bottom toolbar
-
-  /** The notebook's name, top left: always visible, a tap opens My notebooks (where it can be renamed). */
-  private documentTitle(): void {
-    const btn = document.createElement('button');
-    btn.className = 'doc-title';
-    btn.dataset.act = 'library';
-    this.root.appendChild(btn);
-    const sync = () => {
-      const t = store.doc.title?.trim() || 'My notebook';
-      btn.textContent = t;
-      btn.title = `${t}: open My notebooks`;
-      btn.setAttribute('aria-label', `${t} · open My notebooks`);
-    };
-    sync();
-    store.on('doc', sync);
-    btn.addEventListener('click', () => this.action('library'));
-  }
 
   /** Names and selected state of the toolbar controls for assistive technology. */
   private syncA11y(): void {

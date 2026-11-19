@@ -25,7 +25,9 @@ const { check, finish } = require('./lib.cjs');
   check('inside a subject no two covers share colours, and none repeats a drawing + layout', info.allDistinct);
 
   // the new-notebook dialog: tabs, a cover from another subject
-  await page.click('.doc-title');
+  await page.click('[data-pop=menu]');
+  await page.waitForTimeout(300);
+  await page.click('.mt-tile[data-act=library]');
   await page.waitForTimeout(700);
   await page.click('.nb-new');
   await page.waitForTimeout(700);
@@ -41,7 +43,9 @@ const { check, finish } = require('./lib.cjs');
   check('the chosen subject cover is saved with the notebook', meta.some(([t, c]) => t === 'Animals' && c === 'zoo-04'), JSON.stringify(meta));
 
   // My notebooks: change a cover from the card menu, with tabs
-  await page.click('.doc-title');
+  await page.click('[data-pop=menu]');
+  await page.waitForTimeout(300);
+  await page.click('.mt-tile[data-act=library]');
   await page.waitForTimeout(900);
   await page.evaluate(async () => {
     const L = await import('/src/io/library.ts');
@@ -49,7 +53,9 @@ const { check, finish } = require('./lib.cjs');
   });
   await page.reload();
   await page.waitForTimeout(1800);
-  await page.click('.doc-title');
+  await page.click('[data-pop=menu]');
+  await page.waitForTimeout(300);
+  await page.click('.mt-tile[data-act=library]');
   await page.waitForTimeout(1200);
   const boxes = await page.$$eval('.lib-grid .nb-card', (cs) => cs.map((c) => { const r = c.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
   check('every card in My notebooks is the same size (within a pixel)', boxes.length >= 6 && boxes.every((x) => Math.abs(x[0] - boxes[0][0]) <= 1 && Math.abs(x[1] - boxes[0][1]) <= 1), JSON.stringify(boxes));

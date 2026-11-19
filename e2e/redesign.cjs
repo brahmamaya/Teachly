@@ -37,12 +37,13 @@ const { check, finish } = require('./lib.cjs');
   await page.waitForTimeout(300);
   check('the next Escape closes the Pages panel', !(await page.$('.pages-panel')));
 
-  // --- the notebook's name is always visible and opens My notebooks
-  const title = await page.$eval('.doc-title', (e) => e.textContent);
-  check('the notebook name is shown top left', title === 'My notebook', title);
-  await page.click('.doc-title');
+  // --- the board shows no notebook name on top; My notebooks opens from the menu
+  check('no notebook name is written on the board', !(await page.$('.doc-title')));
+  await page.click('[data-pop=menu]');
+  await page.waitForTimeout(300);
+  await page.click('.mt-tile[data-act=library]');
   await page.waitForTimeout(700);
-  check('and opens My notebooks', !!(await page.$('.library')));
+  check('My notebooks opens from the menu', !!(await page.$('.library')));
   await page.click('.library [data-lib=close]');
   await page.waitForTimeout(400);
 
