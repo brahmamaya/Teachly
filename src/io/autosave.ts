@@ -42,6 +42,8 @@ let timer = 0;
 let waited = 0;
 let running: Promise<void> | null = null;
 let failures = 0;
+/** How long the last write took: a big notebook is written less often, so writing is never interrupted. */
+let lastWriteMs = 0;
 
 const dirty = (): boolean => {
   const id = store.doc.id;
@@ -67,7 +69,9 @@ async function run(): Promise<void> {
       const doc = store.doc; // the newest state at this moment
       set('saving');
       try {
+        const t0 = performance.now();
         const written = await saveNotebookChecked(doc);
+        lastWriteMs = performance.now() - t0;
         if (!written) {
           set('conflict', 'A newer version of this notebook is already saved (another window?). Reload to see it.');
           return;
@@ -96,8 +100,10 @@ function retryLater(): void {
 /** Save soon (and again a bit later if a pen is down). */
 function schedule(ms = 900): void {
   clearTimeout(timer);
+  ms = Math.min(10_000, Math.max(ms, lastWriteMs * 12));
   timer = window.setTimeout(function kick() {
-    if (busy() && waited < 4000) {
+    // Never write in the middle of a line: wait until the pen or finger is lifted (at most 20 s).
+    if (busy() && waited < 20_000) {
       waited += 300;
       timer = window.setTimeout(kick, 300);
       return;
