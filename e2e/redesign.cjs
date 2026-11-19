@@ -7,7 +7,7 @@ const { check, finish } = require('./lib.cjs');
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
-  await page.goto('http://localhost:5173/');
+  await page.goto(process.env.URL || 'http://localhost:5173/');
   await page.waitForTimeout(1800);
 
   // --- state cues for assistive technology (and a second cue besides colour)
