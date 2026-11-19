@@ -9216,3 +9216,14 @@ button,
 .library[data-theme='light'] .lib-grid .nb-card:not(.has-cv):not(.nb-new) .nb-cover > img {
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.16), 0 10px 20px rgba(15, 23, 42, 0.16);
 }
+
+/* The "New" button on top: a plain flat button (no gradient, no glow) */
+.library .lib-new,
+#app .library .lib-new {
+  background: var(--lb-accent, #2f6bff);
+  box-shadow: none;
+  font-weight: 600;
+}
+.library .lib-new:hover {
+  filter: brightness(1.06);
+}
