@@ -9573,12 +9573,9 @@ button,
   padding: 6px 8px 8px;
   border-radius: 14px;
   background: rgba(127, 127, 127, 0.1);
-  max-height: min(372px, 46vh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
 }
-.pop-n3 .pen-tray::-webkit-scrollbar { display: none; }
+.pop-n3 .pt-list { max-height: min(300px, 38vh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.pop-n3 .pt-list::-webkit-scrollbar { display: none; }
 .pop-n3 .pt-pen {
   display: flex;
   align-items: center;
@@ -9623,3 +9620,7 @@ button,
 .pop-n3 .pt-pen.on .pt-clip, .pop-n3 .pt-pen:active .pt-clip { width: 112px; }
 .lite .pop-n3 .pt-clip { transition: none; }
 @media (prefers-reduced-motion: reduce) { .pop-n3 .pt-clip { transition: none; } }
+.pop-n3 .pt-more { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 2px; padding: 5px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; font-size: 11px; font-weight: 700; opacity: 0.75; cursor: pointer; }
+.pop-n3 .pt-more .icon { transition: transform 0.18s; }
+.pop-n3 .pt-more.open .icon { transform: rotate(180deg); }
+.lite .pop-n3 .pt-more .icon { transition: none; }
