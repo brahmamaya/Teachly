@@ -16,13 +16,13 @@ const { check, finish } = require('./lib.cjs');
       general: m.COVER_GROUPS[0].covers.length,
       subjects: subj.map((g) => g.name),
       counts: subj.map((g) => g.covers.length),
-      allDistinct: subj.every((g) => new Set(g.covers.map((c) => c.sub.pair)).size === 20 && new Set(g.covers.map((c) => c.sub.drawing + ':' + c.sub.variant)).size === 20),
+      allDistinct: subj.every((g) => new Set(g.covers.map((c) => c.sub.pair)).size === 20 && new Set(g.covers.map((c) => c.sub.drawing + ':' + c.sub.style)).size === 20),
       ids: new Set(m.COVER_GROUPS.flatMap((g) => g.covers.map((c) => c.id))).size,
     };
   });
   check('12 subjects', info.subjects.length === 12 && ['Physics', 'Chemistry', 'Maths', 'History', 'Geography', 'Social science', 'Drawing', 'Zoology', 'Botany'].every((s) => info.subjects.includes(s)), info.subjects.join(','));
   check('20 covers in every subject (240) and the 12 general ones are kept', info.counts.every((n) => n === 20) && info.general === 12 && info.ids === 252, JSON.stringify([info.counts, info.general, info.ids]));
-  check('inside a subject no two covers share colours, and none repeats a drawing + placement', info.allDistinct);
+  check('inside a subject no two covers share colours, and none repeats a drawing + layout', info.allDistinct);
 
   // the new-notebook dialog: tabs, a cover from another subject
   await page.click('.doc-title');

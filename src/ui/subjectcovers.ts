@@ -15,8 +15,10 @@ export interface SubjectCover {
   /** Which drawing ("phy:3") and which colour pair (0-19). */
   drawing: string;
   pair: number;
-  /** How the drawing is placed: 0 as is, 1 mirrored, 2 large and faint behind the name, 3 tilted and faint. */
-  variant: number;
+  /** The layout of the cover (0-9, see the stylesheet). */
+  style: number;
+  /** Second colour of the cover. */
+  bg2: string;
 }
 
 export interface CoverGroup {
@@ -52,6 +54,8 @@ const PHYSICS: Art[] = [
   () => `<path d='M28 16 V54 A22 22 0 0 0 72 54 V16 H60 V54 A10 10 0 0 1 40 54 V16 Z' ${F(0.12)}/><g ${S()}><path d='M28 16 V54 A22 22 0 0 0 72 54 V16 H60 V54 A10 10 0 0 1 40 54 V16 Z'/><path d='M28 30 H40 M60 30 H72'/></g><g ${S(0.5, 1.1)}><path d='M14 90 Q50 66 86 90' stroke-dasharray='3 4'/></g>`,
   () => `<path d='M50 22 L80 74 H20 Z' ${F(0.1)}/><g ${S()}><path d='M50 22 L80 74 H20 Z'/><path d='M4 62 L38 52'/><path d='M66 52 L98 38 M68 58 L98 52 M70 64 L98 66' opacity='0.75'/></g>`,
   () => `<path d='M50 18 C72 34 72 66 50 82 C28 66 28 34 50 18 Z' ${F(0.1)}/><g ${S()}><path d='M50 18 C72 34 72 66 50 82 C28 66 28 34 50 18 Z'/><path d='M50 12 V88 M6 50 H94' stroke-dasharray='2 4' opacity='0.5'/><path d='M8 30 L30 42 M8 50 L28 50 M8 70 L30 58'/><path d='M70 42 L92 30 M72 50 H92 M70 58 L92 70' opacity='0.7'/></g>`,
+  () => `<g ${S()}><path d='M26 10 H74 M50 10 V60'/><circle cx='50' cy='72' r='11'/></g><g ${S(0.5, 1.2)}><path d='M22 66 Q50 98 78 66' stroke-dasharray='3 4'/></g><circle cx='50' cy='72' r='11' ${F(0.16)}/>`,
+  () => `<g ${S()}><path d='M20 70 V30 H36 L40 20 L48 40 L56 20 L64 40 L68 30 H80 V70 H56 M44 70 H20'/><path d='M44 60 V80 M56 64 V76'/></g>`,
 ];
 
 const CHEMISTRY: Art[] = [
@@ -61,6 +65,8 @@ const CHEMISTRY: Art[] = [
   () => `<g ${S()}><path d='M22 14 V76 Q22 88 30 88 Q38 88 38 76 V14 M18 14 H42'/><path d='M44 14 V76 Q44 88 52 88 Q60 88 60 76 V14 M40 14 H64'/><path d='M66 14 V76 Q66 88 74 88 Q82 88 82 76 V14 M62 14 H86'/><path d='M22 52 H38 M44 44 H60 M66 58 H82' opacity='0.6'/></g><path d='M22 52 H38 V76 Q38 88 30 88 Q22 88 22 76 Z' ${F(0.16)}/><path d='M66 58 H82 V76 Q82 88 74 88 Q66 88 66 76 Z' ${F(0.16)}/>`,
   () => `<g ${S()}><path d='${poly(ngon(50, 50, 32, 6), true)}'/><path d='${poly(ngon(50, 50, 20, 6), true)}' opacity='0.5'/></g><g ${S(0.6, 1.2)}><path d='M50 18 V8 M77.7 34 L86 29 M77.7 66 L86 71 M50 82 V92 M22.3 66 L14 71 M22.3 34 L14 29'/></g>`,
   () => `<g ${S()}><path d='M38 88 H62 M50 88 V58 M42 58 H58 L56 44 H44 Z'/><path d='M44 44 V34 M56 44 V34'/></g><path d='M50 8 C60 20 64 28 58 34 C54 38 46 38 42 34 C36 28 42 20 50 8 Z' ${F(0.2)}/><path d='M50 8 C60 20 64 28 58 34 C54 38 46 38 42 34 C36 28 42 20 50 8 Z' ${S(0.8, 1.3)}/>`,
+  () => `<rect x='24' y='14' width='52' height='72' rx='6' ${F(0.1)}/><g ${S()}><rect x='24' y='14' width='52' height='72' rx='6'/><path d='M33 28 H44 M60 28 H67 M34 76 H66'/><circle cx='50' cy='52' r='14'/></g>`,
+  () => `<g ${S()}><path d='${poly(ngon(34, 50, 19, 6, -90), true)}'/><path d='${poly(ngon(67, 50, 19, 6, -90), true)}'/></g><g ${S(0.5, 1.2)}><path d='${poly(ngon(34, 50, 11, 6, -90), true)}'/></g>`,
 ];
 
 const MATHS: Art[] = [
@@ -70,6 +76,8 @@ const MATHS: Art[] = [
   () => `<g ${S()}><path d='M26 38 L56 26 L84 38 L84 72 L54 86 L26 72 Z'/><path d='M26 38 L54 52 L84 38 M54 52 V86'/></g><path d='M26 38 L54 52 L54 86 L26 72 Z' ${F(0.1)}/>`,
   () => `<g ${S(0.5, 1)}><path d='M8 50 H94 M50 12 V90'/></g><g ${S(0.9, 1.7)}><path d='${sine(50, 22, 1.5, 0, 10, 92)}'/></g>`,
   () => `<g ${S(0.9, 2.4)}><path d='M50 50 C50 30 26 24 20 38 C14 54 34 66 50 50 C66 34 86 46 80 62 C74 76 50 70 50 50 Z'/></g><path d='M50 50 C50 30 26 24 20 38 C14 54 34 66 50 50 Z' ${F(0.1)}/>`,
+  () => `<g ${S(0.9, 2.6)}><path d='M74 22 H28 L52 50 L28 78 H74'/></g>`,
+  () => `<path d='M10 76 A40 40 0 0 1 90 76 Z' ${F(0.1)}/><g ${S()}><path d='M10 76 A40 40 0 0 1 90 76 Z M50 76 V70 M18 56 L23 59 M30 40 L34 45 M50 34 V40 M70 40 L66 45 M82 56 L77 59'/><circle cx='50' cy='76' r='3'/></g>`,
 ];
 
 const HISTORY: Art[] = [
@@ -79,6 +87,8 @@ const HISTORY: Art[] = [
   () => `<g ${S()}><path d='M8 82 L40 30 L56 56 L64 44 L92 82 Z'/><path d='M40 30 L48 56 L40 82 M64 44 L60 82' opacity='0.5'/></g><circle cx='76' cy='20' r='7' ${S(0.6, 1.3)}/>`,
   () => `<g ${S()}><path d='M26 14 H74 M26 86 H74 M30 14 C30 40 46 44 50 50 C46 56 30 60 30 86 M70 14 C70 40 54 44 50 50 C54 56 70 60 70 86'/></g><path d='M38 78 H62 C58 66 54 62 50 60 C46 62 42 66 38 78 Z' ${F(0.2)}/><path d='M42 28 H58 L50 44 Z' ${F(0.14)}/>`,
   () => `<path d='M18 72 L16 36 L34 52 L50 28 L66 52 L84 36 L82 72 Z' ${F(0.12)}/><g ${S()}><path d='M18 72 L16 36 L34 52 L50 28 L66 52 L84 36 L82 72 Z M18 80 H82'/><circle cx='16' cy='33' r='3'/><circle cx='50' cy='25' r='3'/><circle cx='84' cy='33' r='3'/></g>`,
+  () => `<g ${S()}><path d='M50 8 L58 18 V64 H42 V18 Z M30 64 H70 M50 64 V88 M44 88 H56'/></g><path d='M42 18 L50 8 L58 18 V64 H42 Z' ${F(0.12)}/>`,
+  () => `<g ${S()}><path d='M18 88 V46 A32 32 0 0 1 82 46 V88 M34 88 V50 A16 16 0 0 1 66 50 V88 M10 88 H90'/></g><path d='M34 88 V50 A16 16 0 0 1 66 50 V88 Z' ${F(0.1)}/>`,
 ];
 
 const GEOGRAPHY: Art[] = [
@@ -88,6 +98,8 @@ const GEOGRAPHY: Art[] = [
   () => `<g ${S()}><path d='M8 30 Q30 18 44 34 T70 44 T94 30'/><path d='M8 46 Q30 34 44 50 T70 60 T94 46' opacity='0.6'/><path d='M8 62 Q30 50 44 66 T70 76 T94 62' opacity='0.4'/><path d='M62 12 Q54 28 64 38 Q74 48 66 62 Q60 74 72 88'/></g>`,
   () => `<path d='M14 88 L38 44 H62 L86 88 Z' ${F(0.1)}/><g ${S()}><path d='M14 88 L38 44 H62 L86 88 Z M38 44 L44 36 H56 L62 44 M4 88 H96'/><path d='M46 36 C42 26 50 22 48 12 M54 36 C58 24 52 20 56 10' opacity='0.6'/></g>`,
   () => `<g ${S()}><path d='M50 18 C72 18 82 38 74 56 C66 74 38 80 26 64 C14 48 28 18 50 18 Z'/><path d='M50 28 C66 28 72 42 66 54 C60 66 42 70 34 60 C26 48 36 28 50 28 Z' opacity='0.7'/><path d='M50 38 C58 38 60 46 56 52 C52 58 44 58 42 52 C40 46 44 38 50 38 Z' opacity='0.5'/></g>`,
+  () => `<path d='M50 90 C30 64 24 52 24 40 A26 26 0 0 1 76 40 C76 52 70 64 50 90 Z' ${F(0.12)}/><g ${S()}><path d='M50 90 C30 64 24 52 24 40 A26 26 0 0 1 76 40 C76 52 70 64 50 90 Z'/><circle cx='50' cy='40' r='9'/></g>`,
+  () => `<g ${S()}><path d='M26 66 A16 16 0 0 1 28 36 A22 22 0 0 1 70 32 A17 17 0 0 1 72 66 Z M32 76 L28 86 M48 76 L44 86 M64 76 L60 86'/></g>`,
 ];
 
 const SOCIAL: Art[] = [
@@ -97,6 +109,8 @@ const SOCIAL: Art[] = [
   () => `<g ${S()}><path d='M26 10 V92'/><path d='M26 14 H80 L68 30 L80 46 H26'/></g><path d='M26 14 H80 L68 30 L80 46 H26 Z' ${F(0.14)}/>`,
   () => `<path d='M20 52 H80 V86 H20 Z' ${F(0.1)}/><g ${S()}><path d='M20 52 H80 V86 H20 Z M32 52 H68 M38 52 V47 H62 V52'/><path d='M38 26 L50 14 L62 26 V42 H38 Z M44 26 H56'/></g>`,
   () => `<g ${S()}><path d='M8 88 H92 M14 88 V46 H30 V88 M30 88 V28 H48 V88 M48 88 V56 H62 V88 M62 88 V36 H80 V88 M80 88 V62 H92 V88'/><path d='M36 38 H42 M36 50 H42 M68 46 H74 M68 58 H74' opacity='0.6'/></g>`,
+  () => `<g ${S()}><circle cx='50' cy='50' r='38'/><path d='M34 32 H66 M34 46 H66 M42 32 C66 32 66 56 42 56 L64 76'/></g>`,
+  () => `<g ${S()}><path d='M22 14 H72 V80 H22 Z M22 80 V86 H72 M30 28 H64 M30 40 H64 M30 52 H52'/><path d='M60 66 L66 74 L76 62' opacity='0.8'/></g>`,
 ];
 
 const DRAWING: Art[] = [
@@ -106,6 +120,8 @@ const DRAWING: Art[] = [
   () => `<g ${S()}><path d='M18 90 L36 12 H64 L82 90 M50 12 V4 M26 56 L74 56 M42 90 V76 H58 V90'/><rect x='30' y='24' width='40' height='28' rx='2'/></g><path d='M30 24 H70 V52 H30 Z' ${F(0.1)}/>`,
   () => `<g ${S()}><path d='M14 82 V24 L74 82 Z'/><path d='M14 38 H22 M14 52 H24 M14 66 H22 M26 82 V74 M40 82 V72 M54 82 V74' opacity='0.7'/><path d='M34 70 V52 L50 70 Z' opacity='0.5'/></g>`,
   () => `<g ${S()}><path d='M50 14 L84 32 V68 L50 86 L16 68 V32 Z M16 32 L50 50 L84 32 M50 50 V86'/></g><path d='M16 32 L50 50 V86 L16 68 Z' ${F(0.08)}/><g ${S(0.45, 1)}><path d='M22 42 L28 46 M22 52 L28 56 M22 62 L28 66'/></g>`,
+  () => `<g transform='rotate(-30 50 50)'><rect x='8' y='38' width='84' height='24' rx='3' ${F(0.1)}/><g ${S()}><rect x='8' y='38' width='84' height='24' rx='3'/><path d='M20 38 V48 M32 38 V52 M44 38 V48 M56 38 V52 M68 38 V48 M80 38 V52'/></g></g>`,
+  () => `<g transform='rotate(-24 50 50)'><rect x='20' y='36' width='60' height='28' rx='5' ${F(0.1)}/><g ${S()}><rect x='20' y='36' width='60' height='28' rx='5'/><path d='M52 36 V64'/></g></g>`,
 ];
 
 const ZOOLOGY: Art[] = [
@@ -115,6 +131,8 @@ const ZOOLOGY: Art[] = [
   () => `<g ${S()}><ellipse cx='50' cy='64' rx='20' ry='16'/><ellipse cx='22' cy='46' rx='7' ry='10' transform='rotate(-20 22 46)'/><ellipse cx='40' cy='28' rx='7' ry='10' transform='rotate(-6 40 28)'/><ellipse cx='60' cy='28' rx='7' ry='10' transform='rotate(6 60 28)'/><ellipse cx='78' cy='46' rx='7' ry='10' transform='rotate(20 78 46)'/></g>`,
   () => `<g ${S()}><path d='M50 50 m0 0 C50 44 56 42 60 46 C66 52 60 62 50 62 C38 62 32 50 38 40 C46 28 66 30 72 44 C78 60 66 78 48 78 C28 78 14 62 18 44 C22 24 44 14 64 20'/><path d='M14 80 H86' opacity='0.5'/></g>`,
   () => `<g ${S()}><path d='M22 90 C26 60 44 28 78 10 C80 40 66 74 30 86 M22 90 C34 66 52 40 78 10'/><path d='M34 70 L22 68 M42 58 L28 52 M52 46 L40 38 M60 36 L52 26 M40 70 L50 78 M50 58 L62 66 M60 46 L72 52' opacity='0.6'/></g>`,
+  () => `<g ${S()}><ellipse cx='50' cy='58' rx='18' ry='22'/><path d='M32 54 H68 M33 66 H67'/><ellipse cx='30' cy='30' rx='14' ry='9' transform='rotate(-30 30 30)'/><ellipse cx='70' cy='30' rx='14' ry='9' transform='rotate(30 70 30)'/><path d='M44 38 Q40 24 32 18 M56 38 Q60 24 68 18'/></g>`,
+  () => `<g ${S()}><circle cx='50' cy='54' r='30'/><path d='M24 40 L22 14 L42 28 M76 40 L78 14 L58 28'/><circle cx='39' cy='50' r='3.4'/><circle cx='61' cy='50' r='3.4'/><path d='M47 62 L50 65 L53 62 M50 65 V70 M40 70 Q50 76 60 70 M8 56 L30 60 M8 68 L30 64 M92 56 L70 60 M92 68 L70 64' opacity='0.85'/></g>`,
 ];
 
 const BOTANY: Art[] = [
@@ -131,6 +149,8 @@ const BOTANY: Art[] = [
   () => `<g ${S()}><path d='M50 88 V50 M50 62 C36 62 28 52 28 40 C42 40 50 48 50 62 M50 54 C62 54 72 46 72 32 C58 32 50 42 50 54'/><path d='M16 88 H84 M24 94 H76' opacity='0.5'/></g>`,
   () => `<path d='M50 14 C66 12 78 24 76 38 C86 42 84 60 72 62 C68 72 54 72 50 64 C46 72 32 72 28 62 C16 60 14 42 24 38 C22 24 34 12 50 14 Z' ${F(0.12)}/><g ${S()}><path d='M50 14 C66 12 78 24 76 38 C86 42 84 60 72 62 C68 72 54 72 50 64 C46 72 32 72 28 62 C16 60 14 42 24 38 C22 24 34 12 50 14 Z M50 64 V92 M50 78 L40 70 M50 72 L60 62'/></g>`,
   () => `<g ${S()}><path d='M38 90 V32 A12 12 0 0 1 62 32 V90 Z M38 60 H26 A8 8 0 0 1 18 52 V38 A5 5 0 0 1 28 38 V50 H38 M62 50 H72 V30 A5 5 0 0 1 82 30 V54 A8 8 0 0 1 74 62 H62'/><path d='M12 90 H88' opacity='0.5'/></g>`,
+  () => { let p = ''; for (let a = 0; a < 360; a += 24) p += `<ellipse cx='50' cy='20' rx='5' ry='13' transform='rotate(${a} 50 44)'/>`; return `<g ${S(0.8, 1.2)}>${p}<circle cx='50' cy='44' r='11'/></g><g ${S()}><path d='M50 70 V94 M50 82 C40 78 34 82 34 88 C42 90 48 88 50 82'/></g>`; },
+  () => `<g ${S()}><path d='M50 94 V16'/><path d='M50 28 C40 26 36 18 38 10 C46 12 50 20 50 28 M50 28 C60 26 64 18 62 10 C54 12 50 20 50 28 M50 46 C40 44 34 36 36 28 C44 30 50 38 50 46 M50 46 C60 44 66 36 64 28 C56 30 50 38 50 46 M50 64 C40 62 32 54 34 46 C44 48 50 56 50 64 M50 64 C60 62 68 54 66 46 C56 48 50 56 50 64'/></g>`,
 ];
 
 const ENGLISH: Art[] = [
@@ -140,6 +160,8 @@ const ENGLISH: Art[] = [
   () => `<g ${S()}><rect x='12' y='24' width='76' height='54' rx='4'/><path d='M12 28 L50 58 L88 28 M12 74 L38 50 M88 74 L62 50'/></g>`,
   () => `<g ${S()}><path d='M28 12 H72 V88 L50 70 L28 88 Z M38 28 H62 M38 40 H62'/></g><path d='M28 12 H72 V88 L50 70 L28 88 Z' ${F(0.1)}/>`,
   () => `<g ${S(0.9, 2)}><path d='M10 80 L28 24 L46 80 M17 60 H39'/><circle cx='70' cy='62' r='13'/><path d='M83 50 V80'/></g>`,
+  () => `<g ${S()}><circle cx='30' cy='54' r='16'/><circle cx='70' cy='54' r='16'/><path d='M46 52 Q50 46 54 52 M14 52 L6 40 M86 52 L94 40'/></g>`,
+  () => `<g ${S()}><circle cx='32' cy='60' r='14'/><path d='M18 60 C18 36 28 28 42 24 M60 60 H64'/><circle cx='68' cy='60' r='14'/><path d='M54 60 C54 36 64 28 78 24'/></g>`,
 ];
 
 const COMPUTER: Art[] = [
@@ -153,6 +175,8 @@ const COMPUTER: Art[] = [
     return `<g ${S()}><circle cx='50' cy='50' r='26'/><circle cx='50' cy='50' r='11'/>${t}</g>`;
   },
   () => `<g ${S()}><path d='M12 38 A54 54 0 0 1 88 38 M24 52 A36 36 0 0 1 76 52 M36 66 A18 18 0 0 1 64 66'/></g><circle cx='50' cy='78' r='4.5' ${F(0.85)}/>`,
+  () => `<g ${S()}><rect x='12' y='18' width='76' height='50' rx='4'/><path d='M40 82 H60 M50 68 V82'/><path d='M22 30 H46 M22 40 H38' opacity='0.6'/></g>`,
+  () => `<g ${S()}><rect x='30' y='12' width='40' height='72' rx='20'/><path d='M30 42 H70 M50 12 V42'/><path d='M50 22 V32' opacity='0.7'/></g>`,
 ];
 
 const ECONOMICS: Art[] = [
@@ -162,15 +186,19 @@ const ECONOMICS: Art[] = [
   () => `<g ${S()}><path d='M6 18 H20 L30 60 H78 L88 28 H24'/><circle cx='38' cy='76' r='6'/><circle cx='70' cy='76' r='6'/><path d='M34 40 H82 M36 50 H80' opacity='0.5'/></g>`,
   () => `<g ${S()}><path d='M50 10 L92 30 H8 Z M16 38 H84 M22 38 V72 M38 38 V72 M62 38 V72 M78 38 V72 M12 72 H88 M6 84 H94 M10 78 H90'/></g><path d='M50 10 L92 30 H8 Z' ${F(0.1)}/>`,
   () => `<g ${S(0.9, 2)}><path d='M10 80 L32 56 L46 66 L88 18'/><path d='M66 16 H90 V40'/></g><g ${S(0.4, 1)}><path d='M10 90 H92 M10 90 V10'/></g>`,
+  () => `<g ${S()}><circle cx='30' cy='30' r='11'/><circle cx='70' cy='70' r='11'/><path d='M76 18 L24 82'/></g>`,
+  () => `<g ${S()}><path d='M12 30 H78 V80 H12 Z M78 44 H92 V66 H78 M12 30 L60 16 L68 30'/><circle cx='80' cy='55' r='3'/></g>`,
 ];
 
 // ---- colours: 20 pairs (cover colour, ink) --------------------------------------------------
 
-const PAIRS: [string, string][] = [
-  ['#17233f', '#ffffff'], ['#0e6b63', '#ffffff'], ['#4a2c6d', '#ffffff'], ['#101014', '#e9c46a'], ['#1e4fb8', '#ffffff'],
-  ['#46705a', '#f6f3e8'], ['#b8506b', '#ffffff'], ['#1b4a30', '#f1f4e6'], ['#a52a22', '#ffffff'], ['#2c313c', '#ffffff'],
-  ['#34308f', '#ffffff'], ['#eee5d0', '#3a2e1a'], ['#f2b84b', '#2b2110'], ['#8fd3c8', '#0d3b36'], ['#e76f51', '#ffffff'],
-  ['#cdb4f6', '#2d1b4e'], ['#d8cfa8', '#37341a'], ['#0b0b0d', '#ffffff'], ['#7a1f3d', '#ffe3ec'], ['#2a7fba', '#ffffff'],
+const PAIRS: [string, string, string][] = [
+  // cover colour, second colour (the cover fades into it), ink
+  ['#0f1c3a', '#1d3b78', '#ffffff'], ['#0b5d56', '#14a094', '#ffffff'], ['#3b1f5e', '#7a3fa8', '#ffffff'], ['#0d0d12', '#2a2a36', '#e9c46a'],
+  ['#1740a8', '#2f7bf0', '#ffffff'], ['#2f5d46', '#5c9a78', '#f6f3e8'], ['#a8405e', '#e0708f', '#ffffff'], ['#123d27', '#2c7a52', '#eaf5df'],
+  ['#8f1f1a', '#d6453a', '#ffffff'], ['#262b36', '#4a5266', '#ffffff'], ['#2b2880', '#5a52d8', '#ffffff'], ['#efe4cc', '#fbf5e6', '#3a2e1a'],
+  ['#e9a62f', '#f6cd6a', '#2b2110'], ['#7fcfc3', '#bdeee6', '#0d3b36'], ['#e0603f', '#f59a6e', '#ffffff'], ['#c3a8f2', '#e6d9ff', '#2d1b4e'],
+  ['#cfc596', '#ece6c4', '#37341a'], ['#050507', '#17171d', '#ffffff'], ['#6b1633', '#b2315f', '#ffe3ec'], ['#1f6fae', '#4aa6e8', '#ffffff'],
 ];
 
 const GROUPS: { id: string; name: string; art: Art[]; shift: number }[] = [
@@ -204,11 +232,25 @@ export function drawingUrl(key: string): string {
   return a;
 }
 
-/** All 240 covers. */
+/**
+ * All 240 covers. Cover i of a subject: layout i % 10 (ten layouts), drawing (i + 3 * floor(i / 10)) % 8 (eight drawings)
+ * and colour pair (i * 7 + shift) % 20. Two covers with the same layout always have different drawings, and all 20
+ * colour pairs of a subject differ, so no two covers of a subject look alike.
+ */
 export const SUBJECT_COVERS: SubjectCover[] = GROUPS.flatMap((g) =>
   Array.from({ length: 20 }, (_, i) => {
     const pair = (i * 7 + g.shift) % 20;
-    return { id: `${g.id}-${String(i + 1).padStart(2, '0')}`, name: `${g.name} ${i + 1}`, group: g.id, drawing: `${g.id}:${i % g.art.length}`, variant: Math.floor(i / g.art.length) % 4, pair, bg: PAIRS[pair][0], ink: PAIRS[pair][1] };
+    return {
+      id: `${g.id}-${String(i + 1).padStart(2, '0')}`,
+      name: `${g.name} ${i + 1}`,
+      group: g.id,
+      drawing: `${g.id}:${(i + 3 * Math.floor(i / 10)) % g.art.length}`,
+      style: i % 10,
+      pair,
+      bg: PAIRS[pair][0],
+      bg2: PAIRS[pair][1],
+      ink: PAIRS[pair][2],
+    };
   }),
 );
 

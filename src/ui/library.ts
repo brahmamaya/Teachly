@@ -302,7 +302,7 @@ export class Library {
       <div class="ls-head"><span>Folders</span><button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('plus', 18)}</button></div>
       ${this.folders.map((f) => item(`f:${f.id}`, 'folder', f.name, live.filter((m) => m.folder === f.id).length)).join('') || '<p class="ls-empty">No folders yet</p>'}
       <div class="ls-sep"></div>
-      ${item('trash', 'trash', 'Trash', trash.length)}`;
+      ${item('trash', 'bin', 'Trash', trash.length)}`;
 
     const folder = this.view.startsWith('f:') ? this.folders.find((f) => `f:${f.id}` === this.view) : undefined;
     const title = this.view === 'all' ? 'All notebooks' : this.view === 'fav' ? 'Favorites' : this.view === 'unfiled' ? 'Not in a folder' : this.view === 'trash' ? 'Trash' : (folder?.name ?? '');
@@ -317,7 +317,7 @@ export class Library {
     const bar = el.querySelector('.lib-bar') as HTMLElement;
     if (this.view === 'trash')
       bar.innerHTML = trash.length
-        ? `<p>Deleted notebooks wait here. Restore them, or empty the trash to remove them for good.</p><button class="trash-btn" data-lib="empty">${icon('trash', 20)}<span>Empty trash</span><b class="trash-n">${trash.length}</b></button>`
+        ? `<p>Deleted notebooks wait here. Restore them, or empty the trash to remove them for good.</p><button class="trash-btn" data-lib="empty">${icon('bin', 20)}<span>Empty trash</span><b class="trash-n">${trash.length}</b></button>`
         : '<p>The trash is empty.</p>';
     else if (folder)
       bar.innerHTML = `<button class="lib-chip" data-lib="rename-folder">${icon('text', 18)}Rename folder</button><button class="lib-chip ${this.armed === folder.id ? 'armed' : ''}" data-lib="delete-folder">${icon('trash', 18)}Delete folder</button>`;
