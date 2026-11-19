@@ -102,11 +102,12 @@ async function writeNotebook(input: Doc, folder?: string): Promise<{ doc: Doc; s
   const thumb = await coverThumb(doc);
   const uses = usedKeys(stored);
   const saved = await atomic<boolean>((os, done) => {
-    const gd = os.get(`nb:${id}`);
-    gd.onsuccess = () => {
-      const cur = gd.result as Doc | undefined;
+    // Only the small revision note is read to detect a newer stored version: reading the whole old
+    // notebook back (a structured clone of every page) cost a long stall at every save of a big notebook.
+    const gv = os.get(`rv:${id}`);
+    const proceed = (curRev: number | undefined) => {
       // A newer revision is already stored (another window, a slow older save): keep it.
-      if (cur && (cur.rev ?? 0) > (stored.rev ?? 0)) return done(false);
+      if (curRev !== undefined && curRev > (stored.rev ?? 0)) return done(false);
       const gi = os.get(INDEX);
       gi.onsuccess = () => {
         const gr = os.get(SRCREFS);
@@ -122,11 +123,18 @@ async function writeNotebook(input: Doc, folder?: string): Promise<{ doc: Doc; s
           for (const k of uses) (refs[k] ??= []).push(id);
           for (const k of Object.keys(refs)) if (!refs[k].length) delete refs[k];
           os.put(stored, `nb:${id}`);
+          os.put(stored.rev ?? 0, `rv:${id}`);
           os.put([meta, ...list.filter((m) => m.id !== id)], INDEX);
           os.put(refs, SRCREFS);
           done(true);
         };
       };
+    };
+    gv.onsuccess = () => {
+      if (typeof gv.result === 'number') return proceed(gv.result);
+      // A notebook saved before revision notes existed: read it once.
+      const gd = os.get(`nb:${id}`);
+      gd.onsuccess = () => proceed((gd.result as Doc | undefined)?.rev === undefined ? (gd.result ? 0 : undefined) : (gd.result as Doc).rev);
     };
   });
   if (saved) {
@@ -230,7 +238,7 @@ export async function restoreNotebook(id: string): Promise<void> {
 export async function deleteNotebook(id: string): Promise<void> {
   return serial(async () => {
     const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
-    await put([[INDEX, list.filter((m) => m.id !== id)]], [`nb:${id}`]);
+    await put([[INDEX, list.filter((m) => m.id !== id)]], [`nb:${id}`, `rv:${id}`]);
     await dropSources([id]);
   });
 }
@@ -240,7 +248,7 @@ export async function emptyTrash(): Promise<number> {
   return serial(async () => {
     const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
     const gone = list.filter((m) => m.trashed);
-    await put([[INDEX, list.filter((m) => !m.trashed)]], gone.map((m) => `nb:${m.id}`));
+    await put([[INDEX, list.filter((m) => !m.trashed)]], gone.flatMap((m) => [`nb:${m.id}`, `rv:${m.id}`]));
     await dropSources(gone.map((m) => m.id));
     return gone.length;
   });
