@@ -8909,3 +8909,133 @@ button,
 .library .lib-grid .nb-card.has-cv {
   height: auto;
 }
+
+/* ---- My notebooks, premium pass: no boxes, books on the black, names under them (the calm GoodNotes way) ---- */
+.library {
+  --lb-premium-bg: #000;
+}
+.library .lib-side {
+  border: 0;
+  background: #101012;
+  border-radius: 28px;
+}
+.library .ls-item.on {
+  background: #2b2b30;
+}
+.library .lib-head h2 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.library .lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 30px 18px;
+  padding: 22px 34px calc(36px + env(safe-area-inset-bottom, 0px));
+}
+.library .lib-grid .nb-card,
+.library .lib-grid .nb-card.has-cv,
+.library .lib-grid .nb-card.current,
+.library .lib-grid .nb-card.has-cv.current {
+  padding: 0;
+  gap: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.library .lib-grid .nb-card:not(.nb-new) .nb-cover,
+.library .lib-grid .nb-card.has-cv .nb-cover {
+  aspect-ratio: 1 / 1.08;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  align-items: flex-end;
+}
+/* the open notebook is marked by a soft ring around the book, not around a box */
+.library .lib-grid .nb-card.current .nbc,
+.library .lib-grid .nb-card.has-cv.current .nbc {
+  box-shadow: 0 0 0 3px var(--lb-accent), 0 14px 30px rgba(0, 0, 0, 0.55);
+}
+.library .lib-grid .nb-card.current:not(.has-cv) .nb-cover > img,
+.library .lib-grid .nb-card.current:not(.has-cv) .nb-cover {
+  outline: 0;
+}
+/* a plain first-page picture sits like a sheet of paper */
+.library .lib-grid .nb-card:not(.has-cv):not(.nb-new) .nb-cover > img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 100%;
+  margin: 0 auto;
+  border-radius: 4px 8px 8px 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28), 0 14px 28px rgba(0, 0, 0, 0.5);
+  background: #111;
+}
+.library .lib-grid .nb-card:not(.has-cv):not(.nb-new) .nb-cover {
+  align-items: flex-end;
+  justify-content: center;
+}
+/* names and dates, centred under the book */
+.library .lib-grid .nb-card .nb-row {
+  min-height: 44px;
+  padding: 0 0 0 32px;
+  align-items: flex-start;
+}
+.library .lib-grid .nb-card .nb-text {
+  align-items: center;
+  text-align: center;
+}
+.library .lib-grid .nb-card .nb-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+.library .lib-grid .nb-card .nb-meta {
+  font-size: 12.5px;
+  text-align: center;
+}
+.library .lib-grid .nb-card .nb-more {
+  margin-top: -4px;
+}
+.library .lib-grid .nb-card .nb-star {
+  top: 8px;
+  right: 8px;
+}
+.library .lib-grid .nb-card.nb-new {
+  border: 2px dashed rgba(127, 127, 127, 0.4);
+  border-radius: 18px;
+  background: transparent;
+  align-self: stretch;
+}
+
+/* ---- A real notebook look for every cover: a binding on the left, page edges on the right, soft light ---- */
+.nbc {
+  border-radius: 3px 9px 9px 3px;
+}
+.nbc[data-m] {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0, rgba(0, 0, 0, 0.3) 4.2%, rgba(255, 255, 255, 0.2) 4.2%, rgba(255, 255, 255, 0.2) 4.9%, rgba(255, 255, 255, 0.05) 4.9%, rgba(255, 255, 255, 0) 12%),
+    linear-gradient(150deg, var(--cv), var(--cv2));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    2px 0 0 -0.5px #f1efe9,
+    4px 1px 0 -1px #cfcbc2,
+    6px 3px 0 -2px #e8e5de,
+    0 14px 26px rgba(0, 0, 0, 0.5);
+}
+.nbc[data-m] .nbc-brand {
+  left: 10cqw;
+}
+.nbc[data-m] .nbc-tw {
+  left: 10cqw;
+}
+#app .library .lib-grid .nb-card:not(.nb-new) .nb-cover {
+  background: transparent !important;
+  border: 0 !important;
+}
