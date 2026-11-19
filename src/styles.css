@@ -9039,3 +9039,124 @@ button,
   background: transparent !important;
   border: 0 !important;
 }
+
+/* ---- My notebooks side panel: lighter, calmer, smoother ---- */
+.library .lib-side {
+  width: 272px;
+  margin: calc(12px + env(safe-area-inset-top, 0px)) 0 12px 12px;
+  padding: calc(26px + env(safe-area-inset-top, 0px) * 0) 14px 20px;
+  background: #0f0f12;
+  border: 0;
+  border-radius: 30px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+  gap: 6px;
+}
+.library .ls-item {
+  min-height: 50px;
+  padding: 0 16px;
+  gap: 15px;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: rgba(255, 255, 255, 0.92);
+  transition: background 0.22s ease, transform 0.14s ease, color 0.22s ease;
+}
+.library .ls-item svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.22s ease, transform 0.22s ease;
+}
+.library .ls-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.library .ls-item:active {
+  transform: scale(0.98);
+}
+.library .ls-item.on {
+  background: #26262b;
+  font-weight: 500;
+  box-shadow: none;
+}
+.library .ls-item.on svg {
+  color: var(--lb-accent);
+  transform: scale(1.04);
+}
+.library .ls-n {
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.4);
+}
+.library .ls-head {
+  margin: 30px 8px 6px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
+}
+.library .ls-head .icon-btn {
+  color: rgba(255, 255, 255, 0.55);
+}
+.library .ls-empty {
+  margin: 8px 16px;
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.38);
+}
+.library .ls-sep {
+  margin: 16px 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.library .ls-item[data-v='trash'] svg {
+  color: #fb7185;
+}
+.library .ls-item[data-v^='f:'] svg {
+  color: #fbbf24;
+}
+@media (prefers-reduced-motion: reduce) {
+  .library .ls-item,
+  .library .ls-item svg {
+    transition: none;
+  }
+}
+.lite .library .ls-item,
+.lite .library .ls-item svg {
+  transition: none;
+}
+
+/* smaller books: about the size GoodNotes shows them (the picture area follows the column width) */
+.library .lib-grid {
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 26px 10px;
+  padding: 18px 28px calc(32px + env(safe-area-inset-bottom, 0px));
+}
+.library .lib-grid .nb-card .nb-title {
+  font-size: 14px;
+}
+.library .lib-grid .nb-card .nb-meta {
+  font-size: 12px;
+}
+.library .lib-grid .nb-card .nb-row {
+  padding-left: 28px;
+}
+.library .lib-grid .nb-card .nb-star {
+  width: 28px;
+  height: 28px;
+}
+.library .lib-grid .nb-card .nb-row {
+  position: relative;
+  padding: 0 14px;
+}
+.library .lib-grid .nb-card .nb-more {
+  position: absolute;
+  right: -8px;
+  top: -6px;
+  width: 28px;
+  height: 30px;
+  margin: 0;
+}
+.library .lib-grid .nb-card .nb-meta {
+  white-space: normal;
+  line-height: 1.25;
+}
