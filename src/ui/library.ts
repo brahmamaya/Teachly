@@ -237,6 +237,7 @@ export class Library {
       <nav class="lib-side" aria-label="Notebook lists"></nav>
       <div class="lib-main">
         <header class="lib-head">
+          <button class="icon-btn lib-showside" data-lib="side" title="Show the list" aria-label="Show the list of notebooks">${icon('sidebar', 24)}</button>
           <h2 class="lib-title"></h2>
           <button class="lib-theme" data-lib="theme" role="switch" aria-label="Light or dark look" title="Light / Dark">
             <svg class="lt-sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#fbbf24"/><g stroke="#f59e0b" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></g></svg>
@@ -296,6 +297,7 @@ export class Library {
     const item = (v: View, ic: string, label: string, n: number) =>
       `<button class="ls-item ${this.view === v ? 'on' : ''}" data-lib="view" data-v="${esc(v)}">${icon(ic, 20)}<span class="ls-l">${esc(label)}</span>${count(n)}</button>`;
     (el.querySelector('.lib-side') as HTMLElement).innerHTML = `
+      <button class="ls-toggle" data-lib="side" title="Hide the list" aria-label="Hide the list of notebooks">${icon('sidebar', 24)}</button>
       ${item('all', 'notebook', 'All notebooks', live.length)}
       ${item('fav', 'star', 'Favorites', live.filter((m) => m.fav).length)}
       ${item('unfiled', 'open', 'Not in a folder', live.filter((m) => !this.folderOf(m)).length)}
@@ -400,6 +402,9 @@ export class Library {
         return this.render();
       case 'close':
         return this.close();
+      case 'side':
+        this.el.classList.toggle('side-off');
+        return;
       case 'theme':
         store.setSettings({ libTheme: store.settings.libTheme === 'light' ? 'dark' : 'light' });
         return this.applyTheme(this.el);
