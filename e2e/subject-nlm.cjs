@@ -23,8 +23,8 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   check('chapters: Laws of Motion is ready, others say Soon', !!(await page.$('.spk-item.ready[data-ch="phy-11-nlm"]')) && (await page.$$('.spk-item[disabled]')).length === 13);
   await page.click('.spk-item[data-ch="phy-11-nlm"]');
   await page.waitForTimeout(700);
-  const label = await page.$eval('.tb-subject', (e) => e.textContent);
-  check('toolbar shows "Physics · NLM"', label === 'Physics · NLM', label);
+  const label = await page.$eval('.sd-name', (e) => e.textContent);
+  check('the subject name (NLM) sits with its pieces, not in the toolbar', label === 'NLM' && !(await page.$('.tb-subject')), label);
   check('a dock of small symbols shows at the toolbar (not a big window)', !!(await page.$('.subj-dock')) && !(await page.$('.subj-panel')));
   const tiles = await page.$$eval('.subj-dock .sd-tile', (a) => a.map((x) => x.getAttribute('aria-label')));
   const need = ['Block m', 'Wedge 30°', 'Spring', 'Pulley (empty)', 'Pulley with string', 'Ground', 'Ceiling', 'Wall', 'String / rope'];
@@ -73,22 +73,22 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   await page.mouse.up();
   check('letting go on the dock itself cancels', (await page.evaluate(() => window.__teachly.store.page.els.length)) === cnt);
   // the toolbar button hides and shows the dock; the choice is remembered
-  await page.click('.tb-subject');
+  await page.click('.sd-name');
   await page.waitForTimeout(400);
-  check('the toolbar button hides the dock', !(await page.$('.subj-dock')));
+  check('the name on the dock hides the dock, and the toolbar then has the button to bring it back', !(await page.$('.subj-dock')) && !!(await page.$('.tb-subject')));
   await page.click('.tb-subject');
   await page.waitForTimeout(400);
   check('and shows it again', !!(await page.$('.subj-dock')));
   await page.reload();
   await page.waitForTimeout(2000);
-  check('after reload the chapter and its dock are still there', (await page.$eval('.tb-subject', (e) => e.textContent).catch(() => '')) === 'Physics · NLM' && !!(await page.$('.subj-dock')));
+  check('after reload the chapter and its dock are still there', (await page.$eval('.sd-name', (e) => e.textContent).catch(() => '')) === 'NLM' && !!(await page.$('.subj-dock')));
   await page.click('[data-pop=menu]');
   await page.waitForTimeout(300);
   await page.click('[data-act=subject]');
   await page.waitForTimeout(300);
   await page.click('.spk-item[data-s=none]');
   await page.waitForTimeout(500);
-  check('"No subject" removes the toolbar button and the dock', !(await page.$('.tb-subject')) && !(await page.$('.subj-dock')));
+  check('"No subject" removes the subject name, the toolbar button and the dock', !(await page.$('.tb-subject')) && !(await page.$('.sd-name')) && !(await page.$('.subj-dock')));
   check('no page errors', errs.length === 0, errs.join('|'));
   await b.close();
   finish();

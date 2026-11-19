@@ -440,7 +440,7 @@ export class App {
     const hide = new Set(store.settings.tbHidden);
     const on = new Set(store.settings.tbShown ?? []);
     const sub = chapterById(store.settings.subject);
-    const subjectBtn = sub ? `<button class="tb-btn tb-subject ${this.subject.open ? 'open' : ''}" data-act="subject-tray" title="${sub.subject.name}: ${sub.chapter.name}">${sub.subject.name} · ${sub.chapter.short}</button>` : '';
+    const subjectBtn = sub && !this.subject.open ? `<button class="tb-btn tb-subject ${this.subject.open ? 'open' : ''}" data-act="subject-tray" title="${sub.subject.name}: ${sub.chapter.name}">${sub.subject.name} · ${sub.chapter.short}</button>` : '';
     const show = (k: string, html: string) => ((TB_OPT_IN.has(k) ? !on.has(k) : hide.has(k)) ? '' : html);
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       ${show('select', tool('select', 'select', 'Select'))}

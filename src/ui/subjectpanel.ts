@@ -157,6 +157,8 @@ export class SubjectPanel {
   }
 
   private fillDock(el: HTMLElement, ch: Chapter): void {
+    const found = chapterById(store.settings.subject);
+    if (!found) return;
     const ink = inkFor();
     const bg = store.page.bg;
     const tiles = (ch.quick ?? [])
@@ -168,7 +170,9 @@ export class SubjectPanel {
         return `<button class="sp-tile sd-tile" data-comp="${c.id}" title="${esc(c.name)}" aria-label="${esc(c.name)}" style="color:${di ? di[1] : 'inherit'}">${face}</button>`;
       })
       .join('');
-    el.innerHTML = `${tiles}<button class="sd-more" data-sp="more" title="All pieces" aria-label="All pieces">${icon('plus', 22)}</button>`;
+    // The subject's name sits with its pieces (not in the toolbar); tapping it hides the dock, and the toolbar then shows the button to bring it back.
+    const name = `<button class="sd-name" data-sp="hide" title="${esc(found.subject.name)}: ${esc(ch.name)}. Tap to hide these pieces" aria-label="${esc(found.subject.name)}: ${esc(ch.name)}, hide the pieces">${esc(ch.short)}</button>`;
+    el.innerHTML = `${name}${tiles}<button class="sd-more" data-sp="more" title="All pieces" aria-label="All pieces">${icon('plus', 22)}</button>`;
   }
 
   /** Redraw the dock's little pictures (the board colour changed). */
@@ -371,6 +375,7 @@ export class SubjectPanel {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-sp]');
       if (b?.dataset.sp === 'close') this.closeSheet();
       if (b?.dataset.sp === 'change') this.openPicker();
+      if (b?.dataset.sp === 'hide') this.toggle();
       if (b?.dataset.sp === 'more') this.sheet ? this.closeSheet() : this.openSheet();
     });
     let drag: { c: Comp; id: number; x: number; y: number; started: boolean; ghost: HTMLElement | null; touch: boolean } | null = null;
