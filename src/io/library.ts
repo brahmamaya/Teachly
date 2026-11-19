@@ -54,10 +54,15 @@ export async function listNotebooks(withTrash = false): Promise<NotebookMeta[]> 
 
 // Covers are only redrawn when the first page actually changed.
 const covers = new WeakMap<object, string>();
+let coverAt = 0;
+/** While the teacher is writing, a changed first page keeps the old cover; the new one is drawn when the app is left, hidden or idle (drawing it costs lag). */
+export const coverMode = { final: false };
 async function coverThumb(doc: Doc): Promise<string> {
   const first = doc.pages[0];
   const known = covers.get(first);
   if (known !== undefined) return known;
+  if (!coverMode.final && Date.now() - coverAt < 30_000) return '';
+  coverAt = Date.now();
   try {
     // Pictures come from the device when first drawn: wait for them, or the cover would be blank.
     const ready = await imagesReady(first, 2500);
