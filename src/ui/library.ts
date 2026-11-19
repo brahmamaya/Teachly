@@ -22,7 +22,7 @@ import {
   trashNotebook,
 } from '../io/library';
 import { liteDevice } from '../board';
-import { COVERS, coverById, coverHTML } from './covers';
+import { COVER_GROUPS, coverById, coverHTML, coverTabsHTML, groupOfCover } from './covers';
 import { newNotebookFlow } from './newnotebook';
 import { askPdfRange } from './pdfrange';
 import { store } from '../store';
@@ -44,7 +44,7 @@ function when(t: number): string {
 }
 
 /** A small box over everything; resolves with what the form returns (null = cancelled). */
-function modal<T>(host: HTMLElement, html: string, read: (box: HTMLElement) => T | null): Promise<T | null> {
+function modal<T>(host: HTMLElement, html: string, read: (box: HTMLElement) => T | null, tab?: (group: string, box: HTMLElement) => void): Promise<T | null> {
   return new Promise((resolve) => {
     const back = document.createElement('div');
     back.className = 'sv-back';
@@ -62,6 +62,7 @@ function modal<T>(host: HTMLElement, html: string, read: (box: HTMLElement) => T
       const b = (e.target as HTMLElement).closest('[data-sv]') as HTMLElement | null;
       if (b?.dataset.sv === 'cancel') done(null);
       else if (b?.dataset.sv === 'pick') done(b.dataset.v as unknown as T);
+      else if (b?.dataset.sv === 'tab' && tab) tab(b.dataset.g ?? '', box);
     });
     box.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -113,16 +114,28 @@ async function chooseCover(host: HTMLElement, m: NotebookMeta): Promise<string |
     await setPortrait(m.id, portrait);
   }
   const cur = coverById(m.cover)?.id ?? '';
+  const cls = portrait ? 'tall' : 'wide';
+  // The covers of one subject at a time (the tab that holds the current cover opens first).
+  const panel = (g: string) => {
+    const covers = (COVER_GROUPS.find((x) => x.id === g) ?? COVER_GROUPS[0]).covers;
+    const first = g === 'gen' ? `<button type="button" class="cv-opt ${cur === '' ? 'on' : ''}" data-sv="pick" data-v="">
+         <span class="cv-none" data-o="${portrait ? 'p' : 'l'}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</span><span class="cv-name">First page</span></button>` : '';
+    return first + covers.map((c) => `<button type="button" class="cv-opt ${cur === c.id ? 'on' : ''}" data-sv="pick" data-v="${c.id}">${coverHTML(c, m.title, portrait)}<span class="cv-name">${c.name}</span></button>`).join('');
+  };
+  const g0 = groupOfCover(cur);
   return modal<string>(
     host,
     `<h3>Notebook cover</h3>
-     <div class="cv-grid ${portrait ? 'tall' : 'wide'}">
-       <button type="button" class="cv-opt ${cur === '' ? 'on' : ''}" data-sv="pick" data-v="">
-         <span class="cv-none" data-o="${portrait ? 'p' : 'l'}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</span><span class="cv-name">First page</span></button>
-       ${COVERS.map((c) => `<button type="button" class="cv-opt ${cur === c.id ? 'on' : ''}" data-sv="pick" data-v="${c.id}">${coverHTML(c, m.title, portrait)}<span class="cv-name">${c.name}</span></button>`).join('')}
-     </div>
+     <div data-tabs>${coverTabsHTML(g0, 'data-g').replace(/<button /g, '<button data-sv="tab" ')}</div>
+     <div class="cv-grid ${cls}" data-grid>${panel(g0)}</div>
      <div class="sv-row"><button type="button" class="btn" data-sv="cancel">Cancel</button></div>`,
     () => null,
+    (g, box) => {
+      (box.querySelector('[data-tabs]') as HTMLElement).innerHTML = coverTabsHTML(g, 'data-g').replace(/<button /g, '<button data-sv="tab" ');
+      const grid = box.querySelector('[data-grid]') as HTMLElement;
+      grid.innerHTML = panel(g);
+      grid.scrollTop = 0;
+    },
   );
 }
 

@@ -13,7 +13,11 @@ export interface Cover {
   ink: string;
   /** The line drawing, as an inline picture. */
   art: string;
+  /** A subject cover (see subjectcovers.ts): the drawing and colour pair it is made of. */
+  sub?: { drawing: string; pair: number; variant: number };
 }
+
+import { COVER_PAIRS, SUBJECT_COVERS, SUBJECT_GROUPS, drawingUrl } from './subjectcovers';
 
 // ---- tiny drawing helpers (picture is 100 x 100, lines only) -------------------
 
@@ -140,11 +144,23 @@ const LEGACY: Record<string, string> = {
   sunrise: 'lotus', topo: 'leaf', blueprint: 'prism', ink: 'orbit', rose: 'bloom', neon: 'dna', mint: 'flask', aurora: 'molecule',
 };
 
+/** The 240 subject covers, in the same shape as the first twelve. */
+const SUBJECT_AS_COVERS: Cover[] = SUBJECT_COVERS.map((c) => ({ id: c.id, name: c.name, bg: c.bg, ink: c.ink, art: '', sub: { drawing: c.drawing, pair: c.pair, variant: c.variant } }));
+const BY_ID = new Map<string, Cover>([...COVERS, ...SUBJECT_AS_COVERS].map((c) => [c.id, c]));
+
+/** The covers by subject, for the picker: "General" (the first twelve), then one tab per subject. */
+export const COVER_GROUPS: { id: string; name: string; covers: Cover[] }[] = [
+  { id: 'gen', name: 'General', covers: COVERS },
+  ...SUBJECT_GROUPS.map((g) => ({ id: g.id, name: g.name, covers: SUBJECT_AS_COVERS.filter((c) => c.id.startsWith(g.id + '-')) })),
+];
+
 export function coverById(id: string | undefined): Cover | undefined {
   if (!id) return undefined;
-  const k = LEGACY[id] ?? id;
-  return COVERS.find((c) => c.id === k);
+  return BY_ID.get(LEGACY[id] ?? id);
 }
+
+/** Which tab a cover belongs to. */
+export const groupOfCover = (id: string | undefined): string => COVER_GROUPS.find((g) => g.covers.some((c) => c.id === id))?.id ?? 'gen';
 
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -159,7 +175,23 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(st);
 }
 
+// Subject covers: colours come from 20 pairs, drawings are added to the stylesheet the first time they are shown.
+const subStyle = typeof document !== 'undefined' ? document.head.appendChild(Object.assign(document.createElement('style'), { id: 'teachly-covers-sub', textContent: COVER_PAIRS.map((p, i) => `.nbc[data-p="${i}"]{--cv:${p[0]};--ci:${p[1]}}`).join('\n') })) : null;
+const seen = new Set<string>();
+function ensureDrawing(key: string): void {
+  if (!subStyle || seen.has(key)) return;
+  seen.add(key);
+  subStyle.append(`\n.nbc[data-a="${key}"]{--ca:${drawingUrl(key)}}`);
+}
+
 /** The cover as HTML. `portrait`: a tall notebook (tall cover) or a wide one (wide cover). */
 export function coverHTML(c: Cover, title: string, portrait: boolean): string {
-  return `<span class="nbc" data-c="${c.id}" data-o="${portrait ? 'p' : 'l'}"><span class="nbc-art"></span><span class="nbc-brand">Teachly</span><span class="nbc-tw"><i class="nbc-rule"></i><span class="nbc-t">${esc(title)}</span></span></span>`;
+  if (c.sub) ensureDrawing(c.sub.drawing);
+  const look = c.sub ? `data-m="1" data-a="${c.sub.drawing}" data-p="${c.sub.pair}" data-v="${c.sub.variant}"` : `data-c="${c.id}"`;
+  return `<span class="nbc" ${look} data-o="${portrait ? 'p' : 'l'}"><span class="nbc-art"></span><span class="nbc-brand">Teachly</span><span class="nbc-tw"><i class="nbc-rule"></i><span class="nbc-t">${esc(title)}</span></span></span>`;
+}
+
+/** The subject tabs above the covers (the tab `active` is highlighted). */
+export function coverTabsHTML(active: string, attr: string): string {
+  return `<div class="cv-tabs" role="tablist">${COVER_GROUPS.map((g) => `<button type="button" role="tab" aria-selected="${g.id === active}" class="cv-tab ${g.id === active ? 'on' : ''}" ${attr}="${g.id}">${esc(g.name)}</button>`).join('')}</div>`;
 }
