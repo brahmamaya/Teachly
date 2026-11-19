@@ -1,3 +1,4 @@
+import { PEN_DEFS, penSvg } from './pentray';
 import { Board, type Tool } from '../board';
 import { bbox, regroup, resizeEl, similarity, transformEl, translateEl, uid, unionRects } from '../geometry';
 import {
@@ -66,7 +67,13 @@ const PEN_BLACK = '#000000';
 const boardColors = (): string[] => PEN_COLORS;
 /** Three pens like Note 3 (plus the highlighter). */
 const PEN_TYPES: [ToolState['penStyle'], string][] = [
-  ['pen', 'Pen'],
+  ['pencil', 'Pencil'],
+  ['fineliner', 'Fine liner'],
+  ['pen', 'Ball pen'],
+  ['crayon', 'Crayon'],
+  ['fountain', 'Fountain pen'],
+  ['marker', 'Marker'],
+  ['watercolor', 'Watercolour'],
   ['brush', 'Brush'],
   ['calligraphy', 'Calligraphy'],
   ['highlighter', 'Highlighter'],
@@ -708,7 +715,7 @@ export class App {
               <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
               <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
             </div>
-            <div class="n3-kinds">${PEN_TYPES.map(([k, n]) => `<button class="n3-kind ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}">${icon(k, 24)}</button>`).join('')}</div>
+            <div class="pen-tray" role="listbox" aria-label="Pen type">${PEN_DEFS}${PEN_TYPES.map(([k, n]) => `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}"><i class="pt-clip">${penSvg(k, k === 'highlighter' ? t.hlColor : t.color)}</i><span>${n}</span></button>`).join('')}</div>
             <div class="seg n3-smooth"><span>Steady</span>${['Exact', 'Light', 'Strong'].map((n, i) => `<button class="${(t.inkSmooth ?? 0) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
             ${this.presetRow()}
           </div>
@@ -1007,7 +1014,7 @@ export class App {
       this.fillPopover();
       return;
     }
-    if (d.style) store.setTool({ penStyle: d.style as 'pen' });
+    if (d.style) store.setTool({ penStyle: d.style as ToolState['penStyle'] });
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
     else if (d.scolor) store.setTool({ shapeColor: d.scolor });
     else if (d.emode) store.setTool({ eraserMode: d.emode as 'point' });

@@ -1,7 +1,7 @@
 import type { Board, Ptr, Tool } from '../board';
 import { bbox, dist, hitTest, pathFromPoints, uid } from '../geometry';
 import type { Snapper } from '../instruments';
-import { freehandPath, isMarker, markerPath } from '../renderer';
+import { freehandPath, isMarker, lineLook, markerPath, styleAlpha } from '../renderer';
 import { recognize } from '../shapes';
 import { store } from '../store';
 import { inkScale } from '../ui/scale';
@@ -101,8 +101,9 @@ export class PenTool implements Tool {
   private wetStyle(l: Live): CanvasRenderingContext2D {
     const ctx = this.board.wetBegin();
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = l.color;
-    ctx.lineWidth = l.size;
+    const look = lineLook(ctx, l.style, l.color, l.size);
+    ctx.strokeStyle = look.stroke;
+    ctx.lineWidth = look.width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     return ctx;
@@ -136,8 +137,9 @@ export class PenTool implements Tool {
     for (const l of this.live.values()) {
       if (!l.marker || l.snapped) continue;
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = l.color;
-      ctx.lineWidth = l.size;
+      const look = lineLook(ctx, l.style, l.color, l.size);
+      ctx.strokeStyle = look.stroke;
+      ctx.lineWidth = look.width;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke(markerPath(l.pts));
@@ -262,7 +264,7 @@ export class PenTool implements Tool {
         type: 'path',
         style: l.snapper ? 'shape' : l.style,
         // Pen: exactly where the hand went. Brush / calligraphy: lightly smoothed.
-        pts: l.snapper ? [l.pts[0], l.pts[1], 0.5, l.pts[l.pts.length - 3], l.pts[l.pts.length - 2], 0.5] : l.style === 'pen' || l.style === 'highlighter' ? l.pts : smoothPts(l.pts),
+        pts: l.snapper ? [l.pts[0], l.pts[1], 0.5, l.pts[l.pts.length - 3], l.pts[l.pts.length - 2], 0.5] : isMarker(l) || l.style === 'highlighter' ? l.pts : smoothPts(l.pts),
         color: l.color,
         size: l.size,
         opacity: l.snapper && l.style === 'highlighter' ? 0.4 : 1,
@@ -400,8 +402,8 @@ export class PenTool implements Tool {
         continue;
       }
       const raw = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
-      const pts = l.snapper || l.style === 'pen' || l.style === 'highlighter' ? raw : smoothPts(raw);
-      ctx.globalAlpha = l.style === 'highlighter' ? 0.38 : 1;
+      const pts = l.snapper || isMarker(l) || l.style === 'highlighter' ? raw : smoothPts(raw);
+      ctx.globalAlpha = styleAlpha(l.style);
       ctx.fillStyle = l.color;
       ctx.fill(freehandPath(pts, { style: l.snapper ? 'highlighter' : l.style, size: l.size, sim: l.sim }, false));
       ctx.globalAlpha = 1;
