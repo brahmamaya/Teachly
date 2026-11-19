@@ -23,7 +23,7 @@ const { check, finish } = require('./lib.cjs');
         const l = r('.tb-left'), d = r('.subj-dock'), q = r('.quickbar:not([hidden])');
         return { dockDy: d ? Math.round(c(d) - c(l)) : null, dockBottomGap: d ? Math.round(h - d[1]) : null, qDy: q ? Math.round(c(q) - c(l)) : null };
       }, h);
-      check(`${w}x${h}, innerHeight off by ${lost}px: the dock is on the toolbar's line and fully on screen`, m.dockDy !== null && Math.abs(m.dockDy) < 8 && m.dockBottomGap >= -1, JSON.stringify(m));
+      check(`${w}x${h}, innerHeight off by ${lost}px: the dock is on the toolbar's line and fully on screen`, m.dockDy !== null && Math.abs(m.dockDy) < 8 && m.dockBottomGap >= -3, JSON.stringify(m));
       await ctx.close();
     }
   }

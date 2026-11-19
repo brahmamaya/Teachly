@@ -102,6 +102,9 @@ export function viewportBottom(): number {
   return probe.getBoundingClientRect().bottom;
 }
 
+/** Free space kept around the pieces dock on the toolbar's line (about 30 px each side), so it never looks joined to the toolbar halves. */
+const GAP = 64;
+
 export class SubjectPanel {
   private sheet: HTMLElement | null = null;
   private dock: HTMLElement | null = null;
@@ -116,8 +119,10 @@ export class SubjectPanel {
     store.on('settings', () => this.sync());
     store.on('tool', () => requestAnimationFrame(() => requestAnimationFrame(() => this.placeDock())));
     window.addEventListener('resize', () => this.placeDock());
-    const bars = host.querySelector('.toolbars');
-    if (bars) new ResizeObserver(() => this.placeDock()).observe(bars);
+    // The two toolbar halves change width when buttons are shown or hidden: lay the dock out again each time.
+    const ro = new ResizeObserver(() => this.placeDock());
+    host.querySelectorAll('.toolbars .toolbar, .toolbars').forEach((el) => ro.observe(el));
+    store.on('settings', () => requestAnimationFrame(() => this.placeDock()));
   }
 
   /** The dock is showing (what the toolbar button switches). */
@@ -246,7 +251,7 @@ export class SubjectPanel {
         if (size) setQb(size);
         for (let n = total; n >= MIN; n--) {
           showN(n);
-          if (gap >= W(el) + (size && qb ? 10 + W(qb) : 0) + 24) {
+          if (gap >= W(el) + (size && qb ? 10 + W(qb) : 0) + GAP) {
             const score = n + (size === 'full' ? 8 : size === 'mid' ? 4 : 0);
             if (!best || score > best.score) best = { size, n, score };
             break;
@@ -260,7 +265,7 @@ export class SubjectPanel {
       if (qb && !popup) setQb('mini');
       for (let n = total; n >= MIN && !best; n--) {
         showN(n);
-        if (gap >= W(el) + 24) best = { size: null, n, score: n };
+        if (gap >= W(el) + GAP) best = { size: null, n, score: n };
       }
     }
     if (!best) {
