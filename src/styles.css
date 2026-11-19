@@ -9160,3 +9160,59 @@ button,
   white-space: normal;
   line-height: 1.25;
 }
+
+/* ---- My notebooks side panel in the LIGHT theme: soft grey panel, dark type (the dark rules above are for the dark theme) ---- */
+.library[data-theme='light'] .lib-side {
+  background: #f1f1f5;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+.library[data-theme='light'] .ls-item {
+  color: #14141a;
+}
+.library[data-theme='light'] .ls-item svg {
+  color: rgba(20, 20, 26, 0.55);
+}
+.library[data-theme='light'] .ls-item:hover {
+  background: rgba(15, 23, 42, 0.05);
+}
+.library[data-theme='light'] .ls-item.on {
+  background: #e3e3ea;
+  color: #14141a;
+}
+.library[data-theme='light'] .ls-item.on svg {
+  color: var(--lb-accent);
+}
+.library[data-theme='light'] .ls-n,
+.library[data-theme='light'] .ls-item.on .ls-n {
+  color: rgba(20, 20, 26, 0.45);
+}
+.library[data-theme='light'] .ls-head {
+  color: rgba(20, 20, 26, 0.5);
+}
+.library[data-theme='light'] .ls-head .icon-btn {
+  color: rgba(20, 20, 26, 0.6);
+}
+.library[data-theme='light'] .ls-empty {
+  color: rgba(20, 20, 26, 0.45);
+}
+.library[data-theme='light'] .ls-sep {
+  background: rgba(15, 23, 42, 0.09);
+}
+.library[data-theme='light'] .ls-item[data-v='trash'] svg {
+  color: #f43f5e;
+}
+.library[data-theme='light'] .ls-item[data-v^='f:'] svg {
+  color: #d97706;
+}
+.library[data-theme='light'] .nbc,
+.library[data-theme='light'] .nbc[data-m] {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    2px 0 0 -0.5px #f6f4ee,
+    4px 1px 0 -1px #cfcbc2,
+    6px 3px 0 -2px #e8e5de,
+    0 10px 20px rgba(15, 23, 42, 0.22);
+}
+.library[data-theme='light'] .lib-grid .nb-card:not(.has-cv):not(.nb-new) .nb-cover > img {
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.16), 0 10px 20px rgba(15, 23, 42, 0.16);
+}
