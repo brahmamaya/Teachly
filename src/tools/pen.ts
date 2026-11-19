@@ -218,6 +218,12 @@ export class PenTool implements Tool {
     if (l.marker) {
       // Marker: the wet layer alone shows the line — no full-screen redraw per move.
       this.drawWet(l);
+      // Optional: a short guess ahead of the pen (the browser's predicted points), drawn on the overlay only, so it
+      // never becomes part of the stroke and vanishes at the next frame.
+      if (store.settings.inkPredict && !l.snapper) {
+        for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
+        this.board.invalidate('overlay');
+      }
       const n2 = l.pts.length;
       if (n2 >= 6 && dist(l.pts[n2 - 3], l.pts[n2 - 2], l.pts[n2 - 6], l.pts[n2 - 5]) > 2 * this.board.px) this.armHold(p.id, l);
       return;
@@ -378,7 +384,21 @@ export class PenTool implements Tool {
       }
       // Same smoothing as the finished stroke, so the line does not jump
       // when the pen is lifted.
-      if (l.marker) continue; // drawn on the wet-ink layer
+      if (l.marker) {
+        // drawn on the wet-ink layer; only the guessed bit ahead of the pen (if chosen) goes on the overlay
+        if (l.predicted.length && l.pts.length >= 3) {
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = l.color;
+          ctx.lineWidth = l.size;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(l.pts[l.pts.length - 3], l.pts[l.pts.length - 2]);
+          for (let i = 0; i < l.predicted.length; i += 3) ctx.lineTo(l.predicted[i], l.predicted[i + 1]);
+          ctx.stroke();
+        }
+        continue;
+      }
       const raw = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
       const pts = l.snapper || l.style === 'pen' || l.style === 'highlighter' ? raw : smoothPts(raw);
       ctx.globalAlpha = l.style === 'highlighter' ? 0.38 : 1;

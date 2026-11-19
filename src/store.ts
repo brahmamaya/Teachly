@@ -18,6 +18,8 @@ export interface Settings {
   palmErase: boolean;
   /** Hold the pen still at the end of a line to turn it into a neat shape (off: ink stays exactly as written). */
   holdShapes: boolean;
+  /** Draw the line a little ahead of the pen using the browser's predicted points (less trailing on slow boards). Off unless chosen. */
+  inkPredict?: boolean;
   /** A quick scribble over writing erases it. */
   scribbleErase: boolean;
   uiSize: 'xsmall' | 'small' | 'normal' | 'large';
