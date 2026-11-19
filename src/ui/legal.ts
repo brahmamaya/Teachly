@@ -6,7 +6,7 @@ import { fadeOut } from './panel';
 // what is stored or sent, change these texts in the same commit and update
 // the date.
 
-const UPDATED = '19 November 2026';
+const UPDATED = '20 November 2026';
 
 const PRIVACY = `
 <h1>Privacy policy</h1>
@@ -15,7 +15,7 @@ const PRIVACY = `
   <ul>
     <li>No account, no sign-in, no ads, no tracking, no analytics.</li>
     <li>Your lessons, notebooks and recordings stay on your own device. We never receive them.</li>
-    <li>Teachly uses the internet only to load or update its own app files.</li>
+    <li>The Google Play version of the Android app has no internet permission at all. The website version uses the internet only to load Teachly's own files.</li>
   </ul>
 </div>
 
@@ -37,14 +37,14 @@ const PRIVACY = `
 <h2>3. When Teachly uses the internet</h2>
 <ul>
   <li><b>Website version:</b> your browser downloads Teachly's files from the website host. Like every website host, it receives the technical details needed to send the files (such as your IP address, browser type and time) and may keep them in its own logs under its own privacy policy. Teachly adds nothing to this. After the first visit Teachly also works without internet.</li>
-  <li><b>Android app:</b> when the device is online, the app checks the same website for a newer version and downloads Teachly's own updated files. Nothing about you or your lessons is sent; the website host sees the same technical details as above.</li>
+  <li><b>Android app from Google Play:</b> the app does not use the internet. It contains all its files, and Google Play delivers updates. (Only a copy of the app installed outside Google Play may check the website for newer app files; nothing about you or your lessons is sent.)</li>
   <li><b>Share Teachly:</b> only when you tap it, your device's share menu opens with a link to physica.in.</li>
   <li><b>Links:</b> a web link you open from Teachly opens in your browser.</li>
 </ul>
 
 <h2>4. Microphone</h2>
 <p>The microphone is used only for <b>Record lesson</b>, only after you start a recording and allow it. The sound goes into the video that is saved on your device. It is not sent anywhere.</p>
-<p>Teachly does not use the camera at all. The Android app asks only for these permissions: internet (for updates) and microphone (for recording lessons). You can refuse the microphone, or take it back at any time in your device settings; the rest of Teachly keeps working.</p>
+<p>Teachly does not use the camera at all. The Android app from Google Play asks for one permission only: microphone, and only when you tap the lesson-recording feature. You can refuse the microphone, or take it back at any time in your device settings; the rest of Teachly keeps working.</p>
 
 <h2>5. Files you save</h2>
 <p>PDFs, videos and pictures you save from Teachly are saved on your device (on Android in Downloads / Teachly; on iPad through the share menu, for example Save to Files). What happens to them after that is up to you.</p>
@@ -96,7 +96,7 @@ const TERMS = `
 <p>Teachly saves everything only on your device (see the Privacy policy). We do not keep a copy, so we cannot restore lost or deleted notebooks. Please keep your own copies of important lessons, for example as PDF.</p>
 
 <h2>4. Updates</h2>
-<p>Teachly updates itself when your device is online. Features may be added, changed or removed over time.</p>
+<p>The website version updates when your device is online; the Google Play version is updated by Google Play. Features may be added, changed or removed over time.</p>
 
 <h2>5. Teachly's name and design</h2>
 <p>The Teachly and Physica names, logos and design belong to Physica. Please do not sell Teachly or present it as your own.</p>
