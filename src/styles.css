@@ -9526,3 +9526,41 @@ button,
 .library .lib-grid .nb-card.nb-new .nb-title {
   color: var(--lb-text);
 }
+
+/* The side panel glides out to the left (and back) instead of jumping; the notebooks slide over with it */
+.library .lib-side {
+  transition: margin-left 0.34s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.26s ease, visibility 0s linear 0s;
+  will-change: margin-left;
+}
+.library.side-off .lib-side {
+  display: flex;
+  margin-left: -340px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: margin-left 0.34s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.22s ease, visibility 0s linear 0.34s;
+}
+.library .lib-showside {
+  display: grid;
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  margin-right: -10px;
+  overflow: hidden;
+  transition: opacity 0.26s ease 0.12s, width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.3s;
+}
+.library.side-off .lib-showside {
+  opacity: 1;
+  visibility: visible;
+  width: 40px;
+  margin-right: 0;
+  transition: opacity 0.26s ease 0.12s, width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .library .lib-side,
+  .library.side-off .lib-side,
+  .library .lib-showside,
+  .library.side-off .lib-showside {
+    transition: none;
+  }
+}
