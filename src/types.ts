@@ -76,6 +76,8 @@ export interface ImageEl extends BoxBase {
    * (library key) so a saved PDF can reuse the real page, small and sharp.
    */
   pdf?: { src: string; page: number };
+  /** The part of the picture that is shown (fractions of the whole picture); none = all of it. Set by Crop. */
+  crop?: { x: number; y: number; w: number; h: number };
 }
 
 export interface TableEl extends BoxBase {

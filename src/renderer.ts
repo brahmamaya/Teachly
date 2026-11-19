@@ -519,7 +519,11 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
         ctx.fillStyle = 'rgba(15, 23, 42, 0.04)';
         for (let i = 1; i <= 5; i++) ctx.fillRect(-i * 1.8, -i * 1.8 + 3, el.w + i * 3.6, el.h + i * 3.6);
       }
-      if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, el.w, el.h);
+      if (img.complete && img.naturalWidth) {
+        const c = el.crop;
+        if (c) ctx.drawImage(img, c.x * img.naturalWidth, c.y * img.naturalHeight, c.w * img.naturalWidth, c.h * img.naturalHeight, 0, 0, el.w, el.h);
+        else ctx.drawImage(img, 0, 0, el.w, el.h);
+      }
       else {
         // Not drawn yet: clean white paper (book page) or a soft placeholder.
         ctx.fillStyle = sheet ? '#ffffff' : '#e2e8f0';

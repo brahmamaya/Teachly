@@ -173,7 +173,7 @@ function setAlpha(pdf: JsPDF, a: number): void {
 
 /** The stored picture of an image element, if it can go into the PDF as it is. */
 function ownPicture(el: El): { src: string; fmt: 'JPEG' | 'PNG' } | null {
-  if (el.type !== 'image' || el.rot) return null;
+  if (el.type !== 'image' || el.rot || el.crop) return null; // (a cropped picture is drawn as it looks)
   if (el.src.startsWith('data:image/jpeg')) return { src: el.src, fmt: 'JPEG' };
   if (el.src.startsWith('data:image/png')) return { src: el.src, fmt: 'PNG' };
   return null;
