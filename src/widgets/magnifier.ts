@@ -7,6 +7,14 @@ import { makeDraggable } from '../ui/panel';
 
 let lens: { el: HTMLElement; raf: number } | null = null;
 
+/** Close the magnifier if it is open (the teacher went back to writing). */
+export function closeMagnifier(): void {
+  if (!lens) return;
+  cancelAnimationFrame(lens.raf);
+  lens.el.remove();
+  lens = null;
+}
+
 export function toggleMagnifier(host: HTMLElement, board: Board): void {
   if (lens) {
     cancelAnimationFrame(lens.raf);

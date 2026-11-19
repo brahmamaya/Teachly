@@ -8,7 +8,8 @@ import { store } from '../store';
 // Timing and look measured from the owner's reference recording:
 // after lifting, the line stays fully bright for 0.8 s, then the whole line
 // fades evenly (linear) over 0.7 s, gone 1.5 s after lifting.
-const HOLD_MS = 800;
+/** Default hold; the teacher can change it (Laser menu → Stays for). */
+const holdMs = () => Math.max(0.2, store.tool.laserStay ?? 0.8) * 1000;
 const FADE_MS = 700;
 /** The reference red (default laser colour is drawn in exactly this red). */
 const REF_RED = '#e00812';
@@ -61,7 +62,7 @@ export class LaserTool implements Tool {
     this.lastUp = performance.now();
     // No redraws needed while it waits; wake up when it is time to fade.
     clearTimeout(this.timer);
-    this.timer = window.setTimeout(() => this.board.invalidate('overlay'), HOLD_MS + 16);
+    this.timer = window.setTimeout(() => this.board.invalidate('overlay'), holdMs() + 16);
     if (p.type !== 'mouse') this.tip = null;
     this.board.invalidate('overlay');
   }
@@ -83,15 +84,19 @@ export class LaserTool implements Tool {
     const color = chosen.toLowerCase() === '#ef4444' ? REF_RED : chosen;
     let alpha = 1;
     let fading = false;
+    const HOLD = holdMs();
     if (this.trails.length && !this.cur.size) {
       const since = performance.now() - this.lastUp;
-      if (since > HOLD_MS + FADE_MS) this.trails = [];
-      else if (since > HOLD_MS) {
+      if (since > HOLD + FADE_MS) this.trails = [];
+      else if (since > HOLD) {
         // Even (linear) fade of the whole line, as in the reference.
-        alpha = 1 - (since - HOLD_MS) / FADE_MS;
+        alpha = 1 - (since - HOLD) / FADE_MS;
         fading = true;
       }
     }
+    // Blink: a calm pulse (2 per second) while the laser is shown.
+    const blink = store.tool.laserBlink && (this.trails.length > 0 || !!this.tip);
+    if (blink) alpha *= 0.55 + 0.45 * (0.5 + 0.5 * Math.cos((performance.now() / 500) * Math.PI * 2));
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -133,7 +138,7 @@ export class LaserTool implements Tool {
         [4.25, 0.32],
         [3, 1],
       ] as const) {
-        ctx.globalAlpha = a;
+        ctx.globalAlpha = a * (blink ? alpha : 1);
         ctx.beginPath();
         ctx.arc(x, y, r * px, 0, Math.PI * 2);
         ctx.fill();
@@ -145,8 +150,8 @@ export class LaserTool implements Tool {
       ctx.fill();
     }
     ctx.restore();
-    // Animate only during the short fade-out.
-    return fading;
+    // Animate only during the short fade-out (or while blinking).
+    return fading || blink;
   }
 }
 

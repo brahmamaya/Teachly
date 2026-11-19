@@ -6,7 +6,7 @@ import { fadeOut } from './panel';
 // what is stored or sent, change these texts in the same commit and update
 // the date.
 
-const UPDATED = '1 November 2026';
+const UPDATED = '19 November 2026';
 
 const PRIVACY = `
 <h1>Privacy policy</h1>
@@ -24,13 +24,15 @@ const PRIVACY = `
 <ul>
   <li>notebooks, pages, writing, shapes, graphs, text, folders and the Trash;</li>
   <li>PDF files, PowerPoint files and pictures you open in Teachly (they are read on your device and are not uploaded);</li>
+  <li>each picture on a page is kept on your device as a separate file, and when Teachly updates an older notebook to the newest format it keeps an untouched copy of the old version on your device; both are removed when the notebook is deleted for good;</li>
+  <li>a copy of each PDF file you open, and pictures of its pages made when you look at them, kept with the notebook so that big books open fast and <b>Save as PDF</b> can reuse the real pages (small and sharp); they are removed when the notebooks using them are deleted for good;</li>
   <li>your settings (for example pen colours, recent colours, board colour, graph settings, recording quality) and the place where you stopped, so Teachly can open where you left off;</li>
   <li>names you type into the name picker, and team names and scores in the scoreboard.</li>
 </ul>
 <p>None of this is sent to us or to anyone else.</p>
 
 <h2>2. What we do not collect</h2>
-<p>Teachly does not ask for or collect your name, email, phone number, contacts, location, camera, photos (only a file you choose yourself is opened), or any information about your students. Teachly has no advertising, no analytics and no tracking cookies, and we do not sell or share any data, because we do not have any.</p>
+<p>Teachly does not ask for or collect your name, email, phone number, contacts, location, photos from your gallery (only a file you choose yourself is opened), or any information about your students. Teachly has no advertising, no analytics and no tracking cookies, and we do not sell or share any data, because we do not have any.</p>
 
 <h2>3. When Teachly uses the internet</h2>
 <ul>
@@ -41,7 +43,8 @@ const PRIVACY = `
 </ul>
 
 <h2>4. Microphone</h2>
-<p>The microphone is used only for <b>Record lesson</b>, only after you start a recording and allow it. The sound goes into the video that is saved on your device. It is not sent anywhere. The Android app asks for just two permissions: internet (for updates) and microphone (for recording lessons).</p>
+<p>The microphone is used only for <b>Record lesson</b>, only after you start a recording and allow it. The sound goes into the video that is saved on your device. It is not sent anywhere.</p>
+<p>Teachly does not use the camera at all. The Android app asks only for these permissions: internet (for updates) and microphone (for recording lessons). You can refuse the microphone, or take it back at any time in your device settings; the rest of Teachly keeps working.</p>
 
 <h2>5. Files you save</h2>
 <p>PDFs, videos and pictures you save from Teachly are saved on your device (on Android in Downloads / Teachly; on iPad through the share menu, for example Save to Files). What happens to them after that is up to you.</p>

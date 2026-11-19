@@ -1,4 +1,5 @@
 import type { BoxEl, El, PathEl, Rect } from './types';
+import { PAGE } from './page';
 
 export type Mat = [number, number, number, number, number, number];
 
@@ -126,9 +127,19 @@ export function insideLasso(el: El, lasso: number[]): boolean {
       total++;
       if (pointInPolygon(p[i], p[i + 1], lasso)) inside++;
     }
-    return total > 0 && inside / total >= 0.5;
+    // A stroke that is mostly or noticeably inside the loop comes along
+    // whole (a letter half-circled is still taken, never split).
+    return total > 0 && inside / total >= 0.2;
   }
-  return pointInPolygon(el.x + el.w / 2, el.y + el.h / 2, lasso);
+  const pts = [
+    [el.x + el.w / 2, el.y + el.h / 2],
+    [el.x, el.y],
+    [el.x + el.w, el.y],
+    [el.x, el.y + el.h],
+    [el.x + el.w, el.y + el.h],
+  ];
+  if (pointInPolygon(pts[0][0], pts[0][1], lasso)) return true;
+  return pts.slice(1).filter(([x, y]) => pointInPolygon(x, y, lasso)).length >= 2;
 }
 
 export function matMul(a: Mat, b: Mat): Mat {
@@ -175,6 +186,7 @@ export function transformEl<T extends El>(el: T, m: Mat): T {
       for (let i = 0; i < o.length; i += 2) [o[i], o[i + 1]] = applyMat(m, o[i], o[i + 1]);
       return o;
     });
+    if (el.spring) return respring({ ...el, size: el.size * s }, pts, s) as T;
     return { ...el, pts, size: el.size * s, ...(rings ? { rings } : {}) } as T;
   }
   const [cx, cy] = applyMat(m, el.x + el.w / 2, el.y + el.h / 2);
@@ -216,6 +228,32 @@ export function pathFromPoints(pts: [number, number][], closed: boolean): number
   return out;
 }
 
+/**
+ * The zig-zag of a spring from (x1,y1) to (x2,y2): straight ends (`lead` long), then `coils` bends
+ * of height `amp`. Stretching only spreads the coils out and squeezing packs them closer.
+ */
+export function springPts(x1: number, y1: number, x2: number, y2: number, coils: number, amp: number, lead: number): number[] {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+  const L = Math.min(lead, len * 0.2);
+  const pts: [number, number][] = [[x1, y1], [x1 + ux * L, y1 + uy * L]];
+  const body = len - 2 * L, n = coils * 2;
+  for (let i = 1; i <= n; i++) {
+    const t = L + (body * (i - 0.5)) / n;
+    const s = i % 2 ? 1 : -1;
+    pts.push([x1 + ux * t + nx * amp * s, y1 + uy * t + ny * amp * s]);
+  }
+  pts.push([x2 - ux * L, y2 - uy * L], [x2, y2]);
+  return pathFromPoints(pts, false);
+}
+
+/** A spring after its points were moved: coils keep their count and height, only the spacing follows the ends. */
+function respring<T extends PathEl>(el: T, pts: number[], ampK: number): T {
+  const sp = el.spring!;
+  const n = pts.length;
+  return { ...el, pts: springPts(pts[0], pts[1], pts[n - 3], pts[n - 2], sp.coils, sp.amp * ampK, sp.lead * ampK), spring: { ...sp, amp: sp.amp * ampK, lead: sp.lead * ampK } };
+}
+
 export function isPath(el: El): el is PathEl {
   return el.type === 'path';
 }
@@ -247,6 +285,13 @@ export function resizeEl<T extends El>(el: T, ax: number, ay: number, sx: number
       pts[i] = ax + (pts[i] - ax) * sx;
       pts[i + 1] = ay + (pts[i + 1] - ay) * sy;
     }
+    if (el.spring) {
+      // Only the length along the spring changes; the coil height follows the sideways stretch.
+      const o = el.pts, n = o.length;
+      const dx = o[n - 3] - o[0], dy = o[n - 2] - o[1], len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len, ny = dx / len;
+      return respring(el, pts, Math.hypot(nx * sx, ny * sy)) as T;
+    }
     const rings = el.rings?.map((r) => r.map((v, i) => (i % 2 ? ay + (v - ay) * sy : ax + (v - ax) * sx)));
     return { ...el, pts, ...(rings ? { rings } : {}) } as T;
   }
@@ -276,4 +321,23 @@ export function regroup<T extends El>(els: T[]): T[] {
     if (!g) map.set(e.group, (g = uid()));
     return { ...e, group: g };
   });
+}
+
+/**
+ * Elements arriving on another page: keep them where they were if they lie
+ * inside the page, otherwise slide the whole group (never each one alone, so
+ * relative positions stay) just enough to be inside; a group bigger than the
+ * page is shrunk to fit.
+ */
+export function fitIntoPage(els: El[]): El[] {
+  const b = unionRects(els.map(bbox));
+  if (!b) return els;
+  const m = 24;
+  const k = Math.min(1, (PAGE.w - m * 2) / Math.max(1, b.w), (PAGE.h - m * 2) / Math.max(1, b.h));
+  let dx = 0, dy = 0;
+  const w = b.w * k, h = b.h * k;
+  if (b.x < PAGE.x + m || b.x + w > PAGE.x + PAGE.w - m) dx = Math.max(PAGE.x + m, Math.min(b.x, PAGE.x + PAGE.w - m - w)) - b.x;
+  if (b.y < PAGE.y + m || b.y + h > PAGE.y + PAGE.h - m) dy = Math.max(PAGE.y + m, Math.min(b.y, PAGE.y + PAGE.h - m - h)) - b.y;
+  if (k === 1 && !dx && !dy) return els;
+  return els.map((e) => translateEl(k < 1 ? resizeEl(e, b.x, b.y, k, k) : e, dx, dy));
 }

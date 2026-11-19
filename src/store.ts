@@ -1,4 +1,6 @@
-import { uid } from './geometry';
+import { refreshAngles } from './subjects/angles';
+import { fitIntoPage, regroup, uid } from './geometry';
+import { setPageShape } from './page';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } from './types';
 
 export interface Settings {
@@ -6,6 +8,8 @@ export interface Settings {
   palmErase: boolean;
   /** Hold the pen still at the end of a line to turn it into a neat shape (off: ink stays exactly as written). */
   holdShapes: boolean;
+  /** A quick scribble over writing erases it. */
+  scribbleErase: boolean;
   uiSize: 'xsmall' | 'small' | 'normal' | 'large';
   /** Many students write at once: every touch draws (no pinch zoom). */
   multiWrite: boolean;
@@ -17,6 +21,28 @@ export interface Settings {
   tbHidden: string[];
   /** Extra buttons the teacher switched on (off unless chosen, e.g. Record lesson). */
   tbShown: string[];
+  /** Buttons on the floating hexagon (up to 6; none = no hexagon). */
+  hexItems: string[];
+  /** Where the hexagon sits (centre, as fractions of the screen). */
+  hexPos: { x: number; y: number } | null;
+  /** Hexagon size (radius in px). */
+  hexSize: number;
+  /** Toolbar placed anywhere up or down: 0 = top edge, 1 = bottom edge (missing = stuck to its edge). */
+  tbY?: number;
+  /** Toolbar halves: together in the middle, or each in its corner. */
+  tbAlign?: 'middle' | 'sides';
+  /** Floating hexagon opacity, 0.2 to 1. */
+  hexAlpha?: number;
+  /** Chosen chapter with ready-made pieces (see subjects/catalog.ts); none = no subject. */
+  subject?: string | null;
+  /** Bigger toolbar buttons (about 1.5x), for classroom boards and fingers; off by default (compact). */
+  bigControls?: boolean;
+  /** The strip of small symbols for the chosen chapter is shown next to the toolbar. */
+  subjectDock?: boolean;
+  /** The simple toolbar was applied once (so a teacher's own later choice is never overwritten). */
+  tbSimpleDone?: boolean;
+  /** Look of My notebooks: dark (default) or light. */
+  libTheme?: 'light' | 'dark';
 }
 
 export interface ToolState {
@@ -39,6 +65,12 @@ export interface ToolState {
   /** Paint-bucket see-through: 0.1 (faint) … 1 (solid). */
   fillOpacity: number;
   laserColor: string;
+  /** Seconds the laser stays fully bright after lifting (then a 0.7 s fade). */
+  laserStay: number;
+  /** Line steadying while writing: 0 exact (none), 1 light, 2 strong. */
+  inkSmooth: number;
+  /** The laser blinks (pulses) while it is shown. */
+  laserBlink: boolean;
   tapeColor: string;
   /** Slide mode (✋): the board can be slid / zoomed while writing. */
   slide: boolean;
@@ -58,21 +90,37 @@ function loadSettings(): Settings {
     penOnly: false,
     palmErase: true,
     holdShapes: false,
+    scribbleErase: true,
     uiSize: 'normal',
     multiWrite: false,
     allowZoom: false,
     tbPos: 'bottom',
-    tbHidden: [],
+    tbHidden: [...SIMPLE_HIDDEN],
     tbShown: [],
+    tbSimpleDone: true,
+    hexItems: [],
+    hexPos: null,
+    hexSize: 28,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...defaults, ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      // Once: a toolbar nobody changed becomes the simple one.
+      if (!saved.tbSimpleDone) {
+        saved.tbSimpleDone = true;
+        if (!saved.tbHidden?.length) saved.tbHidden = [...SIMPLE_HIDDEN];
+      }
+      return { ...defaults, ...saved };
+    }
   } catch {
     /* storage unavailable */
   }
   return defaults;
 }
+
+/** Buttons the simple toolbar leaves off (all of them stay reachable from the Tools menu and Edit toolbar). */
+export const SIMPLE_HIDDEN = ['fill', 'tape', 'laser', 'timer', 'poll', 'graph'];
 
 export function newPage(bg = '#000000', pattern: BgPattern = 'none'): Page {
   return { id: uid(), bg, pattern, els: [] };
@@ -101,6 +149,9 @@ export class Store {
     fillColor: '#3b82f6',
     fillOpacity: 1,
     laserColor: '#ef4444',
+    laserStay: 0.8,
+    inkSmooth: 0,
+    laserBlink: false,
     tapeColor: '#f59e0b',
     slide: false,
   };
@@ -109,7 +160,7 @@ export class Store {
   private redoStack: Snapshot[] = [];
   private listeners = new Map<string, Set<Listener>>();
 
-  on(evt: 'doc' | 'page' | 'tool' | 'selection' | 'settings' | 'camera', fn: Listener): () => void {
+  on(evt: 'doc' | 'page' | 'leave' | 'nav' | 'tool' | 'selection' | 'settings' | 'camera', fn: Listener): () => void {
     let set = this.listeners.get(evt);
     if (!set) this.listeners.set(evt, (set = new Set()));
     set.add(fn);
@@ -125,9 +176,9 @@ export class Store {
   }
 
   get camera(): Camera {
-    let c = this.cameras.get(this.page.id);
-    if (!c) this.cameras.set(this.page.id, (c = { x: 0, y: 0, z: 1 }));
-    return c;
+    // A page never shown yet has no camera; the board gives it the fitted
+    // view (ensureCam). Reading it must not invent one for that page.
+    return this.cameras.get(this.page.id) ?? { x: 0, y: 0, z: 1 };
   }
 
   setCamera(c: Camera): void {
@@ -145,7 +196,13 @@ export class Store {
     if (this.undoStack.length > 150) this.undoStack.shift();
     this.redoStack = [];
     const pageChanged = index !== this.index;
-    this.doc = { ...this.doc, pages };
+    // Angle marks follow a stretched wedge (only on pages that changed).
+    const fixed = pages.map((p, i) => {
+      if (p === this.doc.pages[i]) return p;
+      const els = refreshAngles(p.els);
+      return els === p.els ? p : { ...p, els };
+    });
+    this.doc = { ...this.doc, pages: fixed, rev: (this.doc.rev ?? 0) + 1 };
     this.index = Math.max(0, Math.min(index, pages.length - 1));
     this.pruneSelection();
     this.emit('doc');
@@ -178,6 +235,13 @@ export class Store {
     this.commit(pages);
   }
 
+  /** Rename the open notebook (saved like any other change). */
+  setTitle(title: string): void {
+    if (title === this.doc.title) return;
+    this.doc = { ...this.doc, title, rev: (this.doc.rev ?? 0) + 1 };
+    this.emit('doc');
+  }
+
   /** Keep only the most recent undo steps (memory housekeeping). */
   trimHistory(keep: number): void {
     if (this.undoStack.length > keep) this.undoStack.splice(0, this.undoStack.length - keep);
@@ -208,7 +272,8 @@ export class Store {
 
   private restore(s: Snapshot): void {
     const pageChanged = s.index !== this.index || s.pages[s.index]?.id !== this.page.id;
-    this.doc = { ...this.doc, pages: s.pages };
+    // Undo / redo is a change too: it gets a newer revision, so it is saved as the latest state.
+    this.doc = { ...this.doc, pages: s.pages, rev: (this.doc.rev ?? 0) + 1 };
     this.index = Math.min(s.index, s.pages.length - 1);
     this.pruneSelection();
     this.emit('doc');
@@ -228,13 +293,19 @@ export class Store {
     if (changed) this.emit('selection');
   }
 
+  /**
+   * Show another page. 'leave' goes out first, while the old page is still
+   * the current one, so anything being typed is put on the page it was
+   * typed on. Changing the page does not change the document: nothing to save.
+   */
   goTo(index: number): void {
     index = Math.max(0, Math.min(index, this.doc.pages.length - 1));
     if (index === this.index) return;
+    this.emit('leave');
     this.index = index;
     this.clearSelection();
     this.emit('page');
-    this.emit('doc');
+    this.emit('nav');
   }
 
   addPage(after = this.index, page?: Page): void {
@@ -257,6 +328,48 @@ export class Store {
     this.commit(pages, Math.min(i, pages.length - 1));
   }
 
+  /**
+   * Move elements from the current page onto another page (one undo step:
+   * undo puts them back on the first page). Their ids, look, grouping and
+   * pictures stay as they are; the whole group lands inside the new page.
+   * Returns how many were moved.
+   */
+  moveElsToPage(ids: string[], to: number): number {
+    const from = this.index;
+    // `to` equal to the number of pages means "a new page at the end" (one undo step for both).
+    if (to === from || to < 0 || to > this.doc.pages.length) return 0;
+    const want = new Set(ids);
+    const moving = this.page.els.filter((e) => want.has(e.id) && !e.locked);
+    if (!moving.length) return 0;
+    const placed = fitIntoPage(moving);
+    const pages = this.doc.pages.slice();
+    if (to === pages.length) pages.push(newPage(pages[from].bg, pages[from].pattern));
+    pages[from] = { ...pages[from], els: pages[from].els.filter((e) => !want.has(e.id) || e.locked) };
+    pages[to] = { ...pages[to], els: [...pages[to].els, ...placed] };
+    this.selection.clear();
+    this.emit('selection');
+    this.commit(pages, from);
+    return moving.length;
+  }
+
+  /**
+   * Copy things to another page (`to` = number of pages: a new page at the end). The originals stay; the copies
+   * are new things (new ids, own groups) in the same place, kept inside the page. One undo step. Returns how many.
+   */
+  copyElsToPage(ids: string[], to: number): number {
+    const from = this.index;
+    if (to === from || to < 0 || to > this.doc.pages.length) return 0;
+    const want = new Set(ids);
+    const src = this.page.els.filter((e) => want.has(e.id));
+    if (!src.length) return 0;
+    const copies = fitIntoPage(regroup(src.map((e) => ({ ...structuredClone(e), id: uid() }) as El)));
+    const pages = this.doc.pages.slice();
+    if (to === pages.length) pages.push(newPage(pages[from].bg, pages[from].pattern));
+    pages[to] = { ...pages[to], els: [...pages[to].els, ...copies] };
+    this.commit(pages, from);
+    return copies.length;
+  }
+
   movePage(from: number, to: number): void {
     if (to < 0 || to >= this.doc.pages.length) return;
     const pages = this.doc.pages.slice();
@@ -266,7 +379,9 @@ export class Store {
   }
 
   loadDoc(doc: Doc): void {
+    this.emit('leave');
     this.doc = doc.id ? doc : { ...doc, id: uid() };
+    setPageShape(doc.orient === 'portrait' ? 4 / 3 : null);
     this.index = 0;
     this.undoStack = [];
     this.redoStack = [];

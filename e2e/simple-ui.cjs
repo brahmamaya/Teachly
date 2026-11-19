@@ -1,0 +1,34 @@
+// Calculator inverse functions, simple timer, simple toolbar.
+const { open, check, finish } = require('./lib.cjs');
+(async () => {
+  const { browser, page, errors } = await open({ viewport: { width: 1280, height: 800 } });
+  await page.evaluate(() => localStorage.removeItem('teachly.settings'));
+  const n = await page.$$eval('.toolbars .tb-btn', (b) => b.length);
+  console.log('toolbar buttons now:', n);
+  check('toolbar is short (<= 14 buttons)', n <= 14, String(n));
+  await page.click('[data-pop=tools]'); await page.waitForTimeout(250);
+  check('Tools menu has Poll / Laser / Tape / Fill', !!(await page.$('.pm-item[data-act=poll]')) && !!(await page.$('.pm-item[data-act=tool-laser]')) && !!(await page.$('.pm-item[data-act=tool-fill]')));
+  await page.click('.pm-item[data-act=tool-laser]'); await page.waitForTimeout(200);
+  check('Laser can be picked from Tools', await page.evaluate(() => window.__teachly.store.tool.tool === 'laser'));
+  await page.click('[data-pop=tools]'); await page.waitForTimeout(250); await page.click('.pm-item[data-act=calc]'); await page.waitForTimeout(300);
+  const calc = async (keys) => { await page.fill('.calc-expr', ''); for (const k of keys) await page.click(`.calc-k[data-k="${k}"], .calc-k[data-f="${k}"]`); return page.$eval('[data-res]', (e) => e.textContent); };
+  await page.fill('.calc-expr', 'asin(0.5)'); await page.dispatchEvent('.calc-expr', 'input');
+  check('asin(0.5) = 30 in degrees', /= 30\b/.test(await page.$eval('[data-res]', (e) => e.textContent)));
+  await page.click('[data-k=inv]'); await page.waitForTimeout(100);
+  check('Inv key turns sin into sin⁻¹', (await page.$eval('[data-f="0"] [data-fl]', (e) => e.textContent)) === 'sin⁻¹');
+  await page.fill('.calc-expr', ''); await page.click('[data-f="0"]'); await page.type('.calc-expr', '1)'); await page.waitForTimeout(100);
+  check('sin⁻¹(1) = 90', /= 90\b/.test(await page.$eval('[data-res]', (e) => e.textContent)), await page.$eval('.calc-expr', (e) => e.value));
+  await page.fill('.calc-expr', ''); await page.click('[data-f="3"]'); await page.type('.calc-expr', '0)'); await page.waitForTimeout(100);
+  check('eˣ at 0 = 1', /= 1\b/.test(await page.$eval('[data-res]', (e) => e.textContent)));
+  await page.fill('.calc-expr', ''); await page.click('[data-f="5"]'); await page.type('.calc-expr', '81)'); await page.waitForTimeout(100);
+  check('√(81) = 9', /= 9\b/.test(await page.$eval('[data-res]', (e) => e.textContent)));
+  await page.fill('.calc-expr', ''); await page.click('[data-f="4"]'); await page.type('.calc-expr', '2)'); await page.waitForTimeout(100);
+  check('10ˣ at 2 = 100', /= 100\b/.test(await page.$eval('[data-res]', (e) => e.textContent)));
+  await page.click('[data-k=inv]'); await page.fill('.calc-expr', ''); await page.click('.calc-k[data-k="7"]'); await page.click('.calc-k[data-k="×"]'); await page.click('.calc-k[data-k="6"]'); await page.click('.calc-k[data-k="="]'); await page.waitForTimeout(100);
+  check('7 × 6 = 42 with the keypad', (await page.$eval('.calc-expr', (e) => e.value)) === '42');
+  await page.screenshot({ path: process.env.SHOT || '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratchpad/calc.png' });
+  await page.click('[data-pop=insert]').catch(() => {});
+  await page.evaluate(() => document.querySelector('[data-a=close],.fp-close')); 
+  check('no page errors', errors.length === 0, errors.join('|'));
+  await browser.close(); finish();
+})().catch((e) => { console.error('CRASH', e); process.exit(2); });

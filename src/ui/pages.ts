@@ -1,33 +1,29 @@
 import { uid } from '../geometry';
-import { pageRegion, renderRegion } from '../renderer';
 import { store } from '../store';
 import type { Page } from '../types';
 import { icon } from './icons';
+import { lazyThumbs } from './pagegrid';
 import { fadeOut, toast } from './panel';
 
-// Page sorter (like Note 3): a side panel with every page as a thumbnail.
-// Tap a page to open it; the buttons below act on the open page.
+// Pages (side panel): every page as a thumbnail in a vertical list.
+// Tap a page to open it; the buttons below act on the open page. The
+// "Expand" tab on its edge opens the full-screen page grid (pagegrid.ts).
 
 /** Drag data type for a page dragged out of the page sorter. */
 export const PAGE_DRAG = 'application/x-teachly-page';
 
-const thumbs = new WeakMap<Page, string>();
 let copied: Page | null = null;
-
-function thumb(p: Page): string {
-  let src = thumbs.get(p);
-  if (!src) {
-    src = renderRegion(p, pageRegion(p.els), 320, 180).toDataURL('image/jpeg', 0.75);
-    thumbs.set(p, src);
-  }
-  return src;
-}
 
 export class PagesPanel {
   private el: HTMLElement | null = null;
   private unsub: (() => void) | null = null;
+  private stopThumbs: (() => void) | null = null;
 
-  constructor(private host: HTMLElement, private onToggle: () => void = () => {}) {}
+  constructor(
+    private host: HTMLElement,
+    private onToggle: () => void = () => {},
+    private onExpand: () => void = () => {},
+  ) {}
 
   get open(): boolean {
     return !!this.el;
@@ -42,6 +38,8 @@ export class PagesPanel {
     if (!this.el) return;
     fadeOut(this.el);
     this.el = null;
+    this.stopThumbs?.();
+    this.stopThumbs = null;
     this.unsub?.();
     this.unsub = null;
     this.onToggle();
@@ -81,11 +79,12 @@ export class PagesPanel {
     const list = el.querySelector('.pages-list');
     const scroll = list?.scrollTop ?? 0;
     el.innerHTML = `
+      <button class="pages-expand" data-pg="expand" title="Show all pages full screen" aria-label="Expand: show all pages full screen">${icon('expand', 18)}<span>Expand</span></button>
       <header class="pages-head"><b>Pages</b><span>${pages.length}</span><button class="icon-btn small" data-pg="close" aria-label="Close">${icon('close', 20)}</button></header>
       <div class="pages-list">${pages
         .map(
-          (p, k) => `<button class="page-thumb ${k === i ? 'on' : ''}" data-pg="go" data-i="${k}" aria-label="Page ${k + 1}">
-            <img src="${thumb(p)}" alt=""><span>${k + 1}</span></button>`,
+          (_p, k) => `<button class="page-thumb ${k === i ? 'on' : ''}" data-pg="go" data-i="${k}" aria-label="Page ${k + 1}">
+            <img alt="" draggable="false"><span>${k + 1}</span></button>`,
         )
         .join('')}</div>
       <div class="pages-actions">
@@ -98,6 +97,8 @@ export class PagesPanel {
       <button class="btn primary wide" data-pg="add">${icon('plus', 20)} New page</button>`;
     const newList = el.querySelector('.pages-list') as HTMLElement;
     newList.scrollTop = scroll;
+    this.stopThumbs?.();
+    this.stopThumbs = lazyThumbs(newList, '.page-thumb', (c) => store.doc.pages[Number(c.dataset.i)]);
     // Keep the open page in view.
     (newList.querySelector('.page-thumb.on') as HTMLElement | null)?.scrollIntoView({ block: 'nearest' });
   }
@@ -109,6 +110,9 @@ export class PagesPanel {
     switch (b.dataset.pg) {
       case 'close':
         return this.close();
+      case 'expand':
+        this.close();
+        return this.onExpand();
       case 'go':
         return store.goTo(Number(b.dataset.i));
       case 'up':

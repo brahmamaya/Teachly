@@ -46,7 +46,7 @@ public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
     private static final String START = "https://" + HOST + "/index.html";
     private static final int REQ_FILE = 1;
-    private static final int REQ_MIC = 2;
+    private static final int REQ_MEDIA = 2;
     private static final int REQ_SAVE = 3;
 
     private static final Map<String, String> MIME = new HashMap<String, String>();
@@ -65,7 +65,8 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private ValueCallback<Uri[]> fileCallback;
-    private PermissionRequest pendingMic;
+    /** A microphone request from the page, waiting for the user's answer. */
+    private PermissionRequest pendingMedia;
     private byte[] pendingData;
     private String pendingName;
     private String pendingMime;
@@ -82,7 +83,8 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         web.setBackgroundColor(Color.WHITE); // the opening screen is white: no dark flash at start
-        web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        // No extra View layer: the WebView already draws on the GPU; an extra
+        // hardware layer copies every frame once more (slower ink on boards).
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -146,12 +148,29 @@ public class MainActivity extends Activity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        if (hasPermission(Manifest.permission.RECORD_AUDIO)) {
-                            request.grant(request.getResources());
-                        } else {
-                            pendingMic = request;
-                            askPermission(Manifest.permission.RECORD_AUDIO, REQ_MIC);
+                        // Only Teachly's own page, and only the microphone
+                        // (Record lesson). The camera is never allowed.
+                        Uri o = request.getOrigin();
+                        if (o == null || !HOST.equals(o.getHost())) {
+                            request.deny();
+                            return;
                         }
+                        java.util.ArrayList<String> need = new java.util.ArrayList<>();
+                        for (String r : request.getResources()) {
+                            String p = androidPermission(r);
+                            if (p == null) {
+                                request.deny();
+                                return;
+                            }
+                            if (!hasPermission(p)) need.add(p);
+                        }
+                        if (need.isEmpty()) {
+                            request.grant(request.getResources());
+                            return;
+                        }
+                        if (pendingMedia != null) pendingMedia.deny();
+                        pendingMedia = request;
+                        if (Build.VERSION.SDK_INT >= 23) requestPermissions(need.toArray(new String[0]), REQ_MEDIA);
                     }
                 });
             }
@@ -309,17 +328,20 @@ public class MainActivity extends Activity {
         return Build.VERSION.SDK_INT < 23 || checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private void askPermission(String p, int code) {
-        if (Build.VERSION.SDK_INT >= 23) requestPermissions(new String[] { p }, code);
+    /** The Android permission a web request needs; null = never allowed. */
+    private static String androidPermission(String resource) {
+        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) return Manifest.permission.RECORD_AUDIO;
+        return null;
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
-        boolean ok = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
-        if (requestCode == REQ_MIC && pendingMic != null) {
-            if (ok) pendingMic.grant(pendingMic.getResources());
-            else pendingMic.deny();
-            pendingMic = null;
+        if (requestCode == REQ_MEDIA && pendingMedia != null) {
+            boolean ok = results.length > 0;
+            for (int r : results) ok &= r == PackageManager.PERMISSION_GRANTED;
+            if (ok) pendingMedia.grant(pendingMedia.getResources());
+            else pendingMedia.deny();
+            pendingMedia = null;
         }
     }
 

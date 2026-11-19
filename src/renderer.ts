@@ -32,7 +32,7 @@ export function freehandOptions(el: Pick<PathEl, 'style' | 'size' | 'sim'>, last
 }
 
 export function outlineToPath(outline: number[][]): Path2D {
-  const path = new Path2D();
+  const path = newPath();
   const n = outline.length;
   if (n < 2) return path;
   path.moveTo(outline[0][0], outline[0][1]);
@@ -51,7 +51,7 @@ export function outlineToPath(outline: number[][]): Path2D {
  * in the other — like a real italic pen.
  */
 function calligraphyPath(pts: number[], size: number): Path2D {
-  const path = new Path2D();
+  const path = newPath();
   const a = -Math.PI / 4;
   const nx = Math.cos(a) * size * 0.9, ny = Math.sin(a) * size * 0.9;
   // Light smoothing so hand jitter does not show in the broad strokes.
@@ -113,10 +113,28 @@ function upsample(pts: number[], step: number): number[][] {
   return out;
 }
 
+/**
+ * While a PDF is being made (io/pdfvector.ts), stroke outlines are recorded
+ * as vector paths instead of browser paths; the caches are left alone then.
+ */
+let pathMaker: (() => Path2D) | null = null;
+export function withPathMaker<T>(make: () => Path2D, fn: () => T): T {
+  const prev = pathMaker;
+  pathMaker = make;
+  try {
+    return fn();
+  } finally {
+    pathMaker = prev;
+  }
+}
+function newPath(): Path2D {
+  return pathMaker ? pathMaker() : new Path2D();
+}
+
 const pathCache = new WeakMap<PathEl, Path2D>();
 
 function shapePath(el: PathEl): Path2D {
-  const p = new Path2D();
+  const p = newPath();
   const pts = el.pts;
   p.moveTo(pts[0], pts[1]);
   for (let i = 3; i < pts.length; i += 3) p.lineTo(pts[i], pts[i + 1]);
@@ -125,10 +143,10 @@ function shapePath(el: PathEl): Path2D {
 }
 
 function getPath(el: PathEl): Path2D {
-  let p = pathCache.get(el);
+  let p = pathMaker ? undefined : pathCache.get(el);
   if (!p) {
     p = el.style === 'shape' ? shapePath(el) : isMarker(el) ? markerPath(el.pts) : freehandPath(el.pts, el, true);
-    pathCache.set(el, p);
+    if (!pathMaker) pathCache.set(el, p);
   }
   return p;
 }
@@ -143,12 +161,30 @@ export function setAssetLoadCallback(fn: () => void): void {
   onAssetLoad = fn;
 }
 
+/** Pictures that are made on demand: pages of a kept PDF (`pdfp:…`) and stored pictures (`asset:…`). */
+let lazyLoader: ((src: string) => Promise<string | null>) | null = null;
+export function setLazyImageLoader(fn: (src: string) => Promise<string | null>): void {
+  lazyLoader = fn;
+}
+
 /** Forget pictures that are no longer on any page (keeps memory small on long days). */
+/**
+ * Wait until the pictures on a page can be drawn (they are fetched from the
+ * device when first needed). True if all are ready within `maxMs`.
+ */
+export async function imagesReady(p: { els: El[] }, maxMs = 12_000): Promise<boolean> {
+  const imgs = p.els.filter((e): e is El & { type: 'image' } => e.type === 'image').map((e) => getImage(e.src));
+  const t0 = performance.now();
+  while (imgs.some((i) => !(i.complete && i.naturalWidth)) && performance.now() - t0 < maxMs) await new Promise((r) => setTimeout(r, 60));
+  return imgs.every((i) => i.complete && i.naturalWidth);
+}
+
 export function trimImageCache(keep: Set<string>): number {
   let freed = 0;
   for (const [src, img] of images) {
     if (keep.has(src)) continue;
     img.onload = null;
+    if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
     img.src = '';
     images.delete(src);
     freed++;
@@ -162,8 +198,14 @@ export function getImage(src: string): HTMLImageElement {
     img = new Image();
     img.decoding = 'async';
     img.onload = () => onAssetLoad();
-    img.src = src;
     images.set(src, img);
+    if (src.startsWith('pdfp:') || src.startsWith('asset:')) {
+      const mine = img;
+      void lazyLoader?.(src).then((url) => {
+        if (url && images.get(src) === mine) mine.src = url;
+        else if (url) URL.revokeObjectURL(url);
+      });
+    } else img.src = src;
   }
   return img;
 }
@@ -186,14 +228,14 @@ function drawArrowHead(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2
 const regionCache = new WeakMap<PathEl, Path2D>();
 /** Outline + holes of a paint-bucket fill, as one path. */
 function regionPath(el: PathEl): Path2D {
-  let p = regionCache.get(el);
+  let p = pathMaker ? undefined : regionCache.get(el);
   if (p) return p;
-  p = new Path2D();
+  p = newPath();
   for (const [ring, stride] of [[el.pts, 3], ...(el.rings ?? []).map((r) => [r, 2] as const)] as [number[], number][]) {
     for (let i = 0; i < ring.length; i += stride) (i ? p.lineTo : p.moveTo).call(p, ring[i], ring[i + 1]);
     p.closePath();
   }
-  regionCache.set(el, p);
+  if (!pathMaker) regionCache.set(el, p);
   return p;
 }
 
@@ -263,7 +305,7 @@ export function isMarker(el: Pick<PathEl, 'style' | 'sim'>): boolean {
  * (wet) drawing uses the same segments, so nothing shifts on lift-off.
  */
 export function markerPath(pts: number[]): Path2D {
-  const p = new Path2D();
+  const p = newPath();
   const n = pts.length / 3;
   if (n === 0) return p;
   p.moveTo(pts[0], pts[1]);
@@ -288,14 +330,14 @@ const fillCache = new WeakMap<PathEl, Path2D>();
 
 /** The area inside a hand-drawn stroke (its line, closed back to the start). */
 function fillPath(el: PathEl): Path2D {
-  let p = fillCache.get(el);
+  let p = pathMaker ? undefined : fillCache.get(el);
   if (!p) {
-    p = new Path2D();
+    p = newPath();
     const pts = el.pts;
     p.moveTo(pts[0], pts[1]);
     for (let i = 3; i < pts.length; i += 3) p.lineTo(pts[i], pts[i + 1]);
     p.closePath();
-    fillCache.set(el, p);
+    if (!pathMaker) fillCache.set(el, p);
   }
   return p;
 }
@@ -470,10 +512,23 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
       break;
     case 'image': {
       const img = getImage(el.src);
+      // A book page lies on the board like a sheet of paper: a soft shadow
+      // under it and a fine edge (four faint rectangles: cheap to draw).
+      const sheet = !!el.locked;
+      if (sheet) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.04)';
+        for (let i = 1; i <= 5; i++) ctx.fillRect(-i * 1.8, -i * 1.8 + 3, el.w + i * 3.6, el.h + i * 3.6);
+      }
       if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, el.w, el.h);
       else {
-        ctx.fillStyle = '#e2e8f0';
+        // Not drawn yet: clean white paper (book page) or a soft placeholder.
+        ctx.fillStyle = sheet ? '#ffffff' : '#e2e8f0';
         ctx.fillRect(0, 0, el.w, el.h);
+      }
+      if (sheet) {
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.16)';
+        ctx.lineWidth = 0.75;
+        ctx.strokeRect(0, 0, el.w, el.h);
       }
       break;
     }

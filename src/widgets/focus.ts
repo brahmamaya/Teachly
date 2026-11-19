@@ -4,6 +4,12 @@ import { icon } from '../ui/icons';
 
 let spotlight: HTMLElement | null = null;
 
+/** Close the spotlight if it is open (the teacher went back to writing). */
+export function closeSpotlight(): void {
+  spotlight?.remove();
+  spotlight = null;
+}
+
 export function toggleSpotlight(host: HTMLElement): void {
   if (spotlight) {
     spotlight.remove();

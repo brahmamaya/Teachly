@@ -1,0 +1,50 @@
+// Moving things to another page with a stylus (pen pointer events), as on an iPad with a Pencil.
+const { chromium } = require('playwright');
+const { check, finish } = require('./lib.cjs');
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(e.message));
+  await page.goto('http://localhost:5173/');
+  await page.waitForTimeout(1800);
+  await page.evaluate(() => {
+    const { store } = window.__teachly;
+    const tri = (id, dx) => ({ id, type: 'path', pts: [300 + dx, 400, 0.5, 500 + dx, 400, 0.5, 400 + dx, 200, 0.5], style: 'shape', color: '#ef4444', size: 4, opacity: 1, closed: true, fill: '#ef4444' });
+    store.addEls([tri('t1', 0), tri('t2', 50)]);
+    store.addPage();
+    store.goTo(0);
+    store.setTool({ tool: 'select' });
+    store.select(['t1', 't2']);
+  });
+  await page.click('[data-act=pages]');
+  await page.waitForTimeout(500);
+  const [sx, sy] = await page.evaluate(() => { const bd = window.teachly.board; const [x, y] = bd.toScreen(420, 330); const r = bd.el.getBoundingClientRect(); return [x + r.left, y + r.top]; });
+  const t2 = await (await page.$$('.page-thumb'))[1].boundingBox();
+  const tx = t2.x + t2.width / 2, ty = t2.y + t2.height / 2;
+  const cdp = await ctx.newCDPSession(page);
+  const ev = (type, x, y) => cdp.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, pointerType: 'pen', clickCount: 1 });
+  await ev('mousePressed', sx, sy);
+  for (let i = 1; i <= 16; i++) await ev('mouseMoved', sx + ((tx - sx) * i) / 16, sy + ((ty - sy) * i) / 16);
+  const hot = await page.$eval('.page-thumb.drop-on', (e) => e.dataset.i).catch(() => null);
+  await ev('mouseReleased', tx, ty);
+  await page.waitForTimeout(400);
+  const counts = await page.evaluate(() => window.__teachly.store.doc.pages.map((p) => p.els.length));
+  check('pen: page 2 lights up while dragging', hot === '1', String(hot));
+  check('pen: both shapes moved to page 2', JSON.stringify(counts) === '[0,2]', JSON.stringify(counts));
+  // released a little beside the thumbnail (still inside the list): nearest page is taken
+  await page.evaluate(() => { window.__teachly.store.undo(); const { store } = window.__teachly; store.select(['t1', 't2']); });
+  await page.waitForTimeout(300);
+  const t1 = await (await page.$$('.page-thumb'))[1].boundingBox();
+  const lb = await (await page.$('.pages-list')).boundingBox();
+  await ev('mousePressed', sx, sy);
+  for (let i = 1; i <= 16; i++) await ev('mouseMoved', sx + ((tx - sx) * i) / 16, sy + ((t1.y + t1.height + 20 - sy) * i) / 16);
+  await ev('mouseReleased', tx, t1.y + t1.height + 20);
+  await page.waitForTimeout(400);
+  const c2 = await page.evaluate(() => window.__teachly.store.doc.pages.map((p) => p.els.length));
+  check('pen: released just below the thumbnail still counts for that page', JSON.stringify(c2) === '[0,2]', JSON.stringify(c2) + ' list ' + Math.round(lb.y + lb.height));
+  check('no page errors', errs.length === 0, errs.join('|'));
+  await b.close();
+  finish();
+})();

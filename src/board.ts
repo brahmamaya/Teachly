@@ -1,7 +1,7 @@
 import { bbox } from './geometry';
 import { Instruments } from './instruments';
 import { PAGE, setPageSize } from './page';
-import { drawBackground, drawEls, setAssetLoadCallback } from './renderer';
+import { drawBackground, drawEls, setAssetLoadCallback, setLazyImageLoader } from './renderer';
 import { store } from './store';
 import { toast } from './ui/panel';
 import type { Camera, El, Rect, ToolId } from './types';
@@ -51,6 +51,9 @@ export interface Tool {
 }
 
 type Layer = 'bg' | 'ink' | 'overlay';
+
+/** Tools a finger may use even when "stylus only" is on: they edit, they do not write. */
+const FINGER_TOOLS = new Set<ToolId>(['select', 'text', 'fill', 'tape']);
 
 /**
  * Android classroom boards (and devices with few cores / little memory)
@@ -107,6 +110,8 @@ export class Board {
   spaceDown = false;
   /** A stylus has been used in this session. */
   private sawPen = false;
+  /** When a stylus last touched or hovered: a finger right then is probably a palm. */
+  private lastPenAt = -1e9;
   private lastHover: Ptr | null = null;
 
   constructor(container: HTMLElement) {
@@ -128,6 +133,8 @@ export class Board {
 
     new ResizeObserver(() => this.resize()).observe(container);
     this.resize();
+    // Pages of a kept PDF are drawn when first shown (pdf.js loads only then).
+    setLazyImageLoader((src) => (src.startsWith('asset:') ? import('./io/assets').then((m) => m.assetURL(src)) : import('./io/pdfpages').then((m) => m.pageURL(src))));
     setAssetLoadCallback(() => {
       this.inkState = null;
       this.invalidate('ink');
@@ -184,6 +191,27 @@ export class Board {
   /** Screen space kept free around the page (toolbars, clock). Set by the app. */
   insets = { top: 0, right: 0, bottom: 0, left: 0 };
 
+  /**
+   * Change the free area (toolbar moved to another edge). Pages showing the
+   * whole page are fitted again to the new area; zoomed pages keep the same
+   * part of the page and zoom.
+   */
+  setInsets(next: { top: number; right: number; bottom: number; left: number }): void {
+    const o = this.insets;
+    if (o.top === next.top && o.right === next.right && o.bottom === next.bottom && o.left === next.left) return;
+    if (!this.w || !this.h) {
+      this.insets = next;
+      return;
+    }
+    const old = this.fitCam();
+    const near = (c: Camera) => Math.abs(c.z - old.z) < 1e-3 && Math.abs(c.x - old.x) * c.z < 1 && Math.abs(c.y - old.y) * c.z < 1;
+    const kept = [...store.cameras].map(([id, c]) => [id, near(c) ? null : this.viewOf(c)] as const);
+    this.insets = next;
+    const fit = this.fitCam();
+    for (const [id, v] of kept) store.cameras.set(id, v ? this.camOf(v) : { ...fit });
+    this.invalidate('bg', 'ink', 'overlay');
+  }
+
   /** Zoom at which the whole page just fits on screen. */
   get fitZ(): number {
     const i = this.insets;
@@ -196,6 +224,29 @@ export class Board {
     const cx = i.left + (this.w - i.left - i.right) / 2;
     const cy = i.top + (this.h - i.top - i.bottom) / 2;
     return { x: PAGE.x + PAGE.w / 2 - cx / z, y: PAGE.y + PAGE.h / 2 - cy / z, z };
+  }
+
+  /**
+   * A view described relative to the whole-page view: zoom as a multiple of
+   * the fitted zoom, centre as page fractions. Survives a new screen size or
+   * an app restart (the same part of the page, at the same zoom).
+   */
+  viewOf(c: Camera): { rel: number; u: number; v: number } {
+    const f = this.fitCam(), i = this.insets;
+    const cx = c.x + (i.left + (this.w - i.left - i.right) / 2) / c.z;
+    const cy = c.y + (i.top + (this.h - i.top - i.bottom) / 2) / c.z;
+    const fx = f.x + (i.left + (this.w - i.left - i.right) / 2) / f.z;
+    const fy = f.y + (i.top + (this.h - i.top - i.bottom) / 2) / f.z;
+    return { rel: c.z / f.z, u: (cx - fx) / PAGE.w, v: (cy - fy) / PAGE.h };
+  }
+
+  camOf(view: { rel: number; u: number; v: number }): Camera {
+    const f = this.fitCam(), i = this.insets;
+    const z = Math.max(0.05, view.rel * f.z);
+    const fx = f.x + (i.left + (this.w - i.left - i.right) / 2) / f.z;
+    const fy = f.y + (i.top + (this.h - i.top - i.bottom) / 2) / f.z;
+    const cx = fx + view.u * PAGE.w, cy = fy + view.v * PAGE.h;
+    return { x: cx - (i.left + (this.w - i.left - i.right) / 2) / z, y: cy - (i.top + (this.h - i.top - i.bottom) / 2) / z, z };
   }
 
   get isFit(): boolean {
@@ -260,6 +311,8 @@ export class Board {
   // ---- rendering -------------------------------------------------------------
 
   resize(): void {
+    // Keep every page's zoom and place across a new screen size.
+    const keep = this.w && this.h ? [...store.cameras].map(([id, c]) => [id, this.viewOf(c)] as const) : [];
     const r = this.el.getBoundingClientRect();
     this.rect = { left: r.left, top: r.top };
     this.w = r.width;
@@ -271,7 +324,9 @@ export class Board {
     // classroom boards (few cores / little memory) so writing never lags.
     // Classroom boards (Android panels) and modest devices get a lighter
     // budget so writing never lags; iPads, laptops and phones stay sharp.
-    const budget = liteDevice() ? 2_800_000 : 8_400_000;
+    // Boards: up to ~3.2 million pixels a layer (5 M made writing lag on
+    // a real 86" board).
+    const budget = liteDevice() ? 3_200_000 : 8_400_000;
     this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
     // While a lesson video is recorded, draw at the video's size (up to 4K) so it is sharp.
     if (this.recordPixels) this.dpr = Math.min(4, Math.max(this.dpr, Math.sqrt(this.recordPixels / area)));
@@ -288,7 +343,7 @@ export class Board {
     // A really new screen size: every page goes back to its fitted view.
     const size = `${Math.round(this.w)}x${Math.round(this.h)}`;
     if (size !== this.lastSize) {
-      if (this.lastSize) store.cameras.clear();
+      if (this.lastSize) for (const [id, v] of keep) store.cameras.set(id, this.camOf(v));
       this.lastSize = size;
     }
     if (this.w && this.h) this.ensureCam();
@@ -653,9 +708,10 @@ export class Board {
       // draw ("Write with stylus only" in the menu, which can turn it off).
       if (!this.sawPen && !store.settings.penOnly) {
         store.setSettings({ penOnly: true });
-        toast('Stylus found — now only the pen writes (change it in Menu)', 3500);
+        toast('Stylus found — now only the pen writes; fingers can still select and move (change it in Menu)', 4500);
       }
       this.sawPen = true;
+      this.lastPenAt = now;
       // The palm usually lands a moment before the pen: drop what it was drawing.
       let palmDrawing = false;
       for (const [id, r] of this.routed) {
@@ -673,8 +729,14 @@ export class Board {
     // The laser pointer works with anything — finger, pen or mouse — whatever
     // the "stylus only" setting (it writes nothing, so nothing to reject).
     const laser = store.tool.tool === 'laser';
-    const fingerRest = !laser && !multi && store.settings.penOnly && p.type === 'touch';
-    const slidePan = slide && (p.button === 2 || fingerRest);
+    // With "stylus only" a finger does not write, but it still has to EDIT: select, move, resize,
+    // type, fill (the stylus is a poor tool for dragging a handle). Not while the stylus is near
+    // (that is a resting hand), for a palm-sized touch, or in slide mode (fingers slide the board).
+    const fingerEdits = FINGER_TOOLS.has(store.tool.tool) && !slide && now - this.lastPenAt > 1200 && !this.isPalm(p);
+    const fingerRest = !laser && !multi && store.settings.penOnly && p.type === 'touch' && !fingerEdits;
+    // The hand (✋) means "move the board": a finger (or the mouse) slides it on every board, with or
+    // without a stylus; the stylus keeps writing. Many-writers mode and the laser are left alone.
+    const slidePan = slide && (p.button === 2 || fingerRest || (!laser && !multi && p.type !== 'pen'));
     if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
       if (slide) {
         // Double-tap: zoom in 2× there, or back to the whole page.
@@ -719,6 +781,7 @@ export class Board {
   private onMove(e: PointerEvent): void {
     this.lastSeen.set(e.pointerId, performance.now());
     const p = this.makePtr(e);
+    if (p.type === 'pen') this.lastPenAt = performance.now();
     const route = this.routed.get(p.id);
     if (!route) {
       this.lastHover = p;

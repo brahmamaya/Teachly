@@ -1,0 +1,159 @@
+/*
+ * Teachly design tokens and shared interface rules (redesign, stage 2-4).
+ * The tokens are named values the new and changed parts of the interface use, so the look stays consistent.
+ * They do not change the size of any existing button: compact stays the default (see Settings > Large buttons).
+ */
+
+#app {
+  /* Surfaces */
+  --tk-surface: #ffffff;
+  --tk-surface-2: #f3f5f8;
+  --tk-border: rgba(15, 23, 42, 0.14);
+  --tk-text: #0f172a;
+  --tk-text-2: #475569;
+  /* Accent: one restrained blue; selected states also use shape (underline / ring), never colour alone */
+  --tk-accent: #3b5bdb;
+  --tk-accent-soft: rgba(59, 91, 219, 0.14);
+  --tk-danger: #c92a2a;
+  /* Spacing, radius, elevation, motion */
+  --tk-s1: 4px;
+  --tk-s2: 8px;
+  --tk-s3: 12px;
+  --tk-s4: 16px;
+  --tk-radius: 14px;
+  --tk-radius-pill: 999px;
+  --tk-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+  --tk-motion: 0.18s;
+  /* Icons and type */
+  --tk-icon: 22px;
+  --tk-stroke: 2px;
+  --tk-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --tk-focus: 3px solid #1d4ed8;
+}
+
+/* One visible focus ring for every control (keyboard and switch users), also on dark surfaces */
+#app :is(button, a, input, select, summary, [tabindex]):focus-visible {
+  outline: var(--tk-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.85);
+}
+#app input[type='range']:focus-visible {
+  outline-offset: 4px;
+}
+
+/* The notebook's name, top left */
+.doc-title {
+  position: fixed;
+  z-index: 40;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: calc(14px + env(safe-area-inset-left, 0px));
+  max-width: min(46vw, 360px);
+  padding: 6px 12px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  border-radius: var(--tk-radius-pill, 999px);
+  background: rgba(20, 20, 22, 0.55);
+  color: #f1f5f9;
+  font: 700 13px/1.2 var(--tk-font, system-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background var(--tk-motion, 0.18s), transform 0.12s;
+}
+.doc-title:hover {
+  background: rgba(20, 20, 22, 0.8);
+}
+.doc-title:active {
+  transform: scale(0.97);
+}
+#app[data-board='light'] .doc-title,
+#app:not([data-board='dark']) .doc-title {
+  background: rgba(255, 255, 255, 0.8);
+  color: #0f172a;
+}
+@media (max-width: 480px) {
+  .doc-title {
+    max-width: 38vw;
+    font-size: 12px;
+  }
+}
+
+/* Move / Copy switch in the "to page" picker */
+.mp-seg {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.16);
+}
+.mp-seg button {
+  flex: 1;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font: 700 14px var(--tk-font, system-ui);
+}
+.mp-seg button.on {
+  background: var(--tk-accent, #3b5bdb);
+  color: #fff;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.mp-title {
+  font-size: 12px;
+}
+
+/* A destructive tile that has been tapped once and waits for the second tap */
+.mt-tile.armed {
+  background: var(--tk-danger, #c92a2a);
+  color: #fff;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+.mt-tile.armed span {
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doc-title,
+  .mp-seg button {
+    transition: none;
+  }
+}
+
+/* "New version ready" button */
+.update-pill {
+  position: fixed;
+  z-index: 9000;
+  left: 50%;
+  bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  translate: -50% 0;
+  max-width: calc(100vw - 24px);
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tk-accent, #3b5bdb);
+  color: #fff;
+  font: 700 15px var(--tk-font, system-ui);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: soft-in 0.28s ease both;
+}
+.update-pill:disabled {
+  opacity: 0.8;
+}
+@media (prefers-reduced-motion: reduce) {
+  .update-pill {
+    animation: none;
+  }
+}
+
+/* Contrast: the red of a destructive button must be readable on the panel it sits on (light panel: deep red, dark panel: light red) */
+#app .pages-actions .danger,
+#app .pages-actions .danger span {
+  color: #b42318;
+}
+#app[data-board='dark'] .pages-actions .danger,
+#app[data-board='dark'] .pages-actions .danger span {
+  color: #ff9b94;
+}

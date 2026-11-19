@@ -15,8 +15,16 @@ import {
   renameNotebook,
   restoreNotebook,
   saveNotebook,
+  isPortrait,
+  setCover,
+  setFavorite,
+  setPortrait,
   trashNotebook,
 } from '../io/library';
+import { liteDevice } from '../board';
+import { COVERS, coverById, coverHTML } from './covers';
+import { newNotebookFlow } from './newnotebook';
+import { askPdfRange } from './pdfrange';
 import { store } from '../store';
 import { icon } from './icons';
 import { fadeOut, toast } from './panel';
@@ -68,11 +76,11 @@ function modal<T>(host: HTMLElement, html: string, read: (box: HTMLElement) => T
 }
 
 /** Ask for a folder name. */
-function askName(host: HTMLElement, title: string, value = ''): Promise<string | null> {
+export function askName(host: HTMLElement, title: string, value = '', placeholder = 'Folder name'): Promise<string | null> {
   return modal(
     host,
     `<h3>${esc(title)}</h3>
-     <input class="sv-input" name="n" value="${esc(value)}" maxlength="60" placeholder="Folder name" aria-label="${esc(title)}">
+     <input class="sv-input" name="n" value="${esc(value)}" maxlength="60" placeholder="${esc(placeholder)}" aria-label="${esc(title)}">
      <div class="sv-row"><button type="button" class="btn" data-sv="cancel">Cancel</button><button type="submit" class="btn primary">OK</button></div>`,
     (box) => (box.querySelector('input') as HTMLInputElement).value.trim() || null,
   );
@@ -93,6 +101,29 @@ async function chooseFolder(host: HTMLElement, current: string): Promise<string 
   if (v !== '__new') return v;
   const name = await askName(host, 'New folder');
   return name ? (await createFolder(name)).id : null;
+}
+
+/** Choose a notebook cover. '' = none (the first page is shown); null = cancelled. */
+async function chooseCover(host: HTMLElement, m: NotebookMeta): Promise<string | null> {
+  // Older notebooks do not know yet whether they are vertical: look once.
+  let portrait = m.portrait;
+  if (portrait === undefined) {
+    const doc = await loadNotebook(m.id);
+    portrait = doc ? isPortrait(doc) : false;
+    await setPortrait(m.id, portrait);
+  }
+  const cur = coverById(m.cover)?.id ?? '';
+  return modal<string>(
+    host,
+    `<h3>Notebook cover</h3>
+     <div class="cv-grid ${portrait ? 'tall' : 'wide'}">
+       <button type="button" class="cv-opt ${cur === '' ? 'on' : ''}" data-sv="pick" data-v="">
+         <span class="cv-none" data-o="${portrait ? 'p' : 'l'}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}</span><span class="cv-name">First page</span></button>
+       ${COVERS.map((c) => `<button type="button" class="cv-opt ${cur === c.id ? 'on' : ''}" data-sv="pick" data-v="${c.id}">${coverHTML(c, m.title, portrait)}<span class="cv-name">${c.name}</span></button>`).join('')}
+     </div>
+     <div class="sv-row"><button type="button" class="btn" data-sv="cancel">Cancel</button></div>`,
+    () => null,
+  );
 }
 
 /** Ask before deleting notebooks for good: shows their covers. */
@@ -149,13 +180,13 @@ export async function saveNotebookDialog(host: HTMLElement): Promise<void> {
     folder = (await createFolder(name)).id;
     where = name;
   } else if (folder) where = folders.find((f) => f.id === folder)?.name ?? where;
-  store.doc = await saveNotebook({ ...store.doc, title: res.title }, folder);
-  store.emit('doc');
+  store.setTitle(res.title);
+  await saveNotebook(store.doc, folder);
   toast(`Saved in ${where}`);
 }
 
 /** Which list is shown: every notebook, the ones in no folder, one folder, or the trash. */
-type View = 'all' | 'unfiled' | 'trash' | `f:${string}`;
+type View = 'all' | 'fav' | 'unfiled' | 'trash' | `f:${string}`;
 
 export class Library {
   private el: HTMLElement | null = null;
@@ -165,6 +196,8 @@ export class Library {
   private view: View = 'all';
   private query = '';
   private armed = '';
+  /** The notebook whose ⋯ menu is open. */
+  private menuFor = '';
 
   constructor(private host: HTMLElement) {}
 
@@ -172,20 +205,34 @@ export class Library {
     return !!this.el;
   }
 
+  /** Light or dark look (the sun / moon switch at the top). */
+  private applyTheme(el: HTMLElement): void {
+    const light = store.settings.libTheme === 'light';
+    el.dataset.theme = light ? 'light' : 'dark';
+    el.querySelector('.lib-theme')?.setAttribute('aria-checked', String(!light));
+  }
+
   async show(): Promise<void> {
     if (this.el) return;
-    // Save what is on the board first so its cover is up to date.
-    store.doc = await saveNotebook(store.doc);
+    // Save what is on the board first so its cover is up to date (the board may change meanwhile: it is never replaced).
+    await saveNotebook(store.doc);
     const el = document.createElement('section');
     el.className = 'library';
+    this.applyTheme(el);
     el.setAttribute('aria-label', 'My notebooks');
     el.innerHTML = `
       <nav class="lib-side" aria-label="Notebook lists"></nav>
       <div class="lib-main">
         <header class="lib-head">
           <h2 class="lib-title"></h2>
+          <button class="lib-theme" data-lib="theme" role="switch" aria-label="Light or dark look" title="Light / Dark">
+            <svg class="lt-sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="4.4" fill="#fbbf24"/><g stroke="#f59e0b" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></g></svg>
+            <svg class="lt-moon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z" fill="#c7d2fe"/><circle cx="16.5" cy="6" r="1" fill="#e0e7ff"/><circle cx="19.2" cy="9.2" r="0.7" fill="#e0e7ff"/></svg>
+            <i class="lt-thumb"></i>
+          </button>
           <input class="lib-search" type="search" placeholder="Search" aria-label="Search notebooks">
           <button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('folderPlus', 24)}</button>
+          <button class="lib-new" data-lib="new">${icon('plus', 20)}<span>New</span></button>
           <button class="icon-btn" data-lib="close" title="Back to board" aria-label="Back to board">${icon('close', 22)}</button>
         </header>
         <div class="lib-bar"></div>
@@ -210,6 +257,17 @@ export class Library {
     [this.list, this.folders] = await Promise.all([listNotebooks(true), listFolders()]);
     if (this.view.startsWith('f:') && !this.folders.some((f) => `f:${f.id}` === this.view)) this.view = 'all';
     this.render();
+    // Notebooks with a cover that do not know yet if they are vertical (saved
+    // before): look once, then show the cover in the right shape.
+    const unknown = this.list.filter((m) => m.cover && m.portrait === undefined);
+    if (unknown.length) {
+      for (const m of unknown) {
+        const doc = await loadNotebook(m.id);
+        await setPortrait(m.id, doc ? isPortrait(doc) : false);
+      }
+      this.list = await listNotebooks(true);
+      this.render();
+    }
   }
 
   private folderOf(m: NotebookMeta): string {
@@ -226,6 +284,7 @@ export class Library {
       `<button class="ls-item ${this.view === v ? 'on' : ''}" data-lib="view" data-v="${esc(v)}">${icon(ic, 20)}<span class="ls-l">${esc(label)}</span>${count(n)}</button>`;
     (el.querySelector('.lib-side') as HTMLElement).innerHTML = `
       ${item('all', 'notebook', 'All notebooks', live.length)}
+      ${item('fav', 'star', 'Favorites', live.filter((m) => m.fav).length)}
       ${item('unfiled', 'open', 'Not in a folder', live.filter((m) => !this.folderOf(m)).length)}
       <div class="ls-head"><span>Folders</span><button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('plus', 18)}</button></div>
       ${this.folders.map((f) => item(`f:${f.id}`, 'folder', f.name, live.filter((m) => m.folder === f.id).length)).join('') || '<p class="ls-empty">No folders yet</p>'}
@@ -233,8 +292,13 @@ export class Library {
       ${item('trash', 'trash', 'Trash', trash.length)}`;
 
     const folder = this.view.startsWith('f:') ? this.folders.find((f) => `f:${f.id}` === this.view) : undefined;
-    const title = this.view === 'all' ? 'All notebooks' : this.view === 'unfiled' ? 'Not in a folder' : this.view === 'trash' ? 'Trash' : (folder?.name ?? '');
+    const title = this.view === 'all' ? 'All notebooks' : this.view === 'fav' ? 'Favorites' : this.view === 'unfiled' ? 'Not in a folder' : this.view === 'trash' ? 'Trash' : (folder?.name ?? '');
     (el.querySelector('.lib-title') as HTMLElement).textContent = title;
+    // Cards glide in only when the list is opened or another list is chosen
+    // (not after every rename or move).
+    const grid = el.querySelector('.lib-grid') as HTMLElement;
+    grid.classList.toggle('fresh', grid.dataset.shown !== this.view);
+    grid.dataset.shown = this.view;
 
     // The bar under the title: folder tools, or the trash tools.
     const bar = el.querySelector('.lib-bar') as HTMLElement;
@@ -250,6 +314,7 @@ export class Library {
     const pool = this.view === 'trash' ? trash : live;
     const items = pool.filter((m) => {
       if (q) return m.title.toLowerCase().includes(q);
+      if (this.view === 'fav') return !!m.fav;
       if (this.view === 'unfiled') return !this.folderOf(m);
       if (folder) return m.folder === folder.id;
       return true;
@@ -259,21 +324,25 @@ export class Library {
     (el.querySelector('.lib-grid') as HTMLElement).innerHTML =
       newCard +
       items
-        .map((m) => {
+        .map((m, n) => {
           const where = this.folders.find((f) => f.id === this.folderOf(m))?.name;
+          // The card's buttons stay tucked behind ⋯ until it is tapped.
+          const act = (a: string, ic: string, label: string) => `<button class="nb-act" data-lib="${a}">${icon(ic, 17)}<span>${label}</span></button>`;
           const actions = inTrash
-            ? `<button class="icon-btn" data-lib="restore" title="Restore" aria-label="Restore">${icon('undo', 17)}</button>
-               <button class="icon-btn ${this.armed === m.id ? 'armed' : ''}" data-lib="purge" title="Delete for good" aria-label="Delete for good">${icon('trash', 17)}</button>`
-            : `<button class="icon-btn" data-lib="rename" title="Rename" aria-label="Rename">${icon('text', 17)}</button>
-               <button class="icon-btn" data-lib="move" title="Move to a folder" aria-label="Move to a folder">${icon('folder', 17)}</button>
-               <button class="icon-btn" data-lib="copy" title="Make a copy" aria-label="Make a copy">${icon('copy', 17)}</button>
-               <button class="icon-btn" data-lib="delete" title="Move to trash" aria-label="Move to trash">${icon('trash', 17)}</button>`;
+            ? act('restore', 'undo', 'Restore') + act('purge', 'trash', 'Delete for good')
+            : act('rename', 'text', 'Rename') + act('cover', 'palette', 'Cover') + act('move', 'folder', 'Move to folder') + act('copy', 'copy', 'Make a copy') + act('download', 'download', 'Download') + act('delete', 'trash', 'Move to trash');
           return `
-        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''}" data-id="${m.id}">
-          <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
-          <span class="nb-title">${esc(m.title)}</span>
-          <span class="nb-meta">${inTrash ? `Deleted ${when(m.trashed!)}` : when(m.updated)}${where && this.view === 'all' ? ` · ${esc(where)}` : ''}</span>
-          <span class="nb-actions">${actions}</span>
+        <div class="nb-card ${m.id === store.doc.id && !inTrash ? 'current' : ''} ${this.menuFor === m.id ? 'menu' : ''} ${coverById(m.cover) ? 'has-cv' : ''}" data-o="${m.portrait ? 'p' : 'l'}" data-id="${m.id}" style="--n:${n + 1}">
+          <button class="nb-cover" data-lib="${inTrash ? 'restore' : 'open'}" aria-label="${inTrash ? 'Restore' : 'Open'} ${esc(m.title)}">${coverById(m.cover) ? coverHTML(coverById(m.cover)!, m.title, !!m.portrait) : m.thumb ? `<img src="${m.thumb}" alt="">` : ''}<span class="nb-age">${m.pages}p</span></button>
+          ${inTrash ? '' : `<button class="nb-star ${m.fav ? 'on' : ''}" data-lib="star" aria-label="${m.fav ? 'Remove from' : 'Add to'} Favorites" aria-pressed="${!!m.fav}">${icon('star', 18)}</button>`}
+          <span class="nb-row">
+            <span class="nb-text">
+              <span class="nb-title">${esc(m.title)}</span>
+              <span class="nb-meta">${inTrash ? `Deleted ${when(m.trashed!)}` : when(m.updated)}${coverById(m.cover) ? ` · ${m.pages}p` : ''}${where && this.view === 'all' ? ` · ${esc(where)}` : ''}</span>
+            </span>
+            <button class="nb-more" data-lib="more" title="More" aria-label="More for ${esc(m.title)}" aria-expanded="${this.menuFor === m.id}">${icon('more', 18)}</button>
+          </span>
+          ${this.menuFor === m.id ? `<span class="nb-menu" role="menu">${actions}</span>` : ''}
         </div>`;
         })
         .join('');
@@ -294,15 +363,33 @@ export class Library {
 
   private async onClick(e: MouseEvent): Promise<void> {
     const b = (e.target as HTMLElement).closest('[data-lib]') as HTMLElement | null;
-    if (!b || !this.el) return;
+    // Any tap closes an open ⋯ menu (a tap on ⋯ itself toggles it below).
+    const hadMenu = this.menuFor;
+    this.menuFor = '';
+    if (!b || !this.el) {
+      if (hadMenu && this.el) this.render();
+      return;
+    }
     const id = (b.closest('[data-id]') as HTMLElement | null)?.dataset.id ?? '';
     const folderId = this.view.startsWith('f:') ? this.view.slice(2) : '';
     const act = b.dataset.lib;
     const wasArmed = this.armed;
     this.armed = '';
+    if (hadMenu && act !== 'more') this.render();
     switch (act) {
+      case 'star': {
+        const m = this.list.find((x) => x.id === id);
+        if (m) await setFavorite(id, !m.fav);
+        return this.refresh();
+      }
+      case 'more':
+        this.menuFor = hadMenu === id ? '' : id;
+        return this.render();
       case 'close':
         return this.close();
+      case 'theme':
+        store.setSettings({ libTheme: store.settings.libTheme === 'light' ? 'dark' : 'light' });
+        return this.applyTheme(this.el);
       case 'view':
         this.view = (b.dataset.v ?? 'all') as View;
         this.query = '';
@@ -333,8 +420,10 @@ export class Library {
         this.view = 'all';
         return this.refresh();
       case 'new': {
-        const doc = blankNotebook(`Notebook ${this.list.length + 1}`, store.page.bg);
-        store.loadDoc(await saveNotebook(doc, folderId));
+        // Name, shape and (if wanted) a cover first.
+        const doc = await newNotebookFlow(this.el, { name: `Notebook ${this.list.length + 1}`, bg: store.page.bg, folder: folderId });
+        if (!doc) return;
+        store.loadDoc(doc);
         this.close();
         return toast('New notebook');
       }
@@ -350,8 +439,37 @@ export class Library {
         const m = this.list.find((x) => x.id === id);
         const title = window.prompt('Notebook name', m?.title ?? '')?.trim();
         if (!title) return;
-        if (id === store.doc.id) store.doc = await saveNotebook({ ...store.doc, title });
-        else await renameNotebook(id, title);
+        if (id === store.doc.id) {
+          store.setTitle(title);
+          await saveNotebook(store.doc);
+        } else await renameNotebook(id, title);
+        return this.refresh();
+      }
+      case 'download': {
+        const m = this.list.find((x) => x.id === id);
+        const doc = m ? await loadNotebook(id) : null;
+        if (!m || !doc) return toast('Could not open that notebook');
+        const total = doc.pages.length;
+        const r = await askPdfRange(this.el, { total, current: id === store.doc.id ? Math.min(total, store.index + 1) : 0, title: m.title });
+        if (!r) return;
+        toast('Making the PDF…', 2500);
+        try {
+          const [{ makePdf }, { download }] = await Promise.all([import('../io/pdfvector'), import('../io/files')]);
+          const { blob } = await makePdf(doc.pages.slice(r.from - 1, r.to), liteDevice() ? 2.25 : 3);
+          const base = m.title.replace(/[^\w\- ]+/g, '').trim() || 'teachly';
+          download(blob, r.from === 1 && r.to === total ? `${base}.pdf` : `${base} pages ${r.from}-${r.to}.pdf`);
+        } catch {
+          toast('Could not make the PDF');
+        }
+        return;
+      }
+      case 'cover': {
+        const m = this.list.find((x) => x.id === id);
+        if (!m) return;
+        const v = await chooseCover(this.el, m);
+        if (v === null) return;
+        await setCover(id, v);
+        toast(v ? 'Cover changed' : 'Showing the first page again');
         return this.refresh();
       }
       case 'move': {

@@ -1,7 +1,10 @@
 import type { Board, Ptr, Tool } from '../board';
-import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, pathFromPoints, resizeEl, similarity, transformEl } from '../geometry';
+import { applyMat, bbox, hitTest, IDENTITY, insideLasso, type Mat, pathFromPoints, resizeEl, similarity, springPts, transformEl, translateEl } from '../geometry';
 import { drawEl, isDarkColor } from '../renderer';
 import { ui } from '../ui/scale';
+import { dragCancel, dragEnd, dragOver, dropAvailable } from '../ui/pagedrop';
+import { blockInfo, nearest, seat, surfaces, type Surface } from '../subjects/snap';
+import { toast } from '../ui/panel';
 import { toggleTape } from './tape';
 import { store } from '../store';
 import type { El, PathEl, Rect, TextEl } from '../types';
@@ -11,11 +14,13 @@ import { cellAt, type TableEditor } from './table';
 import type { TextEditor } from './text';
 
 type Mode =
-  | { k: 'move'; sx: number; sy: number; moved: boolean; clicked: El | null; r0: Rect | null; targets: Rect[] | null }
+  | { k: 'move'; sx: number; sy: number; moved: boolean; clicked: El | null; r0: Rect | null; targets: Rect[] | null; segs?: Surface[] }
   /** hx / hy: which side is dragged (-1 left/top, 1 right/bottom, 0 untouched). */
   | { k: 'resize'; r: Rect; hx: number; hy: number; keep: boolean }
   | { k: 'rotate'; cx: number; cy: number; a0: number }
   | { k: 'lasso'; pts: number[]; add: boolean }
+  /** Dragging one end of a straight line, arrow or spring (its label follows the middle). */
+  | { k: 'end'; line: PathEl; idx: 0 | 1; labels: El[]; preview: El[] | null }
   /** Bending an arc by its middle handle. */
   | { k: 'bend'; el: PathEl; preview: PathEl | null };
 
@@ -31,6 +36,8 @@ export class SelectTool implements Tool {
   private lastTap = { t: 0, id: '' };
   /** Alignment guides shown while moving. */
   private guides: Guide[] = [];
+  /** A block being moved near a surface: that surface (lit up) while it is being seated. */
+  private seatOn: Surface | null = null;
   /** Anchor and stretch factors while resizing. */
   private resizeArgs: [number, number, number, number] | null = null;
 
@@ -48,8 +55,8 @@ export class SelectTool implements Tool {
     const els = store.selectedEls();
     if (els.every((e) => e.type === 'path' || e.type === 'table')) return true;
     // One group (a graph): free stretch sideways or up-down; its writing stays readable.
-    const g = els[0]?.group;
-    return !!g && els.every((e) => e.group === g && (e.type === 'path' || e.type === 'text' || e.type === 'table'));
+    // Lines, shapes and their labels (one group or several): stretch freely in any direction.
+    return els.some((e) => e.type === 'path') && els.every((e) => e.type === 'path' || e.type === 'text' || e.type === 'table');
   }
 
   private handles(r: Rect): { grips: Handle[]; rot: [number, number] } {
@@ -83,6 +90,26 @@ export class SelectTool implements Tool {
     const els = store.selectedEls();
     const e = els.length === 1 ? els[0] : null;
     return e && e.type === 'path' && e.arc && !e.locked && e.pts.length >= 9 ? e : null;
+  }
+
+  /** The one block (plus its labels) that seats itself on a surface, when exactly that is selected. */
+  private loneBlock(): PathEl | null {
+    const els = store.selectedEls();
+    const blocks = els.filter((e): e is PathEl => e.type === 'path' && e.snap === 'block');
+    return blocks.length === 1 && els.every((e) => e === blocks[0] || e.type === 'text') ? blocks[0] : null;
+  }
+
+  /** One straight line, arrow or spring (plus its text labels) is selected: its two ends can be dragged. */
+  private selectedLine(): { line: PathEl; labels: El[] } | null {
+    const els = store.selectedEls();
+    const lines = els.filter((e): e is PathEl => e.type === 'path' && !e.closed && !e.arc && !e.locked && (e.pts.length === 6 || !!e.spring));
+    if (lines.length !== 1 || !els.every((e) => e === lines[0] || e.type === 'text')) return null;
+    return { line: lines[0], labels: els.filter((e) => e !== lines[0]) };
+  }
+
+  private lineEnds(l: PathEl): [[number, number], [number, number]] {
+    const n = l.pts.length;
+    return [[l.pts[0], l.pts[1]], [l.pts[n - 3], l.pts[n - 2]]];
   }
 
   private arcHandle(e: PathEl): [number, number] {
@@ -151,6 +178,16 @@ export class SelectTool implements Tool {
       this.mode = { k: 'bend', el: arc, preview: null };
       return;
     }
+    const sl = this.selectedLine();
+    if (sl) {
+      const ends = this.lineEnds(sl.line);
+      for (const i of [0, 1] as const) {
+        if (Math.hypot(p.x - ends[i][0], p.y - ends[i][1]) < this.hitRadius(p) * 1.15) {
+          this.mode = { k: 'end', line: sl.line, idx: i, labels: sl.labels, preview: null };
+          return;
+        }
+      }
+    }
     const r = this.bounds();
     if (r) {
       const h = this.handles(r);
@@ -164,6 +201,14 @@ export class SelectTool implements Tool {
         this.mode = { k: 'resize', r, hx: g.hx, hy: g.hy, keep: !this.stretchable() };
         return;
       }
+    }
+    // Inside the current selection: move all of it together (never just the
+    // one piece under the finger).
+    if (r && !p.shift && store.selection.size > 1 && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+      // (`clicked` = the piece under the finger, so a double-tap on a label inside a group can still edit it.)
+      const under = this.topHit(p.x, p.y);
+      this.mode = { k: 'move', sx: p.x, sy: p.y, moved: false, clicked: under && store.selection.has(under.id) ? under : null, r0: null, targets: null };
+      return;
     }
     const hit = this.topHit(p.x, p.y);
     if (hit) {
@@ -203,6 +248,50 @@ export class SelectTool implements Tool {
           this.guides = g.guides;
         }
         this.mat = [1, 0, 0, 1, dx, dy];
+        // A block carried near a surface (ground, table, a slope, another block) is drawn seated on it:
+        // turned to lie along it and resting on it. Letting go keeps it there (Alt: no magnet).
+        this.seatOn = null;
+        const blk = p.alt ? null : this.loneBlock();
+        const info = blk && blockInfo(blk);
+        if (info) {
+          m.segs ??= surfaces(store.page.els, store.selection);
+          const hit = nearest(m.segs, info.cx + dx, info.cy + dy, 110);
+          if (hit) {
+            const moved: Mat = [1, 0, 0, 1, dx, dy];
+            const s2 = seat({ ...info, cx: info.cx + dx, cy: info.cy + dy }, hit.s, hit.t);
+            this.mat = [s2[0] * moved[0] + s2[2] * moved[1], s2[1] * moved[0] + s2[3] * moved[1], s2[0] * moved[2] + s2[2] * moved[3], s2[1] * moved[2] + s2[3] * moved[3], s2[0] * moved[4] + s2[2] * moved[5] + s2[4], s2[1] * moved[4] + s2[3] * moved[5] + s2[5]];
+            this.seatOn = hit.s;
+            this.guides = [];
+          }
+        }
+        // The Pages panel is open: show where the things would land.
+        if (dropAvailable()) {
+          const b = this.board.el.getBoundingClientRect();
+          dragOver(p.sx + b.left, p.sy + b.top, store.selection.size);
+        }
+        break;
+      }
+      case 'end': {
+        // Only this end moves: the line gets longer or shorter or turns, nothing else changes.
+        const [a, b] = this.lineEnds(m.line);
+        const fixed = m.idx === 0 ? b : a, old = m.idx === 0 ? a : b;
+        let x = p.x, y = p.y;
+        if (!p.alt) {
+          // A light pull to straight up-down, sideways and 45°.
+          const ang = Math.atan2(y - fixed[1], x - fixed[0]), step = Math.PI / 4;
+          const snap = Math.round(ang / step) * step;
+          if (Math.abs(ang - snap) < 0.05) {
+            const len = Math.hypot(x - fixed[0], y - fixed[1]);
+            x = fixed[0] + Math.cos(snap) * len;
+            y = fixed[1] + Math.sin(snap) * len;
+          }
+        }
+        const from = m.idx === 0 ? [x, y] : fixed, to = m.idx === 0 ? fixed : [x, y];
+        const l = m.line;
+        const pts = l.spring ? springPts(from[0], from[1], to[0], to[1], l.spring.coils, l.spring.amp, l.spring.lead) : pathFromPoints([[from[0], from[1]], [to[0], to[1]]], false);
+        // Labels keep their place next to the middle of the line.
+        const dmx = (x - old[0]) / 2, dmy = (y - old[1]) / 2;
+        m.preview = [{ ...l, pts }, ...m.labels.map((e) => translateEl(e, dmx, dmy))];
         break;
       }
       case 'resize': {
@@ -273,7 +362,24 @@ export class SelectTool implements Tool {
     if (!m || p.id !== this.pid) return;
     this.mode = null;
     this.inkRect = null;
-    if (m.k === 'bend') {
+    // Dropped on a page of the Pages panel: the things go there (one undo step).
+    const bb = this.board.el.getBoundingClientRect();
+    const dropped = m.k === 'move' && m.moved ? dragEnd(p.sx + bb.left, p.sy + bb.top) : (dragCancel(), -1);
+    if (dropped >= 0 && dropped !== store.index) {
+      const n = store.moveElsToPage([...store.selection], dropped);
+      this.mat = IDENTITY;
+      this.guides = [];
+      this.board.invalidate('ink', 'overlay');
+      if (n) toast(`Moved ${n} ${n === 1 ? 'item' : 'items'} to page ${dropped + 1}. Undo brings them back.`);
+      return;
+    }
+    if (m.k === 'end') {
+      const pv = m.preview;
+      if (pv) {
+        const by = new Map(pv.map((e) => [e.id, e]));
+        store.mapEls(new Set(by.keys()), (e) => by.get(e.id) ?? e);
+      }
+    } else if (m.k === 'bend') {
       const pv = m.preview;
       if (pv) store.mapEls(new Set([m.el.id]), () => pv);
     } else if (m.k === 'lasso') {
@@ -308,10 +414,13 @@ export class SelectTool implements Tool {
     this.mat = IDENTITY;
     this.resizeArgs = null;
     this.guides = [];
+    this.seatOn = null;
     this.board.invalidate('ink', 'overlay');
   }
 
   cancel(): void {
+    dragCancel();
+    this.seatOn = null;
     this.mode = null;
     this.inkRect = null;
     this.mat = IDENTITY;
@@ -321,11 +430,12 @@ export class SelectTool implements Tool {
   }
 
   hidden(): Set<string> | null {
-    if (this.mode?.k === 'bend' && this.mode.preview) return store.selection;
+    if ((this.mode?.k === 'bend' || this.mode?.k === 'end') && this.mode.preview) return store.selection;
     return this.mat !== IDENTITY ? store.selection : null;
   }
 
   drawInk(ctx: CanvasRenderingContext2D): void {
+    if (this.mode?.k === 'end' && this.mode.preview) return void this.mode.preview.forEach((e) => drawEl(ctx, e));
     if (this.mode?.k === 'bend' && this.mode.preview) return drawEl(ctx, this.mode.preview);
     if (this.mat === IDENTITY) return;
     if (this.resizeArgs) {
@@ -347,7 +457,9 @@ export class SelectTool implements Tool {
     if (r) {
       const h = this.handles(r);
       const g = this.gripAt(p, r);
-      if (this.hitsArcHandle(p)) cursor = 'pointer';
+      const sl = this.selectedLine();
+      if (sl && this.lineEnds(sl.line).some(([x, y]) => Math.hypot(p.x - x, p.y - y) < this.hitRadius(p) * 1.15)) cursor = 'crosshair';
+      else if (this.hitsArcHandle(p)) cursor = 'pointer';
       else if (Math.hypot(p.x - h.rot[0], p.y - h.rot[1]) < this.hitRadius(p)) cursor = 'grab';
       else if (g) cursor = !g.hx ? 'ns-resize' : !g.hy ? 'ew-resize' : g.hx === g.hy ? 'nwse-resize' : 'nesw-resize';
       else if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) cursor = 'move';
@@ -378,6 +490,20 @@ export class SelectTool implements Tool {
       ctx.lineWidth = 1.5 * px;
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+    if (this.seatOn) {
+      // The surface the block is seating on.
+      const t = this.seatOn;
+      ctx.save();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 5 * px;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(t.ax, t.ay);
+      ctx.lineTo(t.ax + t.ux * t.len, t.ay + t.uy * t.len);
+      ctx.stroke();
+      ctx.restore();
     }
     drawGuides(ctx, this.guides, px);
     const r = this.bounds();
@@ -439,6 +565,20 @@ export class SelectTool implements Tool {
       }
     }
     handle(rx, ry2, true);
+    // A straight line, arrow or spring: a round handle on each end (drag to lengthen, shorten or turn it).
+    const sl = this.selectedLine();
+    if (sl && mat === IDENTITY) {
+      const live = this.mode?.k === 'end' && this.mode.preview ? (this.mode.preview[0] as PathEl) : sl.line;
+      for (const [x, y] of this.lineEnds(live)) {
+        ctx.beginPath();
+        ctx.arc(x, y, HANDLE * 1.1 * hp, 0, Math.PI * 2);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fill();
+        ctx.lineWidth = 2.5 * px;
+        ctx.strokeStyle = isDarkColor(store.page.bg) ? '#000' : '#fff';
+        ctx.stroke();
+      }
+    }
     // Arc: a coloured bend handle at its middle.
     const arc = this.selectedArc();
     if (arc && mat === IDENTITY) {

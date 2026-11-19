@@ -7,12 +7,10 @@ import { beep, makeDraggable } from '../ui/panel';
 // and glows when time is up.
 
 const PRESETS: [number, string][] = [
-  [30, '30s'],
-  [60, '1m'],
-  [120, '2m'],
-  [180, '3m'],
-  [300, '5m'],
-  [600, '10m'],
+  [60, '1 min'],
+  [120, '2 min'],
+  [300, '5 min'],
+  [600, '10 min'],
 ];
 const R = 92;
 const C = 2 * Math.PI * R;
@@ -56,9 +54,7 @@ export function openTimer(host: HTMLElement): void {
     </div>
     <div class="qt-presets">${PRESETS.map(([s, n]) => `<button class="qt-chip" data-p="${s}">${n}</button>`).join('')}</div>
     <div class="qt-ctrl">
-      <button class="qt-round" data-adj="-30" aria-label="30 seconds less">−30s</button>
       <button class="qt-go" data-a="go" aria-label="Start"><span data-go>Start</span></button>
-      <button class="qt-round" data-adj="30" aria-label="30 seconds more">+30s</button>
     </div>
     <button class="qt-reset" data-a="reset">Reset</button>`;
   host.appendChild(card);
@@ -84,6 +80,7 @@ export function openTimer(host: HTMLElement): void {
     card.classList.toggle('warn', running && left <= 10_000 && left > 0);
     card.classList.toggle('done', done);
     card.classList.toggle('running', running);
+    card.dataset.fresh = String(!running && !done && left >= total);
     subEl.textContent = done ? "Time's up!" : running ? 'Answer now' : left < total ? 'Paused' : 'Ready';
     goEl.textContent = running ? 'Pause' : left < total && !done ? 'Resume' : 'Start';
     if (running && left <= 0) {

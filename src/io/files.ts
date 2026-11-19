@@ -1,10 +1,14 @@
 import { type Board, liteDevice } from '../board';
 import { regroup, uid } from '../geometry';
 import { fitInPage, PAGE } from '../page';
-import { pageRegion, renderRegion } from '../renderer';
+import { imagesReady, pageRegion, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
+import { inlinePictures } from './assets';
+import { saveSource } from './library';
+import { migrateDoc } from './migrate';
 import type { Doc, El, ImageEl, Page, Rect } from '../types';
 import { isAppleTouch } from '../ui/install';
+import { toast } from '../ui/panel';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -142,16 +146,31 @@ export async function insertImages(board: Board, files?: File[]): Promise<void> 
 export async function importPdf(board: Board, file?: File, onProgress?: (done: number, total: number) => void): Promise<void> {
   file ??= (await pickFiles('application/pdf'))[0];
   if (!file) return;
-  // The legacy build carries polyfills, so PDFs open on older tablets and boards too.
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  if (import.meta.env.MODE === 'single') {
-    // Single-file offline build: the worker travels inside the page as text.
-    const code = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?raw')).default;
-    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
-  } else {
-    pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
+  // Keep the original file on this device. Its pages are drawn only when
+  // shown (see io/pdfpages.ts), so even a book of hundreds of MB opens in
+  // seconds, and a saved PDF reuses the real pages (small and sharp).
+  const source = await saveSource(file).catch(() => '');
+  if (source) {
+    const { openSource, pageSrc } = await import('./pdfpages');
+    const pdf = await openSource(source, file);
+    if (await relinkBook(pdf, source)) return;
+    const pages: Page[] = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const base = page.getViewport({ scale: 1 });
+      page.cleanup();
+      const img: ImageEl = { id: uid(), type: 'image', src: pageSrc(source, i - 1), ...fitInPage(base.width, base.height), rot: 0, locked: true, pdf: { src: source, page: i - 1 } };
+      const p = newPage(store.page.bg, 'none');
+      p.els = [img];
+      pages.push(p);
+      if (i % 10 === 0 || i === pdf.numPages) onProgress?.(i, pdf.numPages);
+    }
+    return addPdfPages(board, pages);
   }
-  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  // No space to keep the file: every page becomes a picture now (as before).
+  const { pdfjs } = await import('./pdfpages');
+  const task = (await pdfjs()).getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  const pdf = await task.promise;
   const pages: Page[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -171,11 +190,19 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     await page.render({ canvasContext: ctx, viewport: vp, canvas } as Parameters<typeof page.render>[0]).promise;
     const img: ImageEl = { id: uid(), type: 'image', src: canvas.toDataURL('image/jpeg', 0.92), ...rect, rot: 0, locked: true };
+    canvas.width = canvas.height = 1;
+    page.cleanup();
     const p = newPage(store.page.bg, 'none');
     p.els = [img];
     pages.push(p);
     onProgress?.(i, pdf.numPages);
   }
+  await task.destroy();
+  addPdfPages(board, pages);
+}
+
+/** Put the pages of an opened PDF into the notebook (in place of an empty page, or after this one). */
+function addPdfPages(board: Board, pages: Page[]): void {
   if (!pages.length) return;
   const all = store.doc.pages.slice();
   // Replace the current page if it is empty, otherwise insert after it.
@@ -185,12 +212,53 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   board.fitPage();
 }
 
+/**
+ * The same book was opened here before this version kept original files:
+ * its pages are pictures with the teacher's writing on them. Offer to link
+ * them to this file (nothing on the pages changes), so Save as PDF becomes
+ * small. Matched by page count and page shapes. True if linked.
+ */
+async function relinkBook(pdf: { numPages: number; getPage(i: number): Promise<{ getViewport(o: { scale: number }): { width: number; height: number } }> }, source: string): Promise<boolean> {
+  // Runs of book pages (a locked picture first on the page) without a kept original.
+  const runs: number[][] = [];
+  let run: number[] = [];
+  store.doc.pages.forEach((p, i) => {
+    const e = p.els[0];
+    if (e?.type === 'image' && e.locked && !e.pdf) run.push(i);
+    else if (run.length) {
+      runs.push(run);
+      run = [];
+    }
+  });
+  if (run.length) runs.push(run);
+  const match = runs.find((r) => r.length === pdf.numPages);
+  if (!match) return false;
+  for (let j = 0; j < match.length; j++) {
+    const vp = (await pdf.getPage(j + 1)).getViewport({ scale: 1 });
+    const e = store.doc.pages[match[j]].els[0] as ImageEl;
+    if (Math.abs(vp.width / vp.height - e.w / e.h) > 0.02 * (e.w / e.h)) return false;
+  }
+  if (!confirm(`This notebook already has these ${pdf.numPages} pages (opened earlier). Link them to this file so "Save as PDF" is much smaller? Your writing stays as it is.\n\nOK = link the pages · Cancel = add the PDF again as new pages`)) return false;
+  const pages = store.doc.pages.map((p, i) => {
+    const j = match.indexOf(i);
+    if (j < 0) return p;
+    const [first, ...rest] = p.els;
+    // The big stored picture is no longer needed: the page is drawn from the file.
+    return { ...p, els: [{ ...(first as ImageEl), src: `pdfp:${source}:${j}`, pdf: { src: source, page: j } }, ...rest] };
+  });
+  store.commit(pages, store.index);
+  toast(`Linked ${pdf.numPages} pages. Save as PDF will now be small.`, 4000);
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Save / open lesson files
 
-export function saveFile(): void {
+/** A .teachly file: the whole notebook, every picture written out in it (so it opens anywhere). */
+export async function saveFile(): Promise<void> {
   const doc = store.doc;
-  const blob = new Blob([JSON.stringify(doc)], { type: 'application/octet-stream' });
+  const whole = { ...doc, pages: await inlinePictures(doc.pages) };
+  const blob = new Blob([JSON.stringify(whole)], { type: 'application/octet-stream' });
   download(blob, `${safeName(doc.title)}.teachly`);
 }
 
@@ -199,9 +267,11 @@ export async function openFile(file?: File): Promise<void> {
   file ??= (await pickFiles(isAppleTouch() ? '' : '.teachly,.json,application/json'))[0];
   if (!file) return;
   try {
-    const doc = JSON.parse(await file.text()) as Doc;
-    if (!Array.isArray(doc.pages)) throw new Error('Not a Teachly file');
-    store.loadDoc({ version: 1, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages.length ? doc.pages : [newPage()] });
+    const raw = JSON.parse(await file.text()) as Doc;
+    if (!Array.isArray(raw.pages)) throw new Error('Not a Teachly file');
+    // A file made by an older version is brought up to the current format the same safe way.
+    const { doc } = migrateDoc({ ...raw, pages: raw.pages.length ? raw.pages : [newPage()] });
+    store.loadDoc({ version: 1, schema: doc.schema, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages, ...(doc.orient === 'portrait' ? { orient: 'portrait' as const } : {}) });
   } catch (e) {
     alert(`Could not open file: ${(e as Error).message}`);
   }
@@ -210,42 +280,76 @@ export async function openFile(file?: File): Promise<void> {
 // ---------------------------------------------------------------------------
 // Export
 
-function exportCanvas(_board: Board, page: Page, maxSide = 2400): HTMLCanvasElement {
-  // Exports show the page plus anything written beyond it.
+function exportCanvas(_board: Board, page: Page, maxSide = 4800): HTMLCanvasElement {
+  // Exports show the page plus anything written beyond it, sharp (up to 3x).
   const r: Rect = pageRegion(page.els);
-  const k = Math.min(3, maxSide / Math.max(r.w, r.h));
+  const k = Math.min(3, maxSide / Math.max(r.w, r.h), Math.sqrt(14_000_000 / (r.w * r.h)));
   return renderRegion(page, r, r.w * k, r.h * k);
 }
 
-export function exportPng(board: Board): void {
+export async function exportPng(board: Board): Promise<void> {
+  await imagesReady(store.page); // pictures are fetched from the device when first drawn
   const c = exportCanvas(board, store.page);
   c.toBlob((b) => b && download(b, `${safeName(store.doc.title)}-page${store.index + 1}.png`), 'image/png');
 }
 
-export async function exportPdf(board: Board): Promise<void> {
-  const { jsPDF } = await import('jspdf');
-  let pdf: InstanceType<typeof jsPDF> | null = null;
-  for (const page of store.doc.pages) {
-    const c = exportCanvas(board, page, 2000);
-    const w = c.width, h = c.height;
-    const orient = w >= h ? 'landscape' : 'portrait';
-    if (!pdf) pdf = new jsPDF({ orientation: orient, unit: 'px', format: [w, h], hotfixes: ['px_scaling'] });
-    else pdf.addPage([w, h], orient);
-    pdf.addImage(c.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, w, h);
-  }
-  if (pdf) download(pdf.output('blob'), `${safeName(store.doc.title)}.pdf`);
+/**
+ * Screenshot: exactly what is on the screen now (the part of the board in view, with its background and everything
+ * on it), as a sharp PNG. No buttons or menus are in it. Larger than the screen so it stays sharp when shown big.
+ */
+export async function exportScreenshot(board: Board): Promise<void> {
+  await imagesReady(store.page);
+  const r: Rect = board.viewRect();
+  const k = Math.min(Math.max(window.devicePixelRatio || 1, 2) * board.cam.z, 4096 / Math.max(r.w, r.h), Math.sqrt(14_000_000 / (r.w * r.h)));
+  const c = renderRegion(store.page, r, Math.round(r.w * k), Math.round(r.h * k));
+  const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/png'));
+  if (blob) download(blob, `${safeName(store.doc.title)}-screenshot.png`);
+}
+
+/**
+ * PDF of every page: small and sharp at any zoom. Writing, shapes and the
+ * background go in as vector lines, pictures as they are stored, and pages
+ * of an opened PDF as the original PDF pages (see io/pdfvector.ts).
+ */
+export async function exportPdf(_board: Board): Promise<void> {
+  const { makePdf } = await import('./pdfvector');
+  const { blob, pictures } = await makePdf(store.doc.pages, liteDevice() ? 2.25 : 3);
+  download(blob, `${safeName(store.doc.title)}.pdf`);
+  const mb = blob.size / 1048576;
+  const size = mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(blob.size / 1024))} KB`;
+  toast(
+    pictures
+      ? `PDF saved (${size}). ${pictures} book page${pictures === 1 ? ' was' : 's were'} opened in an older version and went in as pictures. Open that PDF again (Insert > PDF) for a much smaller file.`
+      : `PDF saved (${size}).`,
+    pictures ? 9000 : 3000,
+  );
 }
 
 /** Paste handler: images from clipboard, or internal element clipboard. */
 let elementClipboard: El[] = [];
 
-export function copySelection(): void {
+/** The page the clipboard was copied from: pasting on another page keeps the same place. */
+let copiedFrom = '';
+
+/** Copy the selected things (they can be pasted on any page, also after the page changes). */
+export function copySelection(): number {
   elementClipboard = store.selectedEls().map((e) => structuredClone(e));
+  copiedFrom = store.page.id;
+  clipListeners.forEach((fn) => fn());
+  return elementClipboard.length;
 }
+
+export const hasClipboard = (): boolean => elementClipboard.length > 0;
+export const clipboardCount = (): number => elementClipboard.length;
+
+/** Told whenever something is copied (so a Paste button can show up). */
+const clipListeners = new Set<() => void>();
+export const onClipboardChange = (fn: () => void): void => void clipListeners.add(fn);
 
 export function pasteElements(board: Board): boolean {
   if (!elementClipboard.length) return false;
-  const off = 24 / board.cam.z;
+  // Same page: a little to the side so the copy is visible; another page: exactly the same place.
+  const off = copiedFrom === store.page.id ? 24 / board.cam.z : 0;
   const els = regroup(elementClipboard).map((e) => {
     const c = structuredClone(e) as El;
     c.id = uid();
@@ -257,6 +361,7 @@ export function pasteElements(board: Board): boolean {
     return c;
   });
   elementClipboard = els.map((e) => structuredClone(e));
+  copiedFrom = store.page.id;
   store.addEls(els);
   store.setTool({ tool: 'select' });
   store.select(els.map((e) => e.id));

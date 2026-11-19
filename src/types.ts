@@ -32,6 +32,14 @@ export interface PathEl {
   region?: boolean;
   rings?: number[][];
   locked?: boolean;
+  /** Other things (a block) can sit on this edge / outline (ground, table, wedge slope, top of a block). */
+  surf?: boolean;
+  /** A block that seats itself on the nearest surface (Auto set). */
+  snap?: 'block';
+  /** A spring: rebuilt from its two ends when stretched or squeezed, so the coils keep their size. */
+  spring?: { coils: number; amp: number; lead: number };
+  /** An angle mark (the arc): redrawn when the triangle in its group is stretched, so it always shows the real angle at corner `v`. */
+  ang?: { v: number };
 }
 
 export interface BoxBase {
@@ -56,11 +64,18 @@ export interface TextEl extends BoxBase {
   /** Typeface: default (Inter), 'orbitron' (numbers, futuristic) or 'exo' (Exo 2). */
   font?: 'orbitron' | 'exo';
   bg?: string | null;
+  /** An angle value (like 30°): kept equal to the real angle at corner `v` of the triangle in its group. */
+  ang?: { v: number };
 }
 
 export interface ImageEl extends BoxBase {
   type: 'image';
   src: string;
+  /**
+   * A page of an opened PDF: the original file is kept on the device
+   * (library key) so a saved PDF can reuse the real page, small and sharp.
+   */
+  pdf?: { src: string; page: number };
 }
 
 export interface TableEl extends BoxBase {
@@ -97,6 +112,8 @@ export interface Page {
   bg: string;
   pattern: BgPattern;
   els: El[];
+  /** A short label put on the page in the page grid (Tag). */
+  tag?: string;
 }
 
 export interface Doc {
@@ -105,6 +122,12 @@ export interface Doc {
   id?: string;
   title: string;
   pages: Page[];
+  /** A vertical notebook: its pages are tall (3:4). Missing = the pages follow the screen. */
+  orient?: 'portrait';
+  /** Format of the saved document (2 = pictures kept as separate assets). Older ones are migrated on load. */
+  schema?: number;
+  /** Counts every change; a save never replaces a newer revision with an older one. */
+  rev?: number;
 }
 
 export interface Camera {

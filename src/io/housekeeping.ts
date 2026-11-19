@@ -1,12 +1,14 @@
 import type { Board } from '../board';
 import { trimImageCache } from '../renderer';
 import { store } from '../store';
-import { cleanOrphans, saveNotebook } from './library';
+import { saveNow } from './autosave';
+import { dropUnusedSources, recoverOrphans } from './library';
 import { saveSession } from './session';
 
 // Housekeeping, so Teachly stays light and fast however many days it runs:
 // - asks the device to keep the notebooks (never cleared on its own)
-// - removes leftovers of interrupted saves and old website caches
+// - puts back into the library any saved notebook missing from its list
+//   (never deletes a notebook), and removes old website caches
 // - while the board is quiet: frees pictures no page uses any more and
 //   trims a very long undo history
 // - after a long time in the background (or a very long day), refreshes
@@ -19,13 +21,20 @@ const started = performance.now();
 
 function imagesInUse(): Set<string> {
   const keep = new Set<string>();
-  for (const p of store.doc.pages) for (const e of p.els) if (e.type === 'image') keep.add(e.src);
+  store.doc.pages.forEach((p, i) => {
+    for (const e of p.els) {
+      if (e.type !== 'image') continue;
+      // Book pages (drawn on demand) are kept only around the page in use.
+      if (e.src.startsWith('pdfp:') && Math.abs(i - store.index) > 2) continue;
+      keep.add(e.src);
+    }
+  });
   return keep;
 }
 
 async function refresh(board: Board): Promise<void> {
   try {
-    await saveNotebook(store.doc);
+    await saveNow();
   } catch {
     /* keep going: the regular autosave has the latest anyway */
   }
@@ -44,7 +53,7 @@ export function startHousekeeping(board: Board): void {
 
   // 2. Start-up tidy (a little later, never during start).
   window.setTimeout(() => {
-    void cleanOrphans();
+    void recoverOrphans().then(() => dropUnusedSources());
     // Old website caches from earlier versions (the current one is kept by the service worker).
     void (async () => {
       try {

@@ -1,5 +1,5 @@
 import type { Board, Ptr, Tool } from '../board';
-import { dist, pathFromPoints, uid } from '../geometry';
+import { bbox, dist, hitTest, pathFromPoints, uid } from '../geometry';
 import type { Snapper } from '../instruments';
 import { freehandPath, isMarker, markerPath } from '../renderer';
 import { recognize } from '../shapes';
@@ -24,6 +24,9 @@ interface Live {
   t0: number;
   /** Finger / board-touch pen: drawn bit by bit on the wet-ink layer. */
   marker: boolean;
+  /** Last real finger position (the steadied line catches up to it on lift). */
+  rawX?: number;
+  rawY?: number;
   /** Where the wet line has been drawn up to (midpoint of the last two samples). */
   midX: number;
   midY: number;
@@ -188,7 +191,24 @@ export class PenTool implements Tool {
     if (!l || l.snapped) return;
     const minD = 0.6 * this.board.px;
     for (const [sx, sy, sp] of p.samples) {
-      const [x, y] = l.snapper ? l.snapper.project(sx, sy) : [sx, sy];
+      let [x, y] = l.snapper ? l.snapper.project(sx, sy) : [sx, sy];
+      // Finger / board touch: steady the hand (1-euro style). Slow, careful
+      // movement is smoothed more (the touch panel's jitter goes away),
+      // fast strokes follow the finger almost exactly (no lag).
+      // Default "Exact": the line is drawn right under the finger, exactly
+      // as written (no delay). Light / Strong steady a shaky hand.
+      const lvl = store.tool.inkSmooth ?? 0;
+      if (!l.snapper && lvl > 0 && (l.sim || lvl === 2)) {
+        const d = dist(x, y, l.lastX, l.lastY) / this.board.px;
+        // [floor, speed]: how much a slow move is smoothed, and how fast the
+        // line catches up when the hand moves quickly. Stylus: gentler.
+        const [f, k] = l.sim ? ([[1, 1], [0.5, 20], [0.3, 45]] as const)[lvl] : ([0.5, 30] as const);
+        const a = Math.min(1, f + d / k);
+        x = l.lastX + (x - l.lastX) * a;
+        y = l.lastY + (y - l.lastY) * a;
+        l.rawX = sx;
+        l.rawY = sy;
+      }
       if (dist(x, y, l.lastX, l.lastY) < minD) continue;
       l.pts.push(x, y, sp);
       l.lastX = x;
@@ -224,6 +244,11 @@ export class PenTool implements Tool {
         return;
       }
     }
+    // The steadied line ends exactly where the finger lifted.
+    if (!l.snapper && !l.snapped && l.rawX !== undefined && l.rawY !== undefined && dist(l.rawX, l.rawY, l.lastX, l.lastY) > 0.5 * this.board.px) {
+      l.pts.push(l.rawX, l.rawY, l.pts[l.pts.length - 1]);
+      if (l.marker) this.drawWet(l);
+    }
     let el: PathEl | null = l.snapped;
     if (!el) {
       el = {
@@ -240,8 +265,79 @@ export class PenTool implements Tool {
       // Arcs along the protractor must keep every point.
       if (l.snapper && !this.isStraight(l.pts)) el.pts = l.pts;
     }
+    // Scribble to erase: a quick back-and-forth scribble over writing rubs
+    // that writing out (and leaves no ink of its own).
+    if (!l.snapped && !l.snapper && store.settings.scribbleErase !== false && this.scribbleErase(l)) {
+      if (l.marker) this.board.renderWet();
+      this.board.invalidate('overlay');
+      return;
+    }
     store.addEls([el]);
     this.board.invalidate('overlay');
+  }
+
+  /** Is this stroke a fast scribble? If it covers writing, erase that writing. */
+  private scribbleErase(l: Live): boolean {
+    const p = l.pts, n = p.length / 3;
+    if (n < 8) return false;
+    const ms = performance.now() - l.t0;
+    let len = 0, turns = 0, prevAng: number | null = null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    // Direction changes measured between points a few pixels apart, so
+    // jitter does not count.
+    const step = 6 * this.board.px;
+    let ax = p[0], ay = p[1];
+    for (let i = 0; i < n; i++) {
+      const x = p[i * 3], y = p[i * 3 + 1];
+      x0 = Math.min(x0, x);
+      y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x);
+      y1 = Math.max(y1, y);
+      if (i) len += dist(x, y, p[i * 3 - 3], p[i * 3 - 2]);
+      if (dist(x, y, ax, ay) < step) continue;
+      const a = Math.atan2(y - ay, x - ax);
+      if (prevAng !== null) {
+        let d = Math.abs(a - prevAng);
+        if (d > Math.PI) d = 2 * Math.PI - d;
+        if (d > 2.3) turns++;
+      }
+      prevAng = a;
+      ax = x;
+      ay = y;
+    }
+    const diag = Math.hypot(x1 - x0, y1 - y0);
+    // Rubbing on one spot: many back-and-forth turns, a lot of line packed
+    // into a small area, done quickly.
+    if (turns < 7 || diag < 8 * this.board.px || len < diag * 5 || ms > 1800) return false;
+    const tol = Math.max(l.size, 4 * this.board.px);
+    const near = store.page.els.filter((el) => {
+      if (el.locked || el.type === 'tape' || el.type === 'image') return false;
+      const b = bbox(el);
+      return !(b.x > x1 + tol || b.x + b.w < x0 - tol || b.y > y1 + tol || b.y + b.h < y0 - tol);
+    });
+    if (!near.length) return false;
+    // Most of the scribble must lie over writing that is already there (new
+    // writing next to or across old writing is never taken for rubbing).
+    const hits = new Set<string>();
+    let onInk = 0, samples = 0;
+    for (let i = 0; i < n; i += 2) {
+      samples++;
+      const x = p[i * 3], y = p[i * 3 + 1];
+      let inArea = false;
+      for (const el of near) {
+        const b = bbox(el);
+        if (x >= b.x - tol && x <= b.x + b.w + tol && y >= b.y - tol && y <= b.y + b.h + tol) inArea = true;
+        if (el.type === 'path' ? hitTest(el, x, y, tol) : x >= el.x && x <= el.x + el.w && y >= el.y && y <= el.y + el.h) hits.add(el.id);
+      }
+      if (inArea) onInk++;
+    }
+    if (onInk / Math.max(1, samples) < 0.35) return false;
+    if (!hits.size) return false;
+    // A graph or other group goes as a whole.
+    const groups = new Set(store.page.els.filter((e) => hits.has(e.id) && e.group).map((e) => e.group));
+    for (const e of store.page.els) if (e.group && groups.has(e.group)) hits.add(e.id);
+    store.replaceEls(hits, []);
+    return true;
   }
 
   private isStraight(pts: number[]): boolean {

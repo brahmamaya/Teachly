@@ -164,25 +164,40 @@ export function openScoreboard(host: HTMLElement): void {
 // ---------------------------------------------------------------------------
 // Calculator
 
+// Main keys always show. The row of functions has an "Inv" key that swaps sin / cos / tan / ln / log /
+// x² for their inverses: sin⁻¹ cos⁻¹ tan⁻¹ eˣ 10ˣ √.
 const KEYS = [
-  ['sin', 'cos', 'tan', 'deg'],
-  ['(', ')', '^', '√'],
+  ['C', '(', ')', '⌫'],
   ['7', '8', '9', '÷'],
   ['4', '5', '6', '×'],
   ['1', '2', '3', '−'],
-  ['0', '.', 'π', '+'],
-  ['C', '⌫', 'Ans', '='],
+  ['0', '.', 'Ans', '+'],
+];
+/** [normal label, text it inserts, inverse label, inverse text]. */
+const FUNCS: [string, string, string, string][] = [
+  ['sin', 'sin(', 'sin⁻¹', 'asin('],
+  ['cos', 'cos(', 'cos⁻¹', 'acos('],
+  ['tan', 'tan(', 'tan⁻¹', 'atan('],
+  ['ln', 'ln(', 'eˣ', 'exp('],
+  ['log', 'log(', '10ˣ', '10^('],
+  ['x²', '^2', '√', 'sqrt('],
+  ['xʸ', '^', '1/x', '1/('],
+  ['π', 'π', 'e', 'e'],
+  ['|x|', 'abs(', 'x!', '!'],
 ];
 
 export function openCalculator(host: HTMLElement, board: Board): void {
   const body = floatingPanel(host, { id: 'calc', title: 'Calculator', iconName: 'calc', width: 340 });
   if (!body) return;
   let deg = true;
+  let inv = false;
   let ans = 0;
   body.innerHTML = `
     <input class="calc-expr" inputmode="decimal" placeholder="0" aria-label="Expression" autocomplete="off" spellcheck="false">
     <div class="calc-result" data-res>&nbsp;</div>
-    <div class="calc-keys">${KEYS.flat().map((k) => `<button class="calc-k ${'=÷×−+'.includes(k) ? 'op' : ''} ${k === '=' ? 'eq' : ''}" data-k="${k}">${k}</button>`).join('')}</div>
+    <div class="calc-top"><button class="calc-chip" data-k="deg">DEG</button><button class="calc-chip" data-k="inv" aria-pressed="false" title="Inverse functions: sin⁻¹, cos⁻¹, tan⁻¹, eˣ, 10ˣ, √">Inv</button></div>
+    <div class="calc-fn">${FUNCS.map(([a], n) => `<button class="calc-k fn" data-f="${n}"><span data-fl>${a}</span></button>`).join('')}</div>
+    <div class="calc-keys">${KEYS.flat().map((k) => `<button class="calc-k ${'÷×−+'.includes(k) ? 'op' : ''}" data-k="${k}">${k}</button>`).join('')}<button class="calc-k eq" data-k="=" style="grid-column:1/-1">=</button></div>
     <button class="btn wide" data-board>Write answer on board</button>`;
   const input = body.querySelector('.calc-expr') as HTMLInputElement;
   const res = body.querySelector('[data-res]') as HTMLElement;
@@ -216,10 +231,26 @@ export function openCalculator(host: HTMLElement, board: Board): void {
     degBtn.textContent = deg ? 'DEG' : 'RAD';
     degBtn.classList.toggle('on', deg);
   };
+  const syncInv = () => {
+    body.querySelectorAll<HTMLElement>('[data-f]').forEach((f) => {
+      const row = FUNCS[Number(f.dataset.f)];
+      (f.querySelector('[data-fl]') as HTMLElement).textContent = inv ? row[2] : row[0];
+    });
+    const ib = body.querySelector('[data-k=inv]') as HTMLElement;
+    ib.classList.toggle('on', inv);
+    ib.setAttribute('aria-pressed', String(inv));
+  };
   body.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
     if (!b) return;
     const k = b.dataset.k;
+    if (b.dataset.f !== undefined) {
+      const row = FUNCS[Number(b.dataset.f)];
+      insert(inv ? row[3] : row[1]);
+      eval_(false);
+      input.focus();
+      return;
+    }
     if (b.dataset.board !== undefined) {
       const v = eval_(true);
       if (v === null) return;
@@ -234,7 +265,11 @@ export function openCalculator(host: HTMLElement, board: Board): void {
     if (!k) return;
     if (k === 'C') input.value = '';
     else if (k === '⌫') input.value = input.value.slice(0, -1);
-    else if (k === 'deg') {
+    else if (k === 'inv') {
+      inv = !inv;
+      syncInv();
+      return;
+    } else if (k === 'deg') {
       deg = !deg;
       syncDeg();
     } else if (k === '=') {
@@ -244,8 +279,7 @@ export function openCalculator(host: HTMLElement, board: Board): void {
         return;
       }
       return;
-    } else if (['sin', 'cos', 'tan', '√'].includes(k)) insert(`${k === '√' ? 'sqrt' : k}(`);
-    else insert(k);
+    } else insert(k);
     eval_(false);
   });
   input.addEventListener('input', () => eval_(false));
@@ -254,4 +288,5 @@ export function openCalculator(host: HTMLElement, board: Board): void {
     if (e.key === 'Enter') (body.querySelector('[data-k="="]') as HTMLElement).click();
   });
   syncDeg();
+  syncInv();
 }

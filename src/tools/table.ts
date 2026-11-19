@@ -57,7 +57,7 @@ export class TableEditor {
 
   constructor(private board: Board) {
     store.on('camera', () => this.position());
-    store.on('page', () => this.close());
+    store.on('leave', () => this.close());
   }
 
   get active(): boolean {

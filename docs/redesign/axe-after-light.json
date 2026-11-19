@@ -1,0 +1,47 @@
+{
+ "writing": [
+  {
+   "id": "meta-viewport",
+   "impact": "moderate",
+   "n": 1,
+   "help": "Zooming and scaling must not be disabled",
+   "first": "meta[name=\"viewport\"]"
+  }
+ ],
+ "insert": [
+  {
+   "id": "meta-viewport",
+   "impact": "moderate",
+   "n": 1,
+   "help": "Zooming and scaling must not be disabled",
+   "first": "meta[name=\"viewport\"]"
+  }
+ ],
+ "menu": [
+  {
+   "id": "meta-viewport",
+   "impact": "moderate",
+   "n": 1,
+   "help": "Zooming and scaling must not be disabled",
+   "first": "meta[name=\"viewport\"]"
+  }
+ ],
+ "selection": [
+  {
+   "id": "meta-viewport",
+   "impact": "moderate",
+   "n": 1,
+   "help": "Zooming and scaling must not be disabled",
+   "first": "meta[name=\"viewport\"]"
+  }
+ ],
+ "pages": [
+  {
+   "id": "meta-viewport",
+   "impact": "moderate",
+   "n": 1,
+   "help": "Zooming and scaling must not be disabled",
+   "first": "meta[name=\"viewport\"]"
+  }
+ ]
+}

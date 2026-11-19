@@ -21,6 +21,7 @@ export class ShapeTool implements Tool {
   /** Smart guides for the shape being drawn. */
   private guides: Guide[] = [];
   private targets: Rect[] = [];
+  private hadSel = false;
 
   constructor(private board: Board, private select: SelectTool) {}
 
@@ -36,6 +37,9 @@ export class ShapeTool implements Tool {
       this.select.down(p);
       return;
     }
+    // A shape is still selected from last time: a tap only lets go of it,
+    // a drag draws the next shape of the same kind.
+    this.hadSel = store.selection.size > 0;
     store.clearSelection();
     const snap = this.board.instruments.snapAt(p.x, p.y);
     const [x, y] = snap ? snap.project(p.x, p.y) : [p.x, p.y];
@@ -93,7 +97,14 @@ export class ShapeTool implements Tool {
     this.start = null;
     let els = this.preview;
     // A tap (or a tiny wobble of a board touch) places one neat, standard-size shape.
-    if (Math.hypot(p.x - s.x, p.y - s.y) < 14 * this.board.px) {
+    const tap = Math.hypot(p.x - s.x, p.y - s.y) < 14 * this.board.px;
+    if (tap && this.hadSel) {
+      this.preview = [];
+      this.guides = [];
+      this.board.invalidate('overlay');
+      return;
+    }
+    if (tap) {
       // Tap: drop a default-sized shape.
       const axes = store.tool.shape === 'axes2' || store.tool.shape === 'axes3';
       const d = (axes ? 360 : 150) * inkScale(), dh = axes ? d * 0.8 : d;
@@ -108,10 +119,9 @@ export class ShapeTool implements Tool {
       els = els.map((e) => ({ ...e, group }));
     }
     store.addEls(els);
-    // One touch → one shape. It stays selected for editing (colour, size,
-    // fill…); the next shape is picked from the Shapes button again, so a
-    // stray touch elsewhere never draws another one.
-    store.setTool({ tool: 'select' });
+    // The new shape stays selected for editing (colour, size, fill…). The
+    // Shapes tool stays on: the next drag draws the same shape again, a tap
+    // elsewhere just lets go. Another shape is picked from the Shapes button.
     store.select(els.map((e) => e.id));
   }
 
