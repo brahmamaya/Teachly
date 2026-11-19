@@ -8347,3 +8347,13 @@ button,
   width: 34px;
   height: 34px;
 }
+
+/* My pens: four saved pens in the pen menu */
+.n3-presets { display: flex; align-items: center; gap: 6px; }
+.n3-presets span { font-size: 11px; opacity: 0.7; margin-right: 2px; }
+.n3-preset { width: 30px; height: 30px; border-radius: 10px; border: 0; background: rgba(127, 127, 127, 0.16); display: grid; place-items: center; font-size: 16px; line-height: 1; }
+.n3-preset i { border-radius: 50%; display: block; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.n3-preset.empty { opacity: 0.6; }
+.n3-preset.arm { box-shadow: 0 0 0 2px #2563eb; }
+.n3-psave { height: 30px; padding: 0 10px; border-radius: 10px; border: 0; background: rgba(127, 127, 127, 0.16); font-size: 12px; }
+.n3-psave.on { background: #2563eb; color: #fff; }

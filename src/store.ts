@@ -3,7 +3,17 @@ import { fitIntoPage, regroup, uid } from './geometry';
 import { setPageShape } from './page';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } from './types';
 
+/** A saved pen: kind, colour, thickness and steadiness ("My pens" in the pen menu). */
+export interface PenPreset {
+  style: 'pen' | 'brush' | 'calligraphy' | 'highlighter';
+  color: string;
+  size: number;
+  smooth: number;
+}
+
 export interface Settings {
+  /** Four saved pens (null = empty slot). */
+  penPresets?: (PenPreset | null)[];
   penOnly: boolean;
   palmErase: boolean;
   /** Hold the pen still at the end of a line to turn it into a neat shape (off: ink stays exactly as written). */

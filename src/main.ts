@@ -1,6 +1,7 @@
 import './polyfills';
 import './styles.css';
 import './ui/tokens.css';
+import './ui/look.css';
 import { App } from './ui/app';
 import * as autosave from './io/autosave';
 import { showUpdatePill } from './ui/updatepill';
