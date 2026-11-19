@@ -954,6 +954,7 @@ export class App {
             ${sw('palmErase', 'Erase with palm', s.palmErase)}
             ${sw('scribbleErase', 'Scribble to erase', s.scribbleErase !== false)}
             ${sw('holdShapes', 'Hold pen to make a shape', s.holdShapes)}
+            ${sw('inkPredict', 'Ink ahead of the pen (try on slow boards)', !!s.inkPredict)}
             ${sw('bigControls', 'Large buttons (classroom boards, fingers)', !!s.bigControls)}
           </details>
           <div class="mt-foot"><button data-act="privacy">Privacy</button>·<button data-act="terms">Terms</button><span>v ${BUILD_TIME}</span></div>`;
