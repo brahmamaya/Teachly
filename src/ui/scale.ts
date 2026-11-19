@@ -37,8 +37,13 @@ export function computeUiScale(size: UiSize, toolbarWidth: number, avail = windo
   s *= PREF[size] ?? 1;
   // Never let the toolbar overflow the screen.
   if (toolbarWidth > 0) s = Math.min(s, (avail - 16) / toolbarWidth);
-  current = Math.max(0.5, Math.round(s * 100) / 100);
+  const next = Math.max(0.5, Math.round(s * 100) / 100);
+  const changed = next !== current;
+  current = next;
   document.documentElement.style.setProperty('--ui', String(current));
+  // Things placed between the toolbar halves (the pieces dock, the pen bar) depend on the size of the buttons:
+  // tell them, because scaling does not change the layout size, so nothing else would make them look again.
+  if (changed) window.dispatchEvent(new Event('teachly-ui'));
   return current;
 }
 

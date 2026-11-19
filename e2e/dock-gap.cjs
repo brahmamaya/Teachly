@@ -22,6 +22,29 @@ const { check, finish } = require('./lib.cjs');
     }
     await ctx.close();
   }
+  // The sizes can be measured too small (before the buttons reach their final size). Here the dock's width is deliberately
+  // reported 40% too small: the final check with real positions must still keep it clear of both halves.
+  for (const [w, h] of [[1194, 834], [1366, 1024]]) {
+    const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: true });
+    const page = await ctx.newPage();
+    await page.goto(process.env.URL || 'http://localhost:5173/');
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.__teachly.store.setSettings({ subject: 'phy-11-nlm', tbHidden: [], tbShown: [] }));
+    await page.waitForTimeout(900);
+    await page.evaluate(() => {
+      const d = document.querySelector('.subj-dock');
+      Object.defineProperty(d, 'offsetWidth', { get() { const ui = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1; return Math.round((this.getBoundingClientRect().width / ui) * 0.6); } });
+      window.dispatchEvent(new Event('resize'));
+    });
+    await page.waitForTimeout(700);
+    const m = await page.evaluate(() => {
+      const r = (s) => { const e = document.querySelector(s); if (!e) return null; const x = e.getBoundingClientRect(); return [x.left, x.right, x.top, x.bottom]; };
+      return { l: r('.tb-left'), r: r('.tb-right'), d: r('.subj-dock') };
+    });
+    const onLine = Math.abs((m.d[2] + m.d[3]) / 2 - (m.l[2] + m.l[3]) / 2) < 10;
+    check(`${w}x${h}, sizes measured 40% too small: the dock still does not touch the halves`, !onLine || (m.d[0] >= m.l[1] + 6 && m.d[1] <= m.r[0] - 6), JSON.stringify({ l: Math.round(m.l[1]), d: [Math.round(m.d[0]), Math.round(m.d[1])], r: Math.round(m.r[0]), onLine }));
+    await ctx.close();
+  }
   await b.close();
   finish();
 })();

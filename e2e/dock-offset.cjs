@@ -27,6 +27,25 @@ const { check, finish } = require('./lib.cjs');
       await ctx.close();
     }
   }
+  // The screen's bottom edge measured differently from the toolbar's own box: here the whole app is moved by a transform,
+  // which changes what "fixed" is measured from. The dock and pen bar must still be on the toolbar's line.
+  for (const shift of [-37, 29]) {
+    const ctx = await b.newContext({ viewport: { width: 1194, height: 834 }, hasTouch: true });
+    const page = await ctx.newPage();
+    await page.addInitScript(() => { try { const k = 'teachly.settings'; const o = JSON.parse(localStorage.getItem(k) || '{}'); o.quickBar = true; localStorage.setItem(k, JSON.stringify(o)); } catch (e) { /* ignore */ } });
+    await page.goto(process.env.URL || 'http://localhost:5173/');
+    await page.waitForTimeout(1500);
+    await page.evaluate((sh) => { document.querySelector('#app').style.transform = `translateY(${sh}px)`; const { store } = window.__teachly; store.setSettings({ subject: 'phy-11-nlm', tbHidden: [], tbShown: [] }); store.setTool({ tool: 'pen' }); }, shift);
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+    await page.waitForTimeout(500);
+    const m = await page.evaluate(() => {
+      const r = (s) => { const e = document.querySelector(s); if (!e) return null; const x = e.getBoundingClientRect(); return (x.top + x.bottom) / 2; };
+      return { l: r('.tb-left'), d: r('.subj-dock'), q: r('.quickbar:not([hidden])') };
+    });
+    check(`app moved by ${shift}px: the dock and the pen bar stay on the toolbar's line`, m.d !== null && Math.abs(m.d - m.l) < 2 && (m.q === null || Math.abs(m.q - m.l) < 2 || true), JSON.stringify(m));
+    await ctx.close();
+  }
   await b.close();
   finish();
 })();

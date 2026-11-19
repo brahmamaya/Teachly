@@ -102,6 +102,19 @@ export function viewportBottom(): number {
   return probe.getBoundingClientRect().bottom;
 }
 
+/**
+ * Final check, done by looking at where the box really is: if its middle is not on the toolbar's middle line
+ * (some iPad browsers measure the screen's bottom edge differently from the toolbar's own box), move it by the
+ * difference. Both are measured the same way, so the answer is right whatever the browser's quirks are.
+ */
+export function alignMiddle(x: HTMLElement, wantY: number, bottomEdge: boolean): void {
+  const r = x.getBoundingClientRect();
+  const dy = (r.top + r.bottom) / 2 - wantY;
+  if (Math.abs(dy) < 0.5) return;
+  if (bottomEdge) x.style.bottom = `${parseFloat(x.style.bottom) + dy}px`;
+  else x.style.top = `${parseFloat(x.style.top) - dy}px`;
+}
+
 /** Free space kept around the pieces dock on the toolbar's line (about 30 px each side), so it never looks joined to the toolbar halves. */
 const GAP = 64;
 
@@ -119,6 +132,7 @@ export class SubjectPanel {
     store.on('settings', () => this.sync());
     store.on('tool', () => requestAnimationFrame(() => requestAnimationFrame(() => this.placeDock())));
     window.addEventListener('resize', () => this.placeDock());
+    window.addEventListener('teachly-ui', () => requestAnimationFrame(() => this.placeDock()));
     // The two toolbar halves change width when buttons are shown or hidden: lay the dock out again each time.
     const ro = new ResizeObserver(() => this.placeDock());
     host.querySelectorAll('.toolbars .toolbar, .toolbars').forEach((el) => ro.observe(el));
@@ -209,7 +223,15 @@ export class SubjectPanel {
    * the more pieces the dock shows and the more colours the pen bar shows (small bar with an arrow, then 7 colours,
    * then the whole bar with its slider). When even the smallest mix does not fit, they sit just above the toolbar.
    */
-  private placeDock(): void {
+  /** How many pieces the dock may show (lowered by the final overlap check below), and how often that check ran. */
+  private cap = Infinity;
+  private tries = 0;
+
+  private placeDock(retry = false): void {
+    if (!retry) {
+      this.cap = Infinity;
+      this.tries = 0;
+    }
     const el = this.dock;
     if (!el) return;
     const app = this.host;
@@ -238,10 +260,10 @@ export class SubjectPanel {
     clear(el);
     if (qb) clear(qb);
     if (!l || !r) return;
-    const roomy = l.right < r.left && !app.classList.contains('tb-stacked') && (edge === 'bottom' || edge === 'top') && app.dataset.tbalign !== 'middle';
+    const roomy = this.cap >= 0 && l.right < r.left && !app.classList.contains('tb-stacked') && (edge === 'bottom' || edge === 'top') && app.dataset.tbalign !== 'middle';
     const gap = r.left - l.right;
     const W = (x: HTMLElement) => x.offsetWidth * k;
-    const total = tiles.length;
+    const total = Math.min(tiles.length, this.cap);
     const MIN = 3;
     // The richest mix that fits: score = dock pieces + what the pen bar shows.
     let best: { size: 'full' | 'mid' | 'mini' | null; n: number; score: number } | null = null;
@@ -270,7 +292,7 @@ export class SubjectPanel {
     }
     if (!best) {
       // Above the toolbar (and above the pen bar when that is showing).
-      showN(Math.min(total, 6));
+      showN(Math.min(tiles.length, 6));
       if (qb && !popup) setQb('mini');
       const top = Math.min(l.top, r.top);
       const lift = qb ? qb.getBoundingClientRect().height + 10 : 0;
@@ -293,6 +315,7 @@ export class SubjectPanel {
         x.style.bottom = 'auto';
         x.style.top = `${centreY - half}px`;
       }
+      alignMiddle(x, centreY, edge === 'bottom');
     };
     const mid = (l.right + r.left) / 2;
     if (beside && qb) {
@@ -307,6 +330,20 @@ export class SubjectPanel {
         const above = el.getBoundingClientRect();
         qb.classList.add('inline');
         put(qb, mid, edge === 'top' ? above.bottom + 10 + qb.getBoundingClientRect().height / 2 : above.top - 10 - qb.getBoundingClientRect().height / 2);
+      }
+    }
+    // Last check, with what is really on the screen: the dock (and the pen bar beside it) must not touch either toolbar
+    // half. If they do (the sizes were measured before the buttons reached their final size), show one piece less and
+    // look again; when even the smallest dock does not fit it goes above the toolbar.
+    const L2 = app.querySelector('.tb-left')?.getBoundingClientRect();
+    const R2 = app.querySelector('.tb-right')?.getBoundingClientRect();
+    if (L2 && R2 && this.tries < 24) {
+      const boxes = [el, ...(beside && qb ? [qb] : [])].map((x) => x.getBoundingClientRect());
+      const left = Math.min(...boxes.map((b) => b.left)), right = Math.max(...boxes.map((b) => b.right));
+      if (left < L2.right + 8 || right > R2.left - 8) {
+        this.tries++;
+        this.cap = best.n > MIN ? best.n - 1 : -1;
+        this.placeDock(true);
       }
     }
   }
