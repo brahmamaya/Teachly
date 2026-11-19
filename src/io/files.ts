@@ -294,6 +294,19 @@ export async function exportPng(board: Board): Promise<void> {
 }
 
 /**
+ * Screenshot: exactly what is on the screen now (the part of the board in view, with its background and everything
+ * on it), as a sharp PNG. No buttons or menus are in it. Larger than the screen so it stays sharp when shown big.
+ */
+export async function exportScreenshot(board: Board): Promise<void> {
+  await imagesReady(store.page);
+  const r: Rect = board.viewRect();
+  const k = Math.min(Math.max(window.devicePixelRatio || 1, 2) * board.cam.z, 4096 / Math.max(r.w, r.h), Math.sqrt(14_000_000 / (r.w * r.h)));
+  const c = renderRegion(store.page, r, Math.round(r.w * k), Math.round(r.h * k));
+  const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, 'image/png'));
+  if (blob) download(blob, `${safeName(store.doc.title)}-screenshot.png`);
+}
+
+/**
  * PDF of every page: small and sharp at any zoom. Writing, shapes and the
  * background go in as vector lines, pictures as they are stored, and pages
  * of an opened PDF as the original PDF pages (see io/pdfvector.ts).

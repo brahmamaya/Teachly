@@ -7,6 +7,7 @@ import {
   onClipboardChange,
   exportPdf,
   exportPng,
+  exportScreenshot,
   importPdf,
   insertImages,
   insertImageSrc,
@@ -140,6 +141,7 @@ const TB_ITEMS: [string, string, 'left' | 'right'][] = [
   ['redo', 'Redo', 'right'],
   ['insert', 'Insert', 'right'],
   ['tools', 'Tools', 'right'],
+  ['shot', 'Screenshot', 'right'],
   ['timer', 'Timer', 'right'],
   ['poll', 'Poll', 'right'],
   ['graph', 'Graph', 'right'],
@@ -457,6 +459,7 @@ export class App {
       ${show('redo', `<button class="tb-btn" data-act="redo" title="Redo">${icon('redo', 22)}</button>`)}
       ${show('insert', `<button class="tb-btn ${this.popFor === 'insert' ? 'open' : ''}" data-pop="insert" title="Insert">${icon('plus', 22)}</button>`)}
       ${show('tools', `<button class="tb-btn ${this.popFor === 'tools' ? 'open' : ''}" data-pop="tools" title="Tools">${icon('ruler', 22)}</button>`)}
+      ${show('shot', `<button class="tb-btn" data-act="shot" title="Screenshot: save a picture of what is on the screen">${icon('shot', 22)}</button>`)}
       ${show('timer', `<button class="tb-btn" data-act="timer" title="Timer for a question">${icon('timer', 22)}</button>`)}
       ${show('poll', `<button class="tb-btn" data-act="poll" title="Poll: A B C D with a timer">${icon('poll', 22)}</button>`)}
       ${show('graph', `<button class="tb-btn" data-act="graph" title="Graph from an equation (y = …)">${icon('graph', 22)}</button>`)}
@@ -1268,6 +1271,9 @@ export class App {
         return;
       case 'export':
         void this.withProgress('Making PDF', () => exportPdf(b));
+        return;
+      case 'shot':
+        void exportScreenshot(b).then(() => toast('Screenshot saved'));
         return;
       case 'export-png':
         void exportPng(b).then(() => toast(`Picture of page ${store.index + 1} saved`));

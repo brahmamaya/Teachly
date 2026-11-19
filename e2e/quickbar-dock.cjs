@@ -44,7 +44,8 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   }
   // tight screens still work
   const tight = await run('ipad1180-all', 1180, 820, true, []);
-  check(`tight (1180, all buttons): a small pen bar (${tight.size}) and ${tight.tiles} pieces, on the line`, Math.abs(mid(tight.qb) - mid(tight.bar)) < 8 && tight.tiles >= 3, JSON.stringify([tight.size, tight.tiles]));
+  // (With every toolbar button shown, including Screenshot, the line is too short for both: the dock keeps the line and the small pen bar sits right above it.)
+  check(`tight (1180, all buttons): the dock on the line (${tight.tiles} pieces) and the small pen bar (${tight.size}) on the line or right above the dock`, Math.abs(mid(tight.dock) - mid(tight.bar)) < 8 && tight.tiles >= 3 && (Math.abs(mid(tight.qb) - mid(tight.bar)) < 8 || (tight.qb[3] <= tight.dock[2] + 2 && tight.dock[2] - tight.qb[3] < 30)), JSON.stringify([tight.size, tight.tiles, tight.dock, tight.qb]));
   const small = await run('ipad820-all', 820, 1180, true, []);
   check('narrow tablet: nothing overlaps (both sit above the toolbar if the line is too short)', small.dock && small.qb && (small.qb[3] <= small.dock[2] + 2 || small.dock[3] <= small.qb[2] + 2 || small.dock[1] <= small.qb[0] + 1 || small.qb[1] <= small.dock[0] + 1), JSON.stringify([small.dock, small.qb].map((a) => a.map(Math.round))));
   const phone = await run('phone', 390, 844, true, []);
