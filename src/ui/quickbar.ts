@@ -1,4 +1,5 @@
 import { store } from '../store';
+import { viewportBottom } from './subjectpanel';
 
 // Quick bar: while a pen (or shape) is chosen, a small pill floats next to the toolbar with a
 // few colours and three line sizes, so changing colour or thickness is ONE tap (the full menu
@@ -15,6 +16,7 @@ export class QuickBar {
   private key = '';
   /** With the subject dock open the bar shows only a few colours; the little arrow opens the whole bar. */
   private expanded = false;
+  private shownOnce = false;
 
   constructor(host: HTMLElement) {
     this.el = document.createElement('div');
@@ -41,7 +43,10 @@ export class QuickBar {
       this.update();
       this.place();
     });
-    store.on('settings', () => this.place());
+    store.on('settings', () => {
+      this.update();
+      this.place();
+    });
     window.addEventListener('resize', () => this.place());
     // The toolbar may be rebuilt or moved: follow it.
     const bars = document.querySelector('.toolbars');
@@ -88,7 +93,7 @@ export class QuickBar {
     el.style.left = `${(l.right + r.left) / 2}px`;
     if (edge === 'bottom') {
       el.style.top = 'auto';
-      el.style.bottom = `${window.innerHeight - c - half}px`;
+      el.style.bottom = `${viewportBottom() - c - half}px`;
     } else {
       el.style.bottom = 'auto';
       el.style.top = `${c - half}px`;
@@ -112,8 +117,12 @@ export class QuickBar {
 
   private update(): void {
     const t = store.tool;
-    const show = t.tool === 'pen' || t.tool === 'shape';
+    const show = (t.tool === 'pen' || t.tool === 'shape') && store.settings.quickBar === true;
+    const was = this.el.hidden;
     this.el.hidden = !show;
+    // The dock and the toolbar share the line with this bar: lay them out again when it appears or goes away.
+    if (was !== this.el.hidden && this.shownOnce) window.dispatchEvent(new Event('resize'));
+    this.shownOnce = true;
     this.syncMode();
     if (!show) return;
     const hl = t.tool === 'pen' && t.penStyle === 'highlighter';

@@ -5,7 +5,8 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
   const b = await chromium.launch();
   for (const [name, w, h, touch] of [['desk', 1280, 800, false], ['ipad', 820, 1180, true], ['phone', 390, 844, true]]) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: touch });
-    const page = await ctx.newPage(); await page.goto('http://localhost:5173/'); await page.waitForTimeout(1800);
+    const page = await ctx.newPage();
+    await page.addInitScript(() => { try { const k = 'teachly.settings'; const o = JSON.parse(localStorage.getItem(k) || '{}'); o.quickBar = true; localStorage.setItem(k, JSON.stringify(o)); } catch (e) { /* ignore */ } }); await page.goto('http://localhost:5173/'); await page.waitForTimeout(1800);
     await page.click('[data-tool=eraser]'); await page.click('[data-tool=pen]'); await page.waitForTimeout(350);
     const vis = await page.$eval('.quickbar', (e) => !e.hidden);
     check(name + ': quick bar shows with the pen', vis);

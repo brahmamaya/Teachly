@@ -85,6 +85,23 @@ const DOCK_ICONS: Record<string, [string, string]> = {
 
 const inkFor = (): string => (isDarkColor(store.page.bg) ? '#ffffff' : '#1e293b');
 
+/**
+ * Where the bottom edge of the screen is, for things placed with `bottom:` (position fixed).
+ * window.innerHeight is not always the same as that edge (iPad Safari, home-screen app, browser bars),
+ * which put the dock and the pen bar half below the screen; a probe sitting at `bottom: 0` tells the truth.
+ */
+export function viewportBottom(): number {
+  let probe = document.getElementById('vp-probe');
+  if (!probe) {
+    probe = document.createElement('div');
+    probe.id = 'vp-probe';
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:0;pointer-events:none;visibility:hidden';
+    document.body.appendChild(probe);
+  }
+  return probe.getBoundingClientRect().bottom;
+}
+
 export class SubjectPanel {
   private sheet: HTMLElement | null = null;
   private dock: HTMLElement | null = null;
@@ -253,7 +270,7 @@ export class SubjectPanel {
       const top = Math.min(l.top, r.top);
       const lift = qb ? qb.getBoundingClientRect().height + 10 : 0;
       if (edge === 'top') el.style.top = `${Math.max(l.bottom, r.bottom) + 12 + lift}px`;
-      else el.style.bottom = `${window.innerHeight - top + 12 + lift}px`;
+      else el.style.bottom = `${viewportBottom() - top + 12 + lift}px`;
       el.style.left = '50%';
       return;
     }
@@ -266,7 +283,7 @@ export class SubjectPanel {
       const half = x.offsetHeight / 2; // the box is scaled around its middle
       if (edge === 'bottom') {
         x.style.top = 'auto';
-        x.style.bottom = `${window.innerHeight - centreY - half}px`;
+        x.style.bottom = `${viewportBottom() - centreY - half}px`;
       } else {
         x.style.bottom = 'auto';
         x.style.top = `${centreY - half}px`;

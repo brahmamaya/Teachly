@@ -865,6 +865,7 @@ export class App {
             <input type="range" min="0" max="100" step="1" value="${Math.round((store.settings.tbY ?? (tbEdge() === 'top' ? 0 : 1)) * 100)}" data-tby aria-label="Toolbar height: top to bottom">
           </div>
           <button class="btn wide" data-tbstick ${tbFree() ? '' : 'disabled'}>Stick to the ${tbEdge()} edge</button>
+          <label class="check tbe-item tbe-qb"><input type="checkbox" data-quickbar ${store.settings.quickBar === true ? 'checked' : ''}> Pen colour bar (colours and thickness next to the toolbar)</label>
           <div class="muted small">Tick the buttons you want on the toolbar.</div>
           <div class="tbe-grid">${group()}</div>
           <div class="seg tbe-pos"><button data-tbsimple>Simple toolbar</button><button data-tbreset>Show all buttons</button></div>
@@ -891,6 +892,10 @@ export class App {
           if (el.dataset.tby !== undefined) {
             this.applyScale(true);
             this.fillPopover();
+            return;
+          }
+          if (el.dataset.quickbar !== undefined) {
+            store.setSettings({ quickBar: el.checked });
             return;
           }
           if (el.dataset.hexitem) {

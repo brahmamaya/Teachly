@@ -1,6 +1,6 @@
 import { blankNotebook, saveNotebook, setCover } from '../io/library';
 import type { Doc } from '../types';
-import { COVERS, coverHTML } from './covers';
+import { COVER_GROUPS, coverHTML, coverTabsHTML } from './covers';
 import { icon } from './icons';
 import { fadeOut } from './panel';
 
@@ -26,6 +26,7 @@ export function askNewNotebook(host: HTMLElement, o: { name: string }): Promise<
     back.className = 'sv-back dl-back';
     let portrait = false;
     let cover = '';
+    let tab = 'gen';
     const shapeBtn = (p: boolean, label: string) =>
       `<button type="button" class="nn-shape" data-shape="${p ? 'p' : 'l'}"><i class="nn-ico ${p ? 'tall' : 'wide'}"></i><span>${label}</span></button>`;
     back.innerHTML = `
@@ -40,6 +41,7 @@ export function askNewNotebook(host: HTMLElement, o: { name: string }): Promise<
           <div class="nn-label">Page shape</div>
           <div class="nn-shapes">${shapeBtn(false, 'Horizontal')}${shapeBtn(true, 'Vertical')}</div>
           <div class="nn-label">Cover <small>(optional)</small></div>
+          <div data-tabs></div>
           <div class="cv-grid wide" data-grid></div>
         </div>
         <button type="submit" class="dl-go">${icon('plus', 20)}<span>Create</span></button>
@@ -47,16 +49,18 @@ export function askNewNotebook(host: HTMLElement, o: { name: string }): Promise<
     host.appendChild(back);
     const box = back.querySelector('.nn-box') as HTMLFormElement;
     const grid = box.querySelector('[data-grid]') as HTMLElement;
+    const tabs = box.querySelector('[data-tabs]') as HTMLElement;
     const input = box.querySelector('input') as HTMLInputElement;
 
     // The covers are drawn for the chosen shape and carry the name being typed.
     const paint = () => {
       const title = input.value.trim() || o.name;
       box.querySelectorAll<HTMLElement>('.nn-shape').forEach((b) => b.classList.toggle('on', (b.dataset.shape === 'p') === portrait));
+      tabs.innerHTML = coverTabsHTML(tab, 'data-cg');
       grid.className = `cv-grid ${portrait ? 'tall' : 'wide'}`;
       grid.innerHTML = `<button type="button" class="cv-opt ${cover === '' ? 'on' : ''}" data-cv="">
           <span class="cv-none" data-o="${portrait ? 'p' : 'l'}"><span class="cv-blank">Plain</span></span><span class="cv-name">No cover</span></button>
-        ${COVERS.map((c) => `<button type="button" class="cv-opt ${cover === c.id ? 'on' : ''}" data-cv="${c.id}">${coverHTML(c, title, portrait)}<span class="cv-name">${c.name}</span></button>`).join('')}`;
+        ${(COVER_GROUPS.find((g) => g.id === tab) ?? COVER_GROUPS[0]).covers.map((c) => `<button type="button" class="cv-opt ${cover === c.id ? 'on' : ''}" data-cv="${c.id}">${coverHTML(c, title, portrait)}<span class="cv-name">${c.name}</span></button>`).join('')}`;
     };
     paint();
 
@@ -69,6 +73,11 @@ export function askNewNotebook(host: HTMLElement, o: { name: string }): Promise<
       const shape = (t.closest('[data-shape]') as HTMLElement | null)?.dataset.shape;
       if (shape) {
         portrait = shape === 'p';
+        return paint();
+      }
+      const cg = (t.closest('[data-cg]') as HTMLElement | null)?.dataset.cg;
+      if (cg) {
+        tab = cg;
         return paint();
       }
       const cv = t.closest('[data-cv]') as HTMLElement | null;
