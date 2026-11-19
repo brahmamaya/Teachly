@@ -1740,6 +1740,11 @@ export class App {
     const vertical = pos === 'left' || pos === 'right';
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
+    // Measure the halves as they are on ONE line: in two-row mode each half is stretched to the whole screen width, so
+    // measuring them then always said "too wide" and the toolbar stayed stuck in two rows (huge buttons) after the
+    // screen had been narrow once, e.g. for a moment at start-up or while rotating an iPad.
+    const wasStacked = this.root.classList.contains('tb-stacked');
+    if (wasStacked) this.root.classList.remove('tb-stacked');
     // Sizes are unaffected by the CSS scale transform.
     const L = vertical ? left.offsetHeight : left.offsetWidth;
     const R = vertical ? right.offsetHeight : right.offsetWidth;
