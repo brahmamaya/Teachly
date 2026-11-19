@@ -1,5 +1,5 @@
 import { refreshAngles } from './subjects/angles';
-import { fitIntoPage, uid } from './geometry';
+import { fitIntoPage, regroup, uid } from './geometry';
 import { setPageShape } from './page';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, ShapeKind, ToolId } from './types';
 
@@ -35,6 +35,8 @@ export interface Settings {
   hexAlpha?: number;
   /** Chosen chapter with ready-made pieces (see subjects/catalog.ts); none = no subject. */
   subject?: string | null;
+  /** Bigger toolbar buttons (about 1.5x), for classroom boards and fingers; off by default (compact). */
+  bigControls?: boolean;
   /** The strip of small symbols for the chosen chapter is shown next to the toolbar. */
   subjectDock?: boolean;
   /** The simple toolbar was applied once (so a teacher's own later choice is never overwritten). */
@@ -348,6 +350,24 @@ export class Store {
     this.emit('selection');
     this.commit(pages, from);
     return moving.length;
+  }
+
+  /**
+   * Copy things to another page (`to` = number of pages: a new page at the end). The originals stay; the copies
+   * are new things (new ids, own groups) in the same place, kept inside the page. One undo step. Returns how many.
+   */
+  copyElsToPage(ids: string[], to: number): number {
+    const from = this.index;
+    if (to === from || to < 0 || to > this.doc.pages.length) return 0;
+    const want = new Set(ids);
+    const src = this.page.els.filter((e) => want.has(e.id));
+    if (!src.length) return 0;
+    const copies = fitIntoPage(regroup(src.map((e) => ({ ...structuredClone(e), id: uid() }) as El)));
+    const pages = this.doc.pages.slice();
+    if (to === pages.length) pages.push(newPage(pages[from].bg, pages[from].pattern));
+    pages[to] = { ...pages[to], els: [...pages[to].els, ...copies] };
+    this.commit(pages, from);
+    return copies.length;
   }
 
   movePage(from: number, to: number): void {

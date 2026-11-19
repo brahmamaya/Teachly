@@ -6,6 +6,7 @@ import {
   hasClipboard,
   onClipboardChange,
   exportPdf,
+  exportPng,
   importPdf,
   insertImages,
   insertImageSrc,
@@ -15,6 +16,7 @@ import {
   readAsDataURL,
 } from '../io/files';
 import { isDarkColor, measureText } from '../renderer';
+import { nameControls, syncToolbarState } from './a11y';
 import { QuickBar } from './quickbar';
 import { SubjectPanel } from './subjectpanel';
 import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
@@ -233,6 +235,10 @@ export class App {
   /** The open menu belongs to a button on the floating hexagon. */
   private popFromHex = false;
   private propSection: PropSection = null;
+  /** Move or Copy chosen in the "to page" picker (remembered while the app is open). */
+  private pickMode: 'move' | 'copy' = 'move';
+  /** Delete page asks twice (this is when the first tap happened). */
+  private deleteArmedAt = 0;
   private selectTool: SelectTool;
   private pages: PagesPanel;
   private subject: SubjectPanel;
@@ -242,6 +248,9 @@ export class App {
 
   constructor(root: HTMLElement) {
     this.root = root;
+    // The whole teaching surface is one landmark (the canvas has no text for a screen reader; see docs/redesign/DESIGN-SPEC.md).
+    root.setAttribute('role', 'main');
+    root.setAttribute('aria-label', 'Teachly whiteboard');
     root.innerHTML = `
       <div class="board" id="board"></div>
       <div class="corner" aria-hidden="true">
@@ -336,7 +345,7 @@ export class App {
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && window.setTimeout(relayout, 200));
     window.setTimeout(relayout, 600);
     // Only a new button size needs a re-layout (other settings keep the menu open).
-    const tbKey = () => `${store.settings.tbHidden.join()}|${(store.settings.tbShown ?? []).join()}|${store.settings.subject ?? ''}`;
+    const tbKey = () => `${store.settings.tbHidden.join()}|${(store.settings.tbShown ?? []).join()}|${store.settings.subject ?? ''}|${store.settings.bigControls ? 'big' : ''}`;
     let layout = tbKey();
     store.on('settings', () => {
       const now = tbKey();
@@ -350,6 +359,7 @@ export class App {
     // Autosave (io/autosave.ts): shortly after each change, at once when the app is hidden or closed.
     startAutosave(() => this.board.busyInput);
     new SaveBadge(this.root.querySelector('.corner') as HTMLElement);
+    this.documentTitle();
     // Back exactly where the lesson stopped: notebook, page, spot, pen.
     restoreTools();
     void loadLastNotebook().then((doc) => {
@@ -367,6 +377,29 @@ export class App {
 
   // ---------------------------------------------------------------------------
   // Bottom toolbar
+
+  /** The notebook's name, top left: always visible, a tap opens My notebooks (where it can be renamed). */
+  private documentTitle(): void {
+    const btn = document.createElement('button');
+    btn.className = 'doc-title';
+    btn.dataset.act = 'library';
+    this.root.appendChild(btn);
+    const sync = () => {
+      const t = store.doc.title?.trim() || 'My notebook';
+      btn.textContent = t;
+      btn.title = `${t}: open My notebooks`;
+      btn.setAttribute('aria-label', `${t} · open My notebooks`);
+    };
+    sync();
+    store.on('doc', sync);
+    btn.addEventListener('click', () => this.action('library'));
+  }
+
+  /** Names and selected state of the toolbar controls for assistive technology. */
+  private syncA11y(): void {
+    nameControls(this.toolbar);
+    syncToolbarState(this.toolbar, store.tool.tool, this.popFor, this.pages.open);
+  }
 
   /** What the toolbar's markup depends on; when only the active tool changed, the buttons are just re-marked. */
   private tbKey = '';
@@ -389,6 +422,7 @@ export class App {
     this.moveIndicator(left);
     this.toolbar.querySelectorAll('.hexdock .hx').forEach((h) => h.classList.remove('active'));
     this.renderHex();
+    this.syncA11y();
   }
 
   private renderToolbar(): void {
@@ -437,6 +471,7 @@ export class App {
     this.renderHex();
     this.updateUndo();
     this.moveIndicator(left);
+    this.syncA11y();
     if (this.popover) {
       const anchor = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="${this.popFor}"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="${this.popFor}"]`) as HTMLElement | null;
       if (anchor) this.positionPopover(anchor);
@@ -582,7 +617,10 @@ export class App {
     pop.addEventListener('input', (e) => this.onPopoverInput(e));
     pop.addEventListener('change', (e) => this.onCustomColor(e));
     this.fillPopover();
+    pop.querySelectorAll('.pm-list').forEach((l) => l.setAttribute('role', 'menu'));
+    nameControls(pop);
     this.positionPopover(anchor);
+    this.syncA11y();
   }
 
   /** Top of the bottom bars under the span x1..x2 (phones stack two bars). */
@@ -897,6 +935,7 @@ export class App {
             ${tile('open-pdf', 'pdf', 'PDF')}
             ${tile('open-pptx', 'slides', 'PowerPoint')}
             ${tile('export', 'download', 'Save PDF')}
+            ${tile('export-png', 'image', 'Save picture')}
             ${tile('record', 'record', 'Record')}
             ${tile('delete-page', 'trash', 'Delete page')}
             ${tile('fullscreen', 'fullscreen', 'Full screen')}
@@ -911,6 +950,7 @@ export class App {
             ${sw('palmErase', 'Erase with palm', s.palmErase)}
             ${sw('scribbleErase', 'Scribble to erase', s.scribbleErase !== false)}
             ${sw('holdShapes', 'Hold pen to make a shape', s.holdShapes)}
+            ${sw('bigControls', 'Large buttons (classroom boards, fingers)', !!s.bigControls)}
           </details>
           <div class="mt-foot"><button data-act="privacy">Privacy</button>·<button data-act="terms">Terms</button><span>v ${BUILD_TIME}</span></div>`;
         pop.querySelector('[data-resize]')?.addEventListener('toggle', () => {
@@ -987,7 +1027,9 @@ export class App {
     } else if (d.bg) this.setBoard({ bg: d.bg });
     else if (d.pattern) this.setBoard({ pattern: d.pattern as BgPattern });
     else if (d.act) {
-      this.closePopover();
+      // The first tap on Delete page only asks: the menu stays open for the second tap.
+      const arming = d.act === 'delete-page' && performance.now() - this.deleteArmedAt > 4000;
+      if (!arming) this.closePopover();
       this.action(d.act);
       return;
     }
@@ -1102,9 +1144,28 @@ export class App {
           toast('Page cleared — tap Undo to bring it back');
         }
         return;
-      case 'delete-page':
+      case 'delete-page': {
+        // Deleting a page sits next to everyday buttons, so it asks for a second tap (it can still be undone).
+        const now = performance.now();
+        const tile = this.root.querySelector<HTMLElement>('.mt-tile[data-act=delete-page]');
+        if (now - this.deleteArmedAt > 4000) {
+          this.deleteArmedAt = now;
+          if (tile) {
+            tile.classList.add('armed');
+            (tile.querySelector('span') as HTMLElement).textContent = 'Tap again to delete';
+            window.setTimeout(() => {
+              if (tile.isConnected && performance.now() - this.deleteArmedAt >= 3900) {
+                tile.classList.remove('armed');
+                (tile.querySelector('span') as HTMLElement).textContent = 'Delete page';
+              }
+            }, 4000);
+          }
+          return toast(`Tap "Delete page" again to delete page ${store.index + 1}`, 2500);
+        }
+        this.deleteArmedAt = 0;
         store.deletePage();
         return toast('Page deleted — tap Undo to bring it back');
+      }
       case 'subject':
         this.closePopover();
         this.subject.openPicker();
@@ -1207,6 +1268,9 @@ export class App {
         return;
       case 'export':
         void this.withProgress('Making PDF', () => exportPdf(b));
+        return;
+      case 'export-png':
+        void exportPng(b).then(() => toast(`Picture of page ${store.index + 1} saved`));
         return;
       case 'privacy':
       case 'terms':
@@ -1317,6 +1381,7 @@ export class App {
       </div>
       ${panel ? `<div class="props-panel">${panel}</div>` : ''}`;
     bar.hidden = false;
+    nameControls(bar);
     bar.onclick = (e) => this.onPropsClick(e);
     bar.oninput = (e) => {
       const el = e.target as HTMLInputElement;
@@ -1413,26 +1478,53 @@ export class App {
     const box = document.createElement('div');
     box.className = 'move-picker';
     const pages = store.doc.pages.length;
-    box.innerHTML = `<div class="mp-title">Move to page</div><div class="mp-grid">${Array.from({ length: pages }, (_, i) => `<button data-to="${i}" ${i === store.index ? 'disabled' : ''}>${i + 1}</button>`).join('')}<button data-to="${pages}" class="mp-new" aria-label="New page">+ New</button></div>`;
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', 'Move or copy to a page');
+    const seg = (m: 'move' | 'copy', label: string) => `<button data-mode="${m}" aria-pressed="${this.pickMode === m}" class="${this.pickMode === m ? 'on' : ''}">${label}</button>`;
+    box.innerHTML = `<div class="mp-seg" role="group" aria-label="Move or copy">${seg('move', 'Move')}${seg('copy', 'Copy')}</div><div class="mp-title"></div><div class="mp-grid">${Array.from({ length: pages }, (_, i) => `<button data-to="${i}" ${i === store.index ? 'disabled' : ''}>${i + 1}</button>`).join('')}<button data-to="${pages}" class="mp-new" aria-label="New page">+ New</button></div>`;
     this.root.appendChild(box);
     const r = anchor.closest('button')!.getBoundingClientRect();
     box.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - box.offsetWidth, r.left - box.offsetWidth / 2 + r.width / 2))}px`;
     box.style.top = `${Math.max(8, r.top - box.offsetHeight - 10)}px`;
+    const title = box.querySelector('.mp-title') as HTMLElement;
+    const sync = () => {
+      title.textContent = this.pickMode === 'move' ? 'Move to page (the things leave this page)' : 'Copy to page (the things stay here too)';
+      box.querySelectorAll<HTMLElement>('[data-mode]').forEach((b) => {
+        b.classList.toggle('on', b.dataset.mode === this.pickMode);
+        b.setAttribute('aria-pressed', String(b.dataset.mode === this.pickMode));
+      });
+    };
+    sync();
     const close = () => {
       document.removeEventListener('pointerdown', away, true);
+      document.removeEventListener('keydown', esc, true);
       fadeOut(box);
     };
+    const esc = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        close();
+      }
+    };
+    document.addEventListener('keydown', esc, true);
     const away = (ev: Event) => {
       if (!box.contains(ev.target as Node)) close();
     };
     setTimeout(() => document.addEventListener('pointerdown', away, true), 0);
     box.addEventListener('click', (ev) => {
+      const m = (ev.target as HTMLElement).closest<HTMLElement>('[data-mode]');
+      if (m) {
+        this.pickMode = m.dataset.mode as 'move' | 'copy';
+        return sync();
+      }
       const b = (ev.target as HTMLElement).closest<HTMLElement>('[data-to]');
       if (!b || b.hasAttribute('disabled')) return;
       const to = Number(b.dataset.to);
-      const n = store.moveElsToPage([...store.selection], to);
+      const copy = this.pickMode === 'copy';
+      const n = copy ? store.copyElsToPage([...store.selection], to) : store.moveElsToPage([...store.selection], to);
       close();
-      if (n) toast(`Moved ${n} ${n === 1 ? 'item' : 'items'} to ${to === pages ? 'a new page' : `page ${to + 1}`}. Undo brings them back.`);
+      const where = to === pages ? 'a new page' : `page ${to + 1}`;
+      if (n) toast(`${copy ? 'Copied' : 'Moved'} ${n} ${n === 1 ? 'item' : 'items'} to ${where}. Undo ${copy ? 'removes the copies' : 'brings them back'}.`);
     });
   }
 
@@ -1610,8 +1702,8 @@ export class App {
     const one = L + R + 40;
     const stacked = avail / one < 0.85;
     this.root.classList.toggle('tb-stacked', stacked);
-    // Buttons stay the compact size everywhere (big boards still scale them up).
-    computeUiScale('small', stacked ? Math.max(L, R) + 20 : one, avail);
+    // Buttons stay the compact size everywhere (big boards still scale them up); "Large buttons" in Settings makes them bigger.
+    computeUiScale(store.settings.bigControls ? 'large' : 'small', stacked ? Math.max(L, R) + 20 : one, avail);
     // "Middle": both halves together in the middle as one bar (two centred
     // rows on narrow screens). "Sides": each half in its corner.
     const mid = tbMiddle();
@@ -1747,8 +1839,10 @@ export class App {
       else if (ctrl && k === 'd') this.duplicate();
       else if (!ctrl && (e.key === 'Delete' || e.key === 'Backspace')) this.deleteSelection();
       else if (e.key === 'Escape') {
-        this.closePopover();
-        store.clearSelection();
+        // One layer at a time: an open menu, then the Pages panel (when nothing is selected), then the selection.
+        if (this.popover) this.closePopover();
+        else if (this.pages.open && !store.selection.size) this.pages.close();
+        else store.clearSelection();
       } else if (e.key === 'PageDown') this.action('next');
       else if (e.key === 'PageUp') this.action('prev');
       else if (!ctrl && ({ v: 'select', p: 'pen', e: 'eraser', s: 'shape', t: 'text' } as Record<string, ToolId>)[k]) {
