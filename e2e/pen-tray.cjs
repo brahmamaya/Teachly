@@ -19,7 +19,7 @@ const SHOT = process.env.SHOT;
   check('the tray shows all 10 pens in a row', kinds.length === 10, kinds.join(','));
   const rows = await page.$$eval('.pt-pen', (n) => new Set(n.map((x) => Math.round(x.getBoundingClientRect().top))).size);
   check('they stand side by side on one line', rows === 1, String(rows));
-  check('six colour circles (five colours and the colour wheel)', (await page.$$('.pt-cols .pt-col')).length === 6);
+  check('ten colour circles (nine colours and the colour flower)', (await page.$$('.pt-cols .pt-col')).length === 10);
   check('the size slider shows straight away (no colour slider)', !!(await page.$('[data-pensize]')) && !(await page.$('[data-penhue]')));
   await page.click('[data-wheel]');
   await page.waitForTimeout(400);
