@@ -9881,3 +9881,20 @@ button,
   #app .library .ls-item { height: 38px; min-height: 38px; padding: 0 14px; font-size: 14px; border-radius: 19px; }
   #app .library .ls-item svg { width: 18px; height: 18px; }
 }
+
+/* ---------- Toolbar on touch screens: the chosen tool's blue background stays clean ----------
+   A tapped button kept a grey "hover" patch on phones and tablets (touch has no real hover), drawn over the blue
+   marker of the chosen tool; the marker's corners also did not match the button's. */
+#app .toolbar .tb-btn.active,
+#app .toolbar .tb-btn.active:hover,
+#app .toolbar .tb-btn.active:active {
+  background: none;
+}
+@media (hover: none) {
+  #app .toolbar .tb-btn:hover:not(.open) {
+    background: none;
+  }
+}
+#app .toolbar .tb-ind {
+  border-radius: 18px;
+}
