@@ -97,7 +97,9 @@ const PEN_TYPES: [ToolState['penStyle'], string][] = [
   ['calligraphy', 'Calligraphy'],
   ['highlighter', 'Highlighter'],
 ];
-const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'];
+/** The six circles of the pen bar (iPad set; white instead of black because the bar and board are dark). */
+const BAR_COLORS = ['#f2f2f0', '#1a7cf5', '#4cd463', '#fdd130', '#fb2d48'];
+const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6', '#fb923c'];
 const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#e2e8f0', '#1e293b', '#ef4444', '#2563eb', '#22c55e'];
 /** Board colours: dark boards first (default black), then light ones. */
 /** Board colours: black (default), white, light green — plus “any colour”. */
@@ -732,16 +734,28 @@ export class App {
         const hl = t.penStyle === 'highlighter';
         const color = hl ? t.hlColor : t.color;
         const size = hl ? t.hlSize : t.size;
-        // Note 3 style: size on top, pen kinds below, colours on the right.
-        pop.className = 'popover pop-n3 pop-tray';
+        // iPad-style pen bar: pens standing in a row (tops only), six colour circles on the right. Tapping the pen in use
+        // again (or the rainbow) opens the size and colour sliders below.
+        const keepScroll = (pop.querySelector('.pt-pens') as HTMLElement | null)?.scrollLeft ?? null;
+        const cols = hl ? HL_COLORS : BAR_COLORS;
+        pop.className = `popover pop-n3 pop-tray${this.penOpts ? ' opts' : ''}`;
         pop.innerHTML = `
-          <div class="pen-tray" role="listbox" aria-label="Pen type">${PEN_DEFS}${this.trayPens()}</div>
-          <div class="n3-size">
-            <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
-            <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
+          <i class="pt-grab" aria-hidden="true"></i>
+          <div class="pt-bar">
+            <div class="pt-pens" role="listbox" aria-label="Pen type">${PEN_DEFS}${this.trayPens()}</div>
+            <div class="swatches pt-cols">${cols.map((c) => `<button class="pt-col ${c === color ? 'on' : ''}" style="--c:${c}" data-color="${c}" aria-label="${c}"></button>`).join('')}<label class="pt-col pt-wheel${cols.includes(color) ? '' : ' on'}" title="Any colour"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(color) ? color : '#ff6699'}" data-custom="color" aria-label="Pick any colour"></label></div>
           </div>
-          <div class="n3-hue"><input type="range" min="0" max="360" value="${hueOf(color)}" data-penhue aria-label="Colour"></div>
-          <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>`;
+          ${this.penOpts ? `<div class="pt-opts">
+            <div class="n3-size">
+              <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
+              <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
+            </div>
+            <div class="n3-hue"><input type="range" min="0" max="360" value="${hueOf(color)}" data-penhue aria-label="Colour"></div>
+          </div>` : ''}`;
+        const pens = pop.querySelector('.pt-pens') as HTMLElement;
+        if (keepScroll !== null) pens.scrollLeft = keepScroll;
+        else (pens.querySelector('.pt-pen.on') as HTMLElement | null)?.scrollIntoView({ inline: 'center', block: 'nearest' });
+        this.penLift = '';
         break;
       }
       case 'fill':
@@ -998,12 +1012,18 @@ export class App {
   }
 
 
-  /** All pens stand in a row, tip up; only the top part shows and the name is printed on the pen. Touched pen lifts. */
+  /** Tray state: sliders open; the pen just picked (it rises with a short animation, only on that render). */
+  private penOpts = false;
+  private penLift = '';
+
+  /** All pens stand in a row, tip up; only the top part shows. The pen in use stands higher and shows its size. */
   private trayPens(): string {
     const t = store.tool;
     return PEN_TYPES.map(([k, n]) => {
-      const col = k === 'highlighter' ? t.hlColor : t.penStyle === k ? t.color : t.penColors[k as PenKind] ?? '#f2f2f0';
-      return `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}"><i class="pt-clip">${penSvg(k as PenKind, col, n)}</i></button>`;
+      const on = t.penStyle === k;
+      const col = k === 'highlighter' ? t.hlColor : on ? t.color : t.penColors[k as PenKind] ?? '#f2f2f0';
+      const num = on ? String(k === 'highlighter' ? t.hlSize : t.size) : '';
+      return `<button class="pt-pen${on ? ' on' : ''}${this.penLift === k ? ' rise' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${on}">${penSvg(k as PenKind, col, num)}</button>`;
     }).join('');
   }
 
@@ -1012,7 +1032,18 @@ export class App {
     if (!b) return;
     const d = b.dataset;
     const t = store.tool;
-    if (d.style) store.setTool({ penStyle: d.style as ToolState['penStyle'] });
+    if (d.style) {
+      if (d.style === t.penStyle) this.penOpts = !this.penOpts;
+      else {
+        this.penLift = d.style;
+        store.setTool({ penStyle: d.style as ToolState['penStyle'] });
+      }
+      this.fillPopover();
+      // the menu may have grown or shrunk: keep it on the toolbar
+      const a = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="pen"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="pen"]`) as HTMLElement | null;
+      if (a) this.positionPopover(a);
+      return;
+    }
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
     else if (d.scolor) store.setTool({ shapeColor: d.scolor });
     else if (d.emode) store.setTool({ eraserMode: d.emode as 'point' });
