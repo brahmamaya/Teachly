@@ -715,14 +715,14 @@ export class App {
         // The size and colour sliders sit below the bar.
         const keepScroll = (pop.querySelector('.pt-pens') as HTMLElement | null)?.scrollLeft ?? null;
         const cols = hl ? HL_COLORS : BAR_COLORS;
-        pop.className = `popover pop-n3 pop-tray${this.penOpts ? ' opts' : ''}`;
+        pop.className = `popover pop-n3 pop-tray${this.penOpts ? ' opts' : ''}${this.penWheel ? ' wheel' : ''}`;
         pop.innerHTML = `
           <i class="pt-grab" aria-hidden="true"></i>
           <div class="pt-bar">
             <div class="pt-pens" role="listbox" aria-label="Pen type">${PEN_DEFS}${this.trayPens()}</div>
             <div class="swatches pt-cols">${cols.map((c) => `<button class="pt-col ${c === color ? 'on' : ''}" style="--c:${c}" data-color="${c}" aria-label="${c}"></button>`).join('')}<button class="pt-col pt-wheel${cols.includes(color) || this.penWheel ? '' : ' on'}${this.penWheel ? ' open' : ''}" data-wheel aria-expanded="${this.penWheel}" aria-label="More colours"></button></div>
           </div>
-          ${this.penWheel ? `<div class="pt-wheelbox">${colorWheelSvg(color)}</div>` : ''}
+          ${this.penWheel ? `<div class="pt-wheelbox">${colorWheelSvg(color)}<div class="pt-loupe" hidden><i></i><b></b></div></div>` : ''}
           ${this.penOpts ? `<div class="pt-opts">
             <div class="n3-size">
               <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
@@ -733,6 +733,7 @@ export class App {
         if (keepScroll !== null) pens.scrollLeft = keepScroll;
         else (pens.querySelector('.pt-pen.on') as HTMLElement | null)?.scrollIntoView({ inline: 'center', block: 'nearest' });
         this.penLift = '';
+        if (this.penWheel) this.wireFlower(pop.querySelector('.pt-wheelbox') as HTMLElement);
         break;
       }
       case 'fill':
@@ -989,6 +990,66 @@ export class App {
   }
 
 
+  private flowerPickedAt = 0;
+  /**
+   * Colour flower: while the finger (or mouse) moves over it, a big bubble above the finger shows the colour under it,
+   * live; lifting the finger on a colour picks it. Mouse hover shows the bubble without picking. Only runs while open.
+   */
+  private wireFlower(box: HTMLElement): void {
+    const svg = box.querySelector('.pt-flower') as SVGSVGElement;
+    const loupe = box.querySelector('.pt-loupe') as HTMLElement;
+    let hov: Element | null = null, down = false;
+    const at = (e: PointerEvent): string | null => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const p = el && svg.contains(el) ? (el.closest('[data-wc]') as SVGElement | null) : null;
+      if (p !== hov) {
+        hov?.classList.remove('hov');
+        p?.classList.add('hov');
+        hov = p;
+      }
+      if (!p) {
+        loupe.hidden = true;
+        return null;
+      }
+      const c = p.dataset.wc!;
+      const r = box.getBoundingClientRect();
+      loupe.hidden = false;
+      loupe.style.setProperty('--c', c);
+      loupe.style.transform = `translate(${e.clientX - r.left}px, ${e.clientY - r.top}px)`;
+      (loupe.querySelector('b') as HTMLElement).textContent = c.toUpperCase();
+      return c;
+    };
+    svg.addEventListener('pointerdown', (e) => {
+      down = true;
+      svg.setPointerCapture?.(e.pointerId);
+      at(e);
+    });
+    svg.addEventListener('pointermove', (e) => {
+      if (down || e.pointerType === 'mouse') at(e);
+    });
+    const end = (e: PointerEvent, pick: boolean) => {
+      if (!down) return;
+      down = false;
+      const c = pick ? at(e) : null;
+      loupe.hidden = true;
+      if (!c) return;
+      this.flowerPickedAt = performance.now();
+      store.setTool(store.tool.penStyle === 'highlighter' ? { hlColor: c } : { color: c });
+      this.penWheel = false;
+      this.fillPopover();
+      this.placePenPop();
+    };
+    svg.addEventListener('pointerup', (e) => end(e, true));
+    svg.addEventListener('pointercancel', (e) => end(e, false));
+    svg.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'mouse' && !down) {
+        hov?.classList.remove('hov');
+        hov = null;
+        loupe.hidden = true;
+      }
+    });
+  }
+
   /** The pen menu grew or shrank (colour flower opened or closed): keep it on the toolbar and on screen. */
   private placePenPop(): void {
     const a = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="pen"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="pen"]`) as HTMLElement | null;
@@ -1012,6 +1073,7 @@ export class App {
   }
 
   private onPopoverClick(e: MouseEvent): void {
+    if (performance.now() - this.flowerPickedAt < 450) return; // the finger just picked on the flower
     const petal = (e.target as Element).closest('[data-wc]') as SVGElement | null;
     if (petal) {
       const c = petal.dataset.wc!;

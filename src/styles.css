@@ -9762,3 +9762,32 @@ button,
 .lite .pop-tray .pt-wheelbox { animation: none; }
 /* the pen icon shows its colour in its own tip: no colour bar over it */
 #app .tb-btn[data-tool='pen'] .swatch-dot { display: none; }
+/* the bubble above the finger on the colour flower: the colour under the finger, big, live */
+.pop-tray .pt-wheelbox { position: relative; }
+.pop-tray .pt-flower { touch-action: none; }
+.pop-tray .pt-flower .hov { stroke: #fff; stroke-width: 1.6; paint-order: stroke; }
+.pop-tray .pt-loupe { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 2; will-change: transform; }
+.pop-tray .pt-loupe i {
+  position: absolute;
+  left: -38px;
+  top: -122px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--c);
+  border: 4px solid #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+}
+.pop-tray .pt-loupe b {
+  position: absolute;
+  left: -40px;
+  top: -150px;
+  width: 80px;
+  text-align: center;
+  font: 700 11px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.popover.pop-n3.pop-tray.wheel { overflow: visible; }

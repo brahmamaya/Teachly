@@ -1,0 +1,32 @@
+// Colour flower: dragging a finger over it shows the colour under the finger in a bubble, live; lifting picks it.
+const { chromium } = require('playwright');
+const { check, finish } = require('./lib.cjs');
+const D = process.env.SHOT ? process.env.SHOT + '/' : null;
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 412, height: 900 }, deviceScaleFactor: 2, hasTouch: true });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await page.goto('http://localhost:5173/'); await page.waitForTimeout(1500);
+  await page.click('[data-tool=pen]'); await page.waitForTimeout(500);
+  await page.click('[data-wheel]'); await page.waitForTimeout(500);
+  const fb = await (await page.$('.pt-flower')).boundingBox();
+  const cdp = await ctx.newCDPSession(page);
+  const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  const x0 = fb.x + fb.width * 0.3, y0 = fb.y + fb.height * 0.3;
+  await tp('touchStart', x0, y0);
+  for (let i = 1; i <= 6; i++) await tp('touchMove', x0 + i * 8, y0 + i * 4);
+  await page.waitForTimeout(200);
+  const live = await page.evaluate(() => { const l = document.querySelector('.pt-loupe'); return { shown: !l.hidden, c: l.style.getPropertyValue('--c'), txt: l.textContent }; });
+  if (D) await page.screenshot({ path: D + 'loupe.png' });
+  await tp('touchEnd');
+  await page.waitForTimeout(500);
+  const t = await page.evaluate(() => window.__teachly.store.tool.color);
+  check('the bubble shows the colour under the finger while it moves', live.shown && /^#[0-9a-f]{6}$/.test(live.c) && live.txt === live.c.toUpperCase(), JSON.stringify(live));
+  check('lifting the finger picks that colour and closes the flower', t === live.c && !(await page.$('.pt-flower')), t);
+  check('no page errors', errs.length === 0, errs.join('|'));
+  await b.close();
+  finish();
+  return;
+  await b.close();
+})();
