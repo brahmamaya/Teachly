@@ -297,7 +297,7 @@ export class App {
 
     this.toolbar = root.querySelector('.toolbars') as HTMLElement;
     this.grid = new PagesGrid(root, () => this.renderToolbar());
-    this.pages = new PagesPanel(root, () => { this.renderToolbar(); requestAnimationFrame(() => this.positionProps()); }, () => this.grid.toggle());
+    this.pages = new PagesPanel(root, () => { this.renderToolbar(); requestAnimationFrame(() => this.positionProps()); }, () => this.grid.toggle(), (i, x, y) => this.dropPage(i, x, y));
     this.subject = new SubjectPanel(root, this.board, () => this.renderToolbar());
     this.library = new Library(root);
     new QuickBar(root);
