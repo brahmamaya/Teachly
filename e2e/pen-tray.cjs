@@ -20,13 +20,7 @@ const SHOT = process.env.SHOT;
   const rows = await page.$$eval('.pt-pen', (n) => new Set(n.map((x) => Math.round(x.getBoundingClientRect().top))).size);
   check('they stand side by side on one line', rows === 1, String(rows));
   check('six colour circles (five colours and the colour wheel)', (await page.$$('.pt-cols .pt-col')).length === 6);
-  check('the sliders are hidden at first', !(await page.$('[data-pensize]')));
-  await page.click('.pt-pen.on');
-  await page.waitForTimeout(300);
-  check('tapping the pen in use again opens the size and colour sliders', !!(await page.$('[data-pensize]')) && !!(await page.$('[data-penhue]')));
-  await page.click('.pt-pen.on');
-  await page.waitForTimeout(300);
-  check('and tapping it again closes them', !(await page.$('[data-pensize]')));
+  check('the size and colour sliders show straight away', !!(await page.$('[data-pensize]')) && !!(await page.$('[data-penhue]')));
   if (SHOT) await page.screenshot({ path: SHOT + '/tray.png' });
   // lift: pressing a pen moves its picture up
   const box = await (await page.$('.pt-pen[data-style=marker] .pt-svg')).boundingBox();
