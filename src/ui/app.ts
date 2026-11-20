@@ -25,7 +25,7 @@ import { openCrop } from './cropper';
 import { SubjectPanel } from './subjectpanel';
 import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { chapterById } from '../subjects/catalog';
-import { SIMPLE_HIDDEN, store, type ToolState } from '../store';
+import { readableInk, SIMPLE_HIDDEN, store, type ToolState } from '../store';
 import { importPptx } from '../io/office';
 import { saveNow, startAutosave } from '../io/autosave';
 import { blankNotebook, loadLastNotebook, saveNotebook, takeMigrationNotes } from '../io/library';
@@ -80,7 +80,7 @@ const PEN_TYPES: [ToolState['penStyle'], string][] = [
   ['calligraphy', 'Calligraphy'],
   ['highlighter', 'Highlighter'],
 ];
-/** The six circles of the pen bar (iPad set; white instead of black because the bar and board are dark). */
+/** The six circles of the pen bar (iPad set). The first is white on a dark page and black on a light one. */
 const BAR_COLORS = ['#f2f2f0', '#1a7cf5', '#4cd463', '#fdd130', '#fb2d48'];
 const HL_COLORS = ['#facc15', '#4ade80', '#38bdf8', '#f472b6', '#fb923c'];
 const FILLS = ['#fde68a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#e2e8f0', '#1e293b', '#ef4444', '#2563eb', '#22c55e'];
@@ -715,7 +715,7 @@ export class App {
         // iPad-style pen bar: pens standing in a row (tops only), six colour circles on the right.
         // The size and colour sliders sit below the bar.
         const keepScroll = (pop.querySelector('.pt-pens') as HTMLElement | null)?.scrollLeft ?? null;
-        const cols = hl ? HL_COLORS : BAR_COLORS;
+        const cols = hl ? HL_COLORS : [readableInk(BAR_COLORS[0], store.page.bg), ...BAR_COLORS.slice(1)];
         pop.className = `popover pop-n3 pop-tray${this.penOpts ? ' opts' : ''}${this.penWheel ? ' wheel' : ''}`;
         pop.innerHTML = `
           <i class="pt-grab" aria-hidden="true"></i>
@@ -1067,7 +1067,7 @@ export class App {
     const t = store.tool;
     return PEN_TYPES.map(([k, n]) => {
       const on = t.penStyle === k;
-      const col = k === 'highlighter' ? t.hlColor : on ? t.color : t.penColors[k as PenKind] ?? '#f2f2f0';
+      const col = k === 'highlighter' ? t.hlColor : on ? t.color : readableInk(t.penColors[k as PenKind] ?? '#f2f2f0', store.page.bg);
       const num = on ? String(k === 'highlighter' ? t.hlSize : t.size) : '';
       return `<button class="pt-pen${on ? ' on' : ''}${this.penLift === k ? ' rise' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${on}">${penSvg(k as PenKind, col, num)}</button>`;
     }).join('');
@@ -1933,6 +1933,9 @@ export class App {
   /** Logo and clock switch to light text on green / black boards. */
   private updateBoardTone(): void {
     this.root.dataset.board = isDarkColor(store.page.bg) ? 'dark' : 'light';
+    // A white pen on a white page (or black on black) writes "nothing": switch it to the readable one.
+    const c = readableInk(store.tool.color, store.page.bg);
+    if (c !== store.tool.color) store.setTool({ color: c });
   }
 
   private startClock(): void {
