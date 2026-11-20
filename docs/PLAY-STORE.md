@@ -14,6 +14,19 @@ Promise: free, no login, no payment, no ads, nothing collected. Data stays on th
   ```
   bundletool is a free jar from github.com/google/bundletool/releases (download it on your computer; it is not in the repo). Sign the AAB with your **upload key** and turn on **Play App Signing** in the Play Console.
 
+## Easiest: the "Build for Play" button on GitHub (no computer setup)
+1. GitHub > the Teachly repo > **Settings > Secrets and variables > Actions > New repository secret**:
+   name `UPLOAD_KEY_PASSWORD`, value: a long password you choose (12+ characters; write it down safely).
+2. **Actions > Build for Play > Run workflow** (branch `main`). It takes about 5-10 minutes.
+3. First time only: the run also offers **upload-key** (kept 1 day). Download it, keep `upload-key.p12` and the password
+   in 2-3 safe places, then add a second secret `UPLOAD_KEY_P12` with the text of `upload-key.base64.txt`.
+   Then delete that run's **upload-key** download (the repo is public; the key is locked with your password, but do not
+   leave it there). Every later run uses the saved key.
+4. Download **Teachly-for-Play** from the run: `Teachly.aab` goes to the Play Console, `Teachly.apk` is for trying on a device.
+
+Only the repo owner can start it, only from `main`; the key is never in the code or the logs. With Play App Signing this
+is only the *upload* key: if it is ever lost or leaked, ask Google for an upload-key reset in the Play Console.
+
 ## Owner must do (cannot be done from the repo)
 1. **Play Console account** (one-time fee). Use an organisation/brand name (e.g. Physica) so no personal name shows. Personal accounts must show address/name and need a 14-day closed test with 12 testers before production: plan this month.
 2. **Upload key + AAB**: make an upload key once (`keytool -genkeypair -keystore upload-key.p12 -storetype PKCS12 -alias teachly -keyalg RSA -keysize 2048 -validity 10000`), keep it and its password outside the repo, download bundletool, then run the command above. Use **Play App Signing**.
@@ -27,4 +40,4 @@ Promise: free, no login, no payment, no ads, nothing collected. Data stays on th
 10. Test the Play build on a real phone, tablet and board before upload.
 
 ## Verified here (2026-11-21)
-`PLAY=1 ./android/build.sh` ran with a throw-away test key: APK built and signature-checked (v2), targetSdk 36 / minSdk 24, only RECORD_AUDIO, `enableOnBackInvokedCallback`, and `base.zip` converts back cleanly with aapt2 (valid bundle module). **Not verified**: bundletool was not available in this container (Google's server is blocked here), so `Teachly.aab` itself was not built; no device test.
+`PLAY=1 ./android/build.sh` ran with a throw-away test key: APK built and signature-checked (v2), targetSdk 36 / minSdk 24, only RECORD_AUDIO, `enableOnBackInvokedCallback`, and `base.zip` converts back cleanly with aapt2 (valid bundle module). Then (same day) with bundletool 1.17.2: `Teachly.aab` built, signed and passed `bundletool validate`; a universal APK was made from it. The GitHub key step was run locally (new key, saved key, wrong password). **Not verified**: the workflow itself on GitHub, and no device test.

@@ -1,0 +1,83 @@
+# "Build for Play": makes Teachly.aab (upload to Google Play) and Teachly.apk (to try on a device).
+# Runs only when the repo owner presses "Run workflow" on the main branch. Nothing runs on its own.
+#
+# Secrets (repo Settings > Secrets and variables > Actions; never in the code):
+#   UPLOAD_KEY_PASSWORD   a long password you choose (needed always)
+#   UPLOAD_KEY_P12        the upload key, as base64 text (leave it out the very first time)
+# First time (no UPLOAD_KEY_P12): a new upload key is made, locked with UPLOAD_KEY_PASSWORD, and offered for download
+# for 1 day as "upload-key". Save it in 2-3 safe places, then add upload-key.base64.txt's text as UPLOAD_KEY_P12.
+name: Build for Play
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  play:
+    if: github.ref == 'refs/heads/main' && github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npm run typecheck && npm test
+
+      - name: Android tools (checked downloads)
+        run: ./android/tools/fetch-tools.sh "$RUNNER_TEMP/tools"
+
+      - name: Upload key
+        env:
+          P12: ${{ secrets.UPLOAD_KEY_P12 }}
+          PASS: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          if [ -z "$PASS" ] || [ ${#PASS} -lt 12 ]; then
+            echo "::error::Add the secret UPLOAD_KEY_PASSWORD (at least 12 characters) first."; exit 1
+          fi
+          KEY="$RUNNER_TEMP/upload-key.p12"
+          if [ -n "$P12" ]; then
+            echo "$P12" | base64 -d > "$KEY"
+            echo "NEW_KEY=0" >> "$GITHUB_ENV"
+          else
+            mkdir -p "$RUNNER_TEMP/newkey"
+            keytool -genkeypair -keystore "$KEY" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" \
+              -alias teachly -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Teachly, O=Physica" >/dev/null
+            cp "$KEY" "$RUNNER_TEMP/newkey/upload-key.p12"
+            base64 -w0 "$KEY" > "$RUNNER_TEMP/newkey/upload-key.base64.txt"
+            echo "NEW_KEY=1" >> "$GITHUB_ENV"
+          fi
+          keytool -list -keystore "$KEY" -storetype PKCS12 -storepass "$PASS" >/dev/null || { echo "::error::The key and UPLOAD_KEY_PASSWORD do not match."; exit 1; }
+          echo "KEY=$KEY" >> "$GITHUB_ENV"
+
+      - name: Build the AAB and APK
+        env:
+          KEY_PASS: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          PLAY=1 TOOLS="$RUNNER_TEMP/tools" BUNDLETOOL="$RUNNER_TEMP/tools/bundletool-all.jar" ./android/build.sh
+          java -jar "$RUNNER_TEMP/tools/bundletool-all.jar" validate --bundle=android/build/Teachly.aab >/dev/null
+          rm -f "$KEY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Teachly-for-Play
+          path: |
+            android/build/Teachly.aab
+            android/build/Teachly.apk
+          retention-days: 7
+
+      - name: New upload key (first time only, 1 day; locked with your password)
+        if: env.NEW_KEY == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: upload-key
+          path: ${{ runner.temp }}/newkey/
+          retention-days: 1
