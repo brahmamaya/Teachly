@@ -9645,7 +9645,7 @@ button,
 }
 .pop-tray .pen-tray::-webkit-scrollbar { display: none; }
 .pop-tray .pt-pen { flex: 1 0 34px; display: block; padding: 0; justify-content: center; background: none !important; }
-.pop-tray .pt-clip { display: block; width: 30px; height: 100px; margin: 0 auto; clip-path: inset(-18px -6px 0 -6px); position: relative; transition: none; }
+.pop-tray .pt-clip { display: block; width: 30px; height: 76px; margin: 0 auto; clip-path: inset(-18px -6px 0 -6px); position: relative; transition: none; }
 .pop-tray .pt-svg { position: absolute; left: 0; top: 0; width: 30px; height: 170px; transform-origin: 50% 20%; transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2), filter 0.18s; filter: drop-shadow(0 2px 1.5px rgba(0, 0, 0, 0.35)); }
 .pop-tray .pt-pen.on .pt-svg, .pop-tray .pt-pen:active .pt-svg { transform: translateY(-12px); filter: drop-shadow(0 6px 3px rgba(0, 0, 0, 0.4)); }
 @media (hover: hover) { .pop-tray .pt-pen:hover .pt-svg { transform: translateY(-8px); } }
