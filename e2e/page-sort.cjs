@@ -67,6 +67,25 @@ const SHOT = process.env.SHOT;
   await page.waitForTimeout(500);
   check('mouse drag: page 2 moved below page 4', (await order()) === '1,3,4,2,5,6,7,8,9,10,11,12', await order());
 
+  // hold a page and drag it out over the board: its content is copied onto the open page, selected (to move / resize)
+  await page.evaluate(() => { window.__teachly.store.goTo(0); document.querySelector('.pages-list').scrollTop = 0; });
+  await page.waitForTimeout(400);
+  const before = await page.evaluate(() => window.__teachly.store.page.els.length);
+  const q = await thumb(2); // page "4" sits at place 3 now
+  const qx = q.x + q.width / 2, qy = q.y + q.height / 2;
+  await tp('touchStart', qx, qy);
+  await page.waitForTimeout(420);
+  for (let i = 1; i <= 12; i++) await tp('touchMove', qx - (qx - 400) * (i / 12), qy + (400 - qy) * (i / 12));
+  await page.waitForTimeout(250);
+  check('over the board the page shrinks and says where it goes', !!(await page.$('.page-ghost.out')));
+  check('and the pages in the list go back to their places', await page.evaluate(() => [...document.querySelectorAll('.pages-list .page-thumb')].every((t) => !t.style.transform)));
+  if (SHOT) await page.screenshot({ path: SHOT + '/page-out.png' });
+  await tp('touchEnd');
+  await page.waitForTimeout(500);
+  const dropped = await page.evaluate(() => { const { store } = window.__teachly; const els = store.page.els; return { n: els.length, text: els.map((e) => e.text).join(','), sel: store.selection.size, tool: store.tool.tool, unlocked: els.every((e) => !e.locked) }; });
+  check('its content is now on the open page, selected so it can be moved or resized', dropped.n === before + 1 && dropped.text.includes('P4') && dropped.sel === 1 && dropped.tool === 'select', JSON.stringify(dropped));
+  check('the page order did not change', (await order()) === '1,3,4,2,5,6,7,8,9,10,11,12', await order());
+
   // add a PDF at the end of the notebook
   const pdfBytes = await page.evaluate(async () => {
     const m = await import('/src/io/pdfvector.ts');

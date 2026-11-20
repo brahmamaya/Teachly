@@ -23,6 +23,8 @@ export class PagesPanel {
     private host: HTMLElement,
     private onToggle: () => void = () => {},
     private onExpand: () => void = () => {},
+    /** A page was dragged out of the panel and let go over the board at (x, y): copy its content there. */
+    private onDropPage: (i: number, x: number, y: number) => void = () => {},
   ) {}
 
   get open(): boolean {
@@ -114,11 +116,11 @@ export class PagesPanel {
    */
   private wireSort(panel: HTMLElement): void {
     const smooth = !document.documentElement.classList.contains('lite') && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    type Drag = { list: HTMLElement; items: HTMLElement[]; from: number; to: number; tops: number[]; h: number; step: number; grab: number; s0: number; ghost: HTMLElement; y: number; raf: number };
+    type Drag = { list: HTMLElement; items: HTMLElement[]; from: number; to: number; tops: number[]; h: number; step: number; grab: number; grabX: number; s0: number; ghost: HTMLElement; x: number; y: number; out: boolean; raf: number };
     let d: Drag | null = null;
     let press = 0, sx = 0, sy = 0, cand: HTMLElement | null = null, pid = -1;
     const listOf = () => panel.querySelector('.pages-list') as HTMLElement;
-    const begin = (t: HTMLElement, y: number) => {
+    const begin = (t: HTMLElement, y: number, x = sx) => {
       const list = listOf();
       const items = [...list.querySelectorAll<HTMLElement>('.page-thumb')];
       const from = items.indexOf(t);
@@ -139,7 +141,7 @@ export class PagesPanel {
         /* the pointer is gone */
       }
       navigator.vibrate?.(8);
-      d = { list, items, from, to: from, tops, h: r.height, step: items.length > 1 ? tops[1] - tops[0] : r.height, grab: y - r.top, s0: list.scrollTop, ghost, y, raf: 0 };
+      d = { list, items, from, to: from, tops, h: r.height, step: items.length > 1 ? tops[1] - tops[0] : r.height, grab: y - r.top, grabX: x - r.left, s0: list.scrollTop, ghost, x, y, out: false, raf: 0 };
       requestAnimationFrame(() => ghost.classList.add('up'));
       edge();
     };
@@ -147,6 +149,20 @@ export class PagesPanel {
       if (!d) return;
       const { list, items, from, tops, h, step, grab, ghost } = d;
       const lr = list.getBoundingClientRect();
+      // Out of the panel, over the board: the page follows the finger freely, smaller, to be dropped on the open page.
+      const out = d.x < panel.getBoundingClientRect().left - 4;
+      if (out !== d.out) {
+        d.out = out;
+        ghost.classList.toggle('out', out);
+      }
+      if (out) {
+        ghost.style.transform = `translate(${d.x - d.grabX - parseFloat(ghost.style.left)}px, ${d.y - grab - parseFloat(ghost.style.top)}px)`;
+        if (d.to !== from) {
+          d.to = from;
+          items.forEach((it) => (it.style.transform = ''));
+        }
+        return;
+      }
       ghost.style.transform = `translateY(${d.y - grab - parseFloat(ghost.style.top)}px)`;
       // the dragged page's centre, in list coordinates: count the pages whose centre is above it
       const c = d.y - grab - lr.top + list.scrollTop + h / 2;
@@ -165,7 +181,7 @@ export class PagesPanel {
       if (!d) return;
       const lr = d.list.getBoundingClientRect();
       const zone = Math.min(52, lr.height / 5);
-      const v = d.y < lr.top + zone ? -(lr.top + zone - d.y) / zone : d.y > lr.bottom - zone ? (d.y - (lr.bottom - zone)) / zone : 0;
+      const v = d.out ? 0 : d.y < lr.top + zone ? -(lr.top + zone - d.y) / zone : d.y > lr.bottom - zone ? (d.y - (lr.bottom - zone)) / zone : 0;
       if (v) {
         d.list.scrollTop += v * 14;
         place();
@@ -174,7 +190,7 @@ export class PagesPanel {
     };
     const finish = (commit: boolean) => {
       if (!d) return;
-      const { list, items, from, to, tops, ghost } = d;
+      const { list, items, from, to, tops, ghost, out, x, y } = d;
       cancelAnimationFrame(d.raf);
       d = null;
       this.sortedAt = performance.now();
@@ -185,9 +201,16 @@ export class PagesPanel {
           it.style.transform = '';
           it.classList.remove('sort-hole');
         });
-        if (commit && to !== from) store.movePage(from, to);
+        if (commit && out) this.onDropPage(from, x, y);
+        else if (commit && to !== from) store.movePage(from, to);
       };
       if (!smooth) return done();
+      if (commit && out) {
+        // let go over the board: the copy fades where it was dropped, the content appears there
+        ghost.classList.add('gone');
+        setTimeout(done, 160);
+        return;
+      }
       // glide into the free place, then the list is drawn in its new order
       const lr = list.getBoundingClientRect();
       const slot = commit ? lr.top + tops[to] - list.scrollTop : lr.top + tops[from] - list.scrollTop;
@@ -203,10 +226,11 @@ export class PagesPanel {
       sy = e.clientY;
       pid = e.pointerId;
       clearTimeout(press);
-      if (e.pointerType !== 'mouse') press = window.setTimeout(() => cand && begin(cand, sy), 260);
+      if (e.pointerType !== 'mouse') press = window.setTimeout(() => cand && begin(cand, sy, sx), 260);
     });
     panel.addEventListener('pointermove', (e) => {
       if (d) {
+        d.x = e.clientX;
         d.y = e.clientY;
         place();
         return;
@@ -216,6 +240,7 @@ export class PagesPanel {
       if (e.pointerType === 'mouse') {
         if (moved > 6) begin(cand, sy);
         if (d) {
+          (d as Drag).x = e.clientX;
           (d as Drag).y = e.clientY;
           place();
         }

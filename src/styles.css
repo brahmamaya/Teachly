@@ -9809,3 +9809,8 @@ button,
 @media (prefers-reduced-motion: reduce) {
   .pages-list.sorting .page-thumb, .page-ghost { transition: none; }
 }
+/* a page dragged out over the board: smaller, ready to drop its content on the open page */
+.page-ghost.out { scale: 0.62; box-shadow: 0 22px 44px rgba(0, 0, 0, 0.5), 0 0 0 4px rgba(34, 197, 94, 0.55); border-color: #22c55e !important; }
+.page-ghost.gone { opacity: 0; scale: 0.4; transition: opacity 0.16s ease, scale 0.16s ease; }
+.page-ghost.out::after { content: 'Drop on this page'; position: absolute; left: 50%; bottom: -34px; translate: -50% 0; white-space: nowrap; padding: 6px 14px; border-radius: 999px; background: #16a34a; color: #fff; font: 700 15px/1 system-ui, sans-serif; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
+.page-ghost.out { overflow: visible; } .page-ghost.out img { border-radius: 0.6em; }
