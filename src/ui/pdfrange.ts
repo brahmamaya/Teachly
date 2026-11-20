@@ -162,3 +162,59 @@ export function askPdfRange(host: HTMLElement, o: { total: number; current: numb
     });
   });
 }
+
+/**
+ * Adding a PDF to a notebook that already has pages: where should its pages go? At the end (after the last page,
+ * the usual choice for "the next chapter"), after the page that is open, or at the start. Resolves with the page
+ * position to insert at, or null if cancelled.
+ */
+export function askPdfPlace(host: HTMLElement, o: { current: number; total: number; name: string }): Promise<number | null> {
+  return new Promise((resolve) => {
+    const back = document.createElement('div');
+    back.className = 'sv-back dl-back';
+    const rows: [string, string, number][] = [
+      ['end', `At the end · after page ${o.total}`, o.total],
+      ...(o.current < o.total ? [['after', `After this page · page ${o.current}`, o.current] as [string, string, number]] : []),
+      ['start', 'At the start · before page 1', 0],
+    ];
+    back.innerHTML = `
+      <div class="dl-box" role="dialog" aria-label="Where to add the PDF">
+        <header class="dl-head">
+          <button type="button" class="dl-back-btn" data-d="cancel" aria-label="Back">${icon('prev', 22)}</button>
+          <h3>Add PDF</h3>
+          <span class="dl-sp"></span>
+        </header>
+        <p class="dl-note"></p>
+        <div class="dl-rows">${rows.map(([k, l]) => `<button type="button" class="dl-row" data-m="${k}"><span>${l}</span><i>${icon('check', 20)}</i></button>`).join('')}</div>
+        <button type="button" class="dl-go" data-d="go">${icon('plus', 20)}<span>Add pages</span></button>
+      </div>`;
+    (back.querySelector('.dl-note') as HTMLElement).textContent = `${o.name} · where should its pages go?`;
+    host.appendChild(back);
+    const box = back.querySelector('.dl-box') as HTMLElement;
+    let mode = 'end';
+    const paint = () => box.querySelectorAll<HTMLElement>('.dl-row').forEach((r) => r.classList.toggle('on', r.dataset.m === mode));
+    const done = (v: number | null) => {
+      fadeOut(back, 180);
+      resolve(v);
+    };
+    paint();
+    box.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const row = t.closest('.dl-row') as HTMLElement | null;
+      if (row) {
+        mode = row.dataset.m ?? 'end';
+        return paint();
+      }
+      const d = (t.closest('[data-d]') as HTMLElement | null)?.dataset.d;
+      if (d === 'cancel') done(null);
+      else if (d === 'go') done(rows.find((r) => r[0] === mode)![2]);
+    });
+    back.addEventListener('pointerdown', (e) => {
+      if (e.target === back) done(null);
+    });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') done(null);
+    });
+    (box.querySelector('.dl-go') as HTMLElement).focus();
+  });
+}

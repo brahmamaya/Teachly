@@ -143,7 +143,8 @@ export async function insertImages(board: Board, files?: File[]): Promise<void> 
 }
 
 /** Import every PDF page as a new board page with the page locked as background. */
-export async function importPdf(board: Board, file?: File, onProgress?: (done: number, total: number) => void): Promise<void> {
+/** `at`: put the PDF's pages at this page position (0 = start, page count = end); left out: after this page. */
+export async function importPdf(board: Board, file?: File, onProgress?: (done: number, total: number) => void, at?: number): Promise<void> {
   file ??= (await pickFiles('application/pdf'))[0];
   if (!file) return;
   // Keep the original file on this device. Its pages are drawn only when
@@ -165,7 +166,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
       pages.push(p);
       if (i % 10 === 0 || i === pdf.numPages) onProgress?.(i, pdf.numPages);
     }
-    return addPdfPages(board, pages);
+    return addPdfPages(board, pages, at);
   }
   // No space to keep the file: every page becomes a picture now (as before).
   const { pdfjs } = await import('./pdfpages');
@@ -198,13 +199,21 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     onProgress?.(i, pdf.numPages);
   }
   await task.destroy();
-  addPdfPages(board, pages);
+  addPdfPages(board, pages, at);
 }
 
 /** Put the pages of an opened PDF into the notebook (in place of an empty page, or after this one). */
-function addPdfPages(board: Board, pages: Page[]): void {
+function addPdfPages(board: Board, pages: Page[], at?: number): void {
   if (!pages.length) return;
   const all = store.doc.pages.slice();
+  if (at !== undefined) {
+    // A chosen place (start, after this page, or after the last page); the first new page opens.
+    const k = Math.max(0, Math.min(all.length, at));
+    all.splice(k, 0, ...pages);
+    store.commit(all, k);
+    board.fitPage();
+    return;
+  }
   // Replace the current page if it is empty, otherwise insert after it.
   const replace = store.page.els.length === 0;
   all.splice(replace ? store.index : store.index + 1, replace ? 1 : 0, ...pages);
