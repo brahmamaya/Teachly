@@ -43,7 +43,7 @@ const { check, finish } = require('./lib.cjs');
   await page.uncheck('[data-quickbar]');
   await page.waitForTimeout(500);
   check('switched off again: the bar is gone at once', !(await bar()));
-  check('the pen menu (second tap) still has its colours', await (async () => { await page.evaluate(() => document.activeElement && document.activeElement.blur()); await page.keyboard.press('Escape'); await page.waitForTimeout(400); await page.click('[data-tool=pen]'); await page.waitForTimeout(300); return !!(await page.$('.pop-n3 .n3-colors')); })());
+  check('the pen menu (second tap) still has its colours', await (async () => { await page.evaluate(() => document.activeElement && document.activeElement.blur()); await page.keyboard.press('Escape'); await page.waitForTimeout(400); await page.click('[data-tool=pen]'); await page.waitForTimeout(300); return !!(await page.$('.pop-n3 .pt-cols')); })());
   check('no page errors', errs.length === 0, errs.join('|'));
   await b.close();
   finish();
