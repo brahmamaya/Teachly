@@ -1,6 +1,7 @@
 import { refreshAngles } from './subjects/angles';
 import { fitIntoPage, regroup, uid } from './geometry';
 import { setPageShape } from './page';
+import { isDarkColor } from './renderer';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, PenKind, ShapeKind, ToolId } from './types';
 
 /** A saved pen: kind, colour, thickness and steadiness ("My pens" in the pen menu). */
@@ -57,6 +58,17 @@ export interface Settings {
   tbSimpleDone?: boolean;
   /** Look of My notebooks: dark (default) or light. */
   libTheme?: 'light' | 'dark';
+}
+
+/**
+ * Writing must always show: the plain white pen becomes black on a light page, the black pen white on a dark page.
+ * (Classroom boards are often white: a white pen there wrote "nothing".) Other colours stay as chosen.
+ */
+export function readableInk(c: string, bg: string): string {
+  const x = c.toLowerCase(), dark = isDarkColor(bg);
+  if (dark && (x === '#000000' || x === '#1a1a1a' || x === '#1e293b')) return '#f2f2f0';
+  if (!dark && (x === '#f2f2f0' || x === '#ffffff')) return '#000000';
+  return c;
 }
 
 export interface ToolState {
@@ -435,7 +447,7 @@ export class Store {
     if (patch.tool && patch.tool !== this.tool.tool && patch.tool !== 'select') this.clearSelection();
     // Every pen keeps its own colour: choosing a pen brings its colour, choosing a colour is saved for that pen only.
     if (patch.penStyle && patch.penStyle !== this.tool.penStyle && patch.penStyle !== 'highlighter' && patch.color === undefined) {
-      patch = { ...patch, color: this.tool.penColors[patch.penStyle] ?? '#f2f2f0' };
+      patch = { ...patch, color: readableInk(this.tool.penColors[patch.penStyle] ?? '#f2f2f0', this.page?.bg ?? '#ffffff') };
     }
     Object.assign(this.tool, patch);
     if (patch.color !== undefined && this.tool.penStyle !== 'highlighter') this.tool.penColors = { ...this.tool.penColors, [this.tool.penStyle]: patch.color };
