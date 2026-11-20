@@ -63,6 +63,8 @@ export interface ToolState {
   tool: ToolId;
   penStyle: PenKind;
   color: string;
+  /** Each pen remembers its own colour (the highlighter has hlColor). */
+  penColors: Partial<Record<PenKind, string>>;
   size: number;
   hlColor: string;
   hlSize: number;
@@ -150,6 +152,7 @@ export class Store {
     tool: 'pen',
     penStyle: 'pen',
     color: '#f2f2f0',
+    penColors: {},
     size: 4,
     hlColor: '#facc15',
     hlSize: 22,
@@ -428,7 +431,12 @@ export class Store {
 
   setTool(patch: Partial<ToolState>): void {
     if (patch.tool && patch.tool !== this.tool.tool && patch.tool !== 'select') this.clearSelection();
+    // Every pen keeps its own colour: choosing a pen brings its colour, choosing a colour is saved for that pen only.
+    if (patch.penStyle && patch.penStyle !== this.tool.penStyle && patch.penStyle !== 'highlighter' && patch.color === undefined) {
+      patch = { ...patch, color: this.tool.penColors[patch.penStyle] ?? '#f2f2f0' };
+    }
     Object.assign(this.tool, patch);
+    if (patch.color !== undefined && this.tool.penStyle !== 'highlighter') this.tool.penColors = { ...this.tool.penColors, [this.tool.penStyle]: patch.color };
     this.emit('tool');
   }
 

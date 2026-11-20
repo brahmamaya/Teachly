@@ -718,7 +718,6 @@ export class App {
             </div>
             <div class="pen-tray" role="listbox" aria-label="Pen type">${PEN_DEFS}${this.trayPens()}</div>
             <div class="seg n3-smooth"><span>Steady</span>${['Exact', 'Light', 'Strong'].map((n, i) => `<button class="${(t.inkSmooth ?? 0) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>
-            ${this.presetRow()}
           </div>
           <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>`;
         break;
@@ -976,32 +975,18 @@ export class App {
     return `<button class="pm-item ${on ? 'on' : ''}" data-act="${act}" role="menuitem">${icon(ic, 22)}<span>${label}</span></button>`;
   }
 
-  /** "My pens": four saved pens. Tap a full slot to use it; tap Save, then a slot, to store the pen in use. */
-  private presetArmed = false;
   private penMore = false;
 
   /** The three main pens (ball pen, marker, highlighter) always show; the others sit under a "More" arrow. */
   private trayPens(): string {
     const t = store.tool;
     const main = ['pen', 'marker', 'highlighter'];
-    const one = ([k, n]: [string, string]) => `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}"><i class="pt-clip">${penSvg(k as PenKind, k === 'highlighter' ? t.hlColor : t.color)}</i><span>${n}</span></button>`;
+    const one = ([k, n]: [string, string]) => `<button class="pt-pen ${t.penStyle === k ? 'on' : ''}" data-style="${k}" title="${n}" aria-label="${n}" role="option" aria-selected="${t.penStyle === k}"><i class="pt-clip">${penSvg(k as PenKind, k === 'highlighter' ? t.hlColor : t.penStyle === k ? t.color : t.penColors[k as PenKind] ?? '#f2f2f0')}</i><span>${n}</span></button>`;
     const open = this.penMore || !main.includes(t.penStyle);
     const rest = PEN_TYPES.filter(([k]) => !main.includes(k));
     return `<div class="pt-list">${PEN_TYPES.filter(([k]) => main.includes(k)).map(one).join('')}${open ? rest.map(one).join('') : ''}</div>` +
       `<button class="pt-more${open ? ' open' : ''}" data-penmore aria-expanded="${open}" aria-label="${open ? 'Fewer pens' : 'More pens'}">${icon('down', 18)}<span>${open ? 'Less' : 'More'}</span></button>`;
   }
-  private presetRow(): string {
-    const slots = [0, 1, 2, 3].map((i) => (store.settings.penPresets ?? [])[i] ?? null);
-    const dots = slots
-      .map((p, i) =>
-        p
-          ? `<button class="n3-preset${this.presetArmed ? ' arm' : ''}" data-pslot="${i}" aria-label="My pen ${i + 1}: ${p.style}, thickness ${p.size}"><i style="background:${p.color};width:${Math.min(18, p.size + 6)}px;height:${Math.min(18, p.size + 6)}px"></i></button>`
-          : `<button class="n3-preset empty${this.presetArmed ? ' arm' : ''}" data-pslot="${i}" aria-label="My pen ${i + 1}: empty, tap to save the pen in use here">+</button>`,
-      )
-      .join('');
-    return `<div class="n3-presets"><span>My pens</span>${dots}<button class="n3-psave${this.presetArmed ? ' on' : ''}" data-pset="1" aria-pressed="${this.presetArmed}">Save</button></div>`;
-  }
-
   private onPopoverClick(e: MouseEvent): void {
     const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
     if (!b) return;
@@ -1013,26 +998,6 @@ export class App {
       // the menu got taller or shorter: put it back on the toolbar so it never goes off the screen
       const a = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="pen"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="pen"]`) as HTMLElement | null;
       if (a) this.positionPopover(a);
-      return;
-    }
-    if (d.pset !== undefined) {
-      this.presetArmed = !this.presetArmed;
-      this.fillPopover();
-      return;
-    }
-    if (d.pslot !== undefined) {
-      const i = Number(d.pslot);
-      const list = [0, 1, 2, 3].map((k) => (store.settings.penPresets ?? [])[k] ?? null);
-      const hl = t.penStyle === 'highlighter';
-      if (this.presetArmed || !list[i]) {
-        list[i] = { style: t.penStyle, color: hl ? t.hlColor : t.color, size: hl ? t.hlSize : t.size, smooth: t.inkSmooth ?? 0 };
-        this.presetArmed = false;
-        store.setSettings({ penPresets: list });
-      } else {
-        const p = list[i]!;
-        store.setTool(p.style === 'highlighter' ? { penStyle: p.style, hlColor: p.color, hlSize: p.size, inkSmooth: p.smooth } : { penStyle: p.style, color: p.color, size: p.size, inkSmooth: p.smooth });
-      }
-      this.fillPopover();
       return;
     }
     if (d.style) store.setTool({ penStyle: d.style as ToolState['penStyle'] });

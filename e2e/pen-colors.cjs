@@ -1,0 +1,36 @@
+// Every pen keeps its own colour; the My pens row is gone.
+const { chromium } = require('playwright');
+const { check, finish } = require('./lib.cjs');
+(async () => {
+  const b = await chromium.launch();
+  const page = await (await b.newContext({ viewport: { width: 1194, height: 834 }, hasTouch: true })).newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(e.message));
+  await page.goto(process.env.URL || 'http://localhost:5173/');
+  await page.waitForTimeout(1600);
+  await page.click('[data-tool=pen]');
+  await page.waitForTimeout(400);
+  check('the My pens row is gone', !(await page.$('.n3-presets')));
+  const tool = () => page.evaluate(() => { const t = window.__teachly.store.tool; return { s: t.penStyle, c: t.color, h: t.hlColor }; });
+  const pick = async (style, color) => { await page.click(`.pt-pen[data-style=${style}]`); await page.waitForTimeout(150); await page.click(`.swatch[data-color="${color}"]`); await page.waitForTimeout(150); };
+  await pick('pen', '#db0000');
+  await pick('marker', '#174ebd');
+  let t = await tool();
+  check('marker took blue', t.s === 'marker' && t.c === '#174ebd', JSON.stringify(t));
+  await page.click('.pt-pen[data-style=pen]');
+  await page.waitForTimeout(150);
+  t = await tool();
+  check('touching the ball pen brings back ITS red, not the marker blue', t.s === 'pen' && t.c === '#db0000', JSON.stringify(t));
+  await page.click('.pt-pen[data-style=highlighter]');
+  await page.waitForTimeout(150);
+  await page.click('.swatch[data-color="#f472b6"]');
+  await page.click('.pt-pen[data-style=marker]');
+  await page.waitForTimeout(150);
+  t = await tool();
+  check('marker still blue after changing the highlighter', t.c === '#174ebd' && t.h === '#f472b6', JSON.stringify(t));
+  const tint = await page.$$eval('.pt-pen', (n) => n.map((x) => [x.dataset.style, x.querySelector('svg').innerHTML.includes('#db0000'), x.querySelector('svg').innerHTML.includes('#174ebd')]));
+  check('the pen pictures show each pen\'s own colour', tint.find((x) => x[0] === 'pen')[1] && tint.find((x) => x[0] === 'marker')[2] && !tint.find((x) => x[0] === 'pen')[2], JSON.stringify(tint));
+  check('no page errors', errs.length === 0, errs.join('|'));
+  await b.close();
+  finish();
+})();
