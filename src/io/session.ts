@@ -21,7 +21,7 @@ interface Session {
   at: number;
 }
 
-const TOOL_KEYS: (keyof ToolState)[] = ['tool', 'penStyle', 'color', 'penColors', 'size', 'hlColor', 'hlSize', 'shape', 'shapeColor', 'shapeSize', 'shapeFill', 'eraserMode', 'eraserSize', 'fontSize', 'fillColor', 'laserColor', 'laserStay', 'laserBlink', 'inkSmooth', 'tapeColor'];
+const TOOL_KEYS: (keyof ToolState)[] = ['tool', 'penStyle', 'color', 'penColors', 'size', 'hlColor', 'hlSize', 'shape', 'shapeColor', 'shapeSize', 'shapeFill', 'eraserMode', 'eraserSize', 'fontSize', 'fillColor', 'laserColor', 'laserStay', 'laserBlink', 'tapeColor'];
 
 function read(): Session | null {
   try {
