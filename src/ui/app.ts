@@ -734,8 +734,8 @@ export class App {
         const hl = t.penStyle === 'highlighter';
         const color = hl ? t.hlColor : t.color;
         const size = hl ? t.hlSize : t.size;
-        // iPad-style pen bar: pens standing in a row (tops only), six colour circles on the right. Tapping the pen in use
-        // again (or the rainbow) opens the size and colour sliders below.
+        // iPad-style pen bar: pens standing in a row (tops only), six colour circles on the right.
+        // The size and colour sliders sit below the bar.
         const keepScroll = (pop.querySelector('.pt-pens') as HTMLElement | null)?.scrollLeft ?? null;
         const cols = hl ? HL_COLORS : BAR_COLORS;
         pop.className = `popover pop-n3 pop-tray${this.penOpts ? ' opts' : ''}`;
@@ -1013,7 +1013,7 @@ export class App {
 
 
   /** Tray state: sliders open; the pen just picked (it rises with a short animation, only on that render). */
-  private penOpts = false;
+  private penOpts = true; // size and colour sliders always show under the pens (owner, 2026-11-20)
   private penLift = '';
 
   /** All pens stand in a row, tip up; only the top part shows. The pen in use stands higher and shows its size. */
@@ -1033,7 +1033,7 @@ export class App {
     const d = b.dataset;
     const t = store.tool;
     if (d.style) {
-      if (d.style === t.penStyle) this.penOpts = !this.penOpts;
+      if (d.style === t.penStyle) return;
       else {
         this.penLift = d.style;
         store.setTool({ penStyle: d.style as ToolState['penStyle'] });
