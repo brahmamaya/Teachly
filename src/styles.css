@@ -9624,3 +9624,46 @@ button,
 .pop-n3 .pt-more .icon { transition: transform 0.18s; }
 .pop-n3 .pt-more.open .icon { transform: rotate(180deg); }
 .lite .pop-n3 .pt-more .icon { transition: none; }
+
+/* ---------- Pen tray, standing pens: a row with only the top of each pen showing; sliders for size and colour ---------- */
+.popover.pop-n3.pop-tray {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: min(480px, calc(100vw - 16px));
+  max-width: none;
+}
+.pop-tray .pen-tray {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 18px 6px 0;
+  border-radius: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pop-tray .pen-tray::-webkit-scrollbar { display: none; }
+.pop-tray .pt-pen { flex: 1 0 34px; display: block; padding: 0; justify-content: center; background: none !important; }
+.pop-tray .pt-clip { display: block; width: 30px; height: 100px; margin: 0 auto; clip-path: inset(-18px -6px 0 -6px); position: relative; transition: none; }
+.pop-tray .pt-svg { position: absolute; left: 0; top: 0; width: 30px; height: 170px; transform-origin: 50% 20%; transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2), filter 0.18s; filter: drop-shadow(0 2px 1.5px rgba(0, 0, 0, 0.35)); }
+.pop-tray .pt-pen.on .pt-svg, .pop-tray .pt-pen:active .pt-svg { transform: translateY(-12px); filter: drop-shadow(0 6px 3px rgba(0, 0, 0, 0.4)); }
+@media (hover: hover) { .pop-tray .pt-pen:hover .pt-svg { transform: translateY(-8px); } }
+.lite .pop-tray .pt-svg { transition: none; }
+@media (prefers-reduced-motion: reduce) { .pop-tray .pt-svg { transition: none; } }
+.pop-tray .n3-size input[type='range'] { min-width: 0; }
+.pop-tray .n3-hue input[type='range'] {
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.pop-tray .n3-hue input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid rgba(0, 0, 0, 0.45); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
+.pop-tray .n3-hue input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid rgba(0, 0, 0, 0.45); }
+.pop-tray .n3-colors { padding: 0; }
+.pop-tray .n3-colors .swatches { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.pop-tray .n3-colors .swatch { flex: none; }
+.pop-tray .pt-pen.on .pt-clip, .pop-tray .pt-pen:active .pt-clip { width: 30px; }
+.pop-tray .pt-pen { min-width: 0; }
