@@ -1,4 +1,4 @@
-import { PEN_DEFS, penSvg } from './pentray';
+import { colorWheelSvg, PEN_DEFS, penSvg } from './pentray';
 import { Board, type Tool } from '../board';
 import { bbox, regroup, resizeEl, similarity, transformEl, translateEl, uid, unionRects } from '../geometry';
 import {
@@ -63,24 +63,6 @@ import { computeUiScale, inkScale, scaleFloating, ui } from './scale';
 // yellow / green, indigo, blue / teal, magenta, dark green / black, brown,
 // white). Do not change these values.
 const PEN_COLORS = ['#db0000', '#ed6d00', '#febf00', '#4ceb45', '#2600a2', '#174ebd', '#3c8da4', '#d500a6', '#096800', '#000000', '#726253', '#f2f2f0'];
-/** A bright colour from a hue slider (0-360). */
-const hsl2hex = (h: number): string => {
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    return Math.round(255 * (0.55 - 0.45 * Math.min(Math.max(Math.min(k - 3, 9 - k), -1), 1)));
-  };
-  return '#' + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, '0')).join('');
-};
-/** Hue (0-360) of a #rrggbb colour, for placing the slider. */
-const hueOf = (hex: string): number => {
-  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
-  if (!m) return 0;
-  const [r, g, b] = [m[1], m[2], m[3]].map((x) => parseInt(x, 16) / 255);
-  const mx = Math.max(r, g, b), d = mx - Math.min(r, g, b);
-  if (!d) return 0;
-  const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return Math.round(((h * 60) + 360) % 360);
-};
 const PEN_WHITE = '#f2f2f0';
 const PEN_BLACK = '#000000';
 const boardColors = (): string[] => PEN_COLORS;
@@ -184,7 +166,7 @@ type HexBtn = (t: ToolState, app: App) => [string, boolean];
 const hb = (attr: string, ic: string, title: string, extra = '') => `<button class="hx-btn" ${attr} title="${title}" aria-label="${title}">${icon(ic, 26)}${extra}</button>`;
 const HEX_BUTTONS: Record<string, HexBtn> = {
   select: (t) => [hb('data-tool="select"', 'select', 'Select'), t.tool === 'select'],
-  pen: (t) => [hb('data-tool="pen"', t.penStyle, 'Pen', `<i class="hx-dot" style="background:${t.penStyle === 'highlighter' ? t.hlColor : t.color}"></i>`), t.tool === 'pen'],
+  pen: (t) => [hb('data-tool="pen"', 'pk_' + t.penStyle, 'Pen', `<i class="hx-dot" style="background:${t.penStyle === 'highlighter' ? t.hlColor : t.color}"></i>`), t.tool === 'pen'],
   eraser: (t) => [hb('data-tool="eraser"', 'eraser', 'Eraser'), t.tool === 'eraser'],
   shape: (t) => [hb('data-tool="shape"', 'shapes', 'Shapes'), t.tool === 'shape'],
   fill: (t) => [hb('data-tool="fill"', 'bucket', 'Fill colour'), t.tool === 'fill'],
@@ -444,6 +426,7 @@ export class App {
     this.tbKey = key;
     const t = store.tool;
     const dot = t.penStyle === 'highlighter' ? t.hlColor : t.color;
+    this.toolbar.style.setProperty('--tip', dot); // the pen icon's tip shows the pen colour
     const tool = (id: ToolId, ic: string, label: string, extra = '') =>
       `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 22)}${extra}</button>`;
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
@@ -456,7 +439,7 @@ export class App {
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       ${show('select', tool('select', 'select', 'Select'))}
       ${show('slide', `<button class="tb-btn tb-toggle ${t.slide ? 'on' : ''}" data-act="slide" title="Slide mode — move the board while you write" aria-pressed="${t.slide}">${icon('pan', 22)}</button>`)}
-      ${show('pen', tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`))}
+      ${show('pen', tool('pen', 'pk_' + t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`))}
       ${show('eraser', tool('eraser', 'eraser', 'Eraser'))}
       ${show('shape', tool('shape', 'shapes', 'Shapes'))}
       ${show('fill', tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`))}
@@ -708,12 +691,6 @@ export class App {
   /** A colour from the picker acts exactly like tapping a colour button. */
   private onCustomColor(e: Event): void {
     const el = e.target as HTMLInputElement;
-    if (el.dataset.penhue !== undefined) {
-      const c = hsl2hex(Number(el.value));
-      store.setTool(store.tool.penStyle === 'highlighter' ? { hlColor: c } : { color: c });
-      this.fillPopover();
-      return;
-    }
     const attr = el.dataset.custom;
     if (!attr) return;
     addRecentColor(el.value);
@@ -743,14 +720,14 @@ export class App {
           <i class="pt-grab" aria-hidden="true"></i>
           <div class="pt-bar">
             <div class="pt-pens" role="listbox" aria-label="Pen type">${PEN_DEFS}${this.trayPens()}</div>
-            <div class="swatches pt-cols">${cols.map((c) => `<button class="pt-col ${c === color ? 'on' : ''}" style="--c:${c}" data-color="${c}" aria-label="${c}"></button>`).join('')}<label class="pt-col pt-wheel${cols.includes(color) ? '' : ' on'}" title="Any colour"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(color) ? color : '#ff6699'}" data-custom="color" aria-label="Pick any colour"></label></div>
+            <div class="swatches pt-cols">${cols.map((c) => `<button class="pt-col ${c === color ? 'on' : ''}" style="--c:${c}" data-color="${c}" aria-label="${c}"></button>`).join('')}<button class="pt-col pt-wheel${cols.includes(color) || this.penWheel ? '' : ' on'}${this.penWheel ? ' open' : ''}" data-wheel aria-expanded="${this.penWheel}" aria-label="More colours"></button></div>
           </div>
+          ${this.penWheel ? `<div class="pt-wheelbox">${colorWheelSvg(color)}</div>` : ''}
           ${this.penOpts ? `<div class="pt-opts">
             <div class="n3-size">
               <input type="range" id="pen-size" min="1" max="${hl ? 60 : 40}" value="${size}" data-pensize aria-label="Size">
               <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
             </div>
-            <div class="n3-hue"><input type="range" min="0" max="360" value="${hueOf(color)}" data-penhue aria-label="Colour"></div>
           </div>` : ''}`;
         const pens = pop.querySelector('.pt-pens') as HTMLElement;
         if (keepScroll !== null) pens.scrollLeft = keepScroll;
@@ -1012,9 +989,16 @@ export class App {
   }
 
 
+  /** The pen menu grew or shrank (colour flower opened or closed): keep it on the toolbar and on screen. */
+  private placePenPop(): void {
+    const a = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="pen"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="pen"]`) as HTMLElement | null;
+    if (a) this.positionPopover(a);
+  }
+
   /** Tray state: sliders open; the pen just picked (it rises with a short animation, only on that render). */
   private penOpts = true; // size and colour sliders always show under the pens (owner, 2026-11-20)
   private penLift = '';
+  private penWheel = false;
 
   /** All pens stand in a row, tip up; only the top part shows. The pen in use stands higher and shows its size. */
   private trayPens(): string {
@@ -1028,10 +1012,25 @@ export class App {
   }
 
   private onPopoverClick(e: MouseEvent): void {
+    const petal = (e.target as Element).closest('[data-wc]') as SVGElement | null;
+    if (petal) {
+      const c = petal.dataset.wc!;
+      store.setTool(store.tool.penStyle === 'highlighter' ? { hlColor: c } : { color: c });
+      this.penWheel = false;
+      this.fillPopover();
+      this.placePenPop();
+      return;
+    }
     const b = (e.target as HTMLElement).closest('button') as HTMLElement | null;
     if (!b) return;
     const d = b.dataset;
     const t = store.tool;
+    if (d.wheel !== undefined) {
+      this.penWheel = !this.penWheel;
+      this.fillPopover();
+      this.placePenPop();
+      return;
+    }
     if (d.style) {
       if (d.style === t.penStyle) return;
       else {
@@ -1039,9 +1038,7 @@ export class App {
         store.setTool({ penStyle: d.style as ToolState['penStyle'] });
       }
       this.fillPopover();
-      // the menu may have grown or shrunk: keep it on the toolbar
-      const a = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="pen"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="pen"]`) as HTMLElement | null;
-      if (a) this.positionPopover(a);
+      this.placePenPop();
       return;
     }
     else if (d.color) store.setTool(t.penStyle === 'highlighter' ? { hlColor: d.color } : { color: d.color });
@@ -1107,16 +1104,6 @@ export class App {
       Object.assign(store.tool, store.tool.penStyle === 'highlighter' ? { hlSize: v } : { size: v });
       const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
       if (prev) prev.style.width = prev.style.height = `${Math.min(26, v + 2)}px`;
-    } else if (el.dataset.penhue !== undefined) {
-      // A colour slider: the colour follows live; the pens and the toolbar catch up when the finger lifts.
-      const c = hsl2hex(v);
-      if (store.tool.penStyle === 'highlighter') store.tool.hlColor = c;
-      else {
-        store.tool.color = c;
-        store.tool.penColors = { ...store.tool.penColors, [store.tool.penStyle]: c };
-      }
-      const prev = this.popover?.querySelector('[data-penprev]') as HTMLElement | null;
-      if (prev) prev.style.background = c;
     } else if (el.dataset.hexsize !== undefined) {
       store.settings.hexSize = v;
       (this.toolbar.querySelector('.hexdock') as HTMLElement).style.setProperty('--R', `${v}px`);

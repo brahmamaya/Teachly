@@ -67,3 +67,40 @@ export function penSvg(kind: PenKind, color: string, num = ''): string {
   const label = num ? `<text x="16" y="86" text-anchor="middle" font-size="7.5" font-weight="600" font-family="system-ui,sans-serif" fill="#8e8e93">${num}</text>` : '';
   return `<svg class="pt-svg" viewBox="0 0 32 140" width="32" height="140" aria-hidden="true">${g}${label}</svg>`;
 }
+
+/** #rrggbb from hue (0-360), saturation and lightness (0-100). */
+export function hslHex(h: number, s: number, l: number): string {
+  const S = s / 100, L = l / 100, a = S * Math.min(L, 1 - L);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    return Math.round(255 * (L - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
+  };
+  return '#' + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The colour flower: rings of diamond petals, every hue around the circle (yellow at the top), pale near the white
+ * centre and deep toward the edge. Each petal is a colour to tap. Built only when the teacher opens it.
+ */
+export function colorWheelSvg(current: string): string {
+  const N = 36, K = 10, step = 360 / N, out: string[] = [];
+  const pt = (r: number, deg: number) => {
+    const t = (deg * Math.PI) / 180;
+    return `${(100 + r * Math.sin(t)).toFixed(2)} ${(100 - r * Math.cos(t)).toFixed(2)}`;
+  };
+  let picked = '';
+  for (let i = K - 1; i >= 0; i--) {
+    const r = 11 + i * 9.4, half = 9.6 + i * 0.25, t = i / (K - 1);
+    const L = t < 0.42 ? 94 - 44 * (t / 0.42) : 50 - 34 * ((t - 0.42) / 0.58);
+    const S = t < 0.42 ? 92 : 100;
+    const w = step * (0.62 + 0.1 * (1 - t)) * (i === 0 ? 1.4 : 1);
+    for (let j = 0; j < N; j++) {
+      const a = j * step + i * (step / 2) + i * 2.2;
+      const col = hslHex((60 + a) % 360, S, L);
+      const d = `M${pt(r - half, a)} L${pt(r, a - w)} L${pt(r + half, a)} L${pt(r, a + w)}Z`;
+      out.push(`<path d="${d}" fill="${col}" data-wc="${col}"/>`);
+      if (col === current.toLowerCase()) picked = `<path d="${d}" fill="none" stroke="#fff" stroke-width="1.6" pointer-events="none"/>`;
+    }
+  }
+  return `<svg class="pt-flower" viewBox="0 0 200 200" role="img" aria-label="Colour flower: tap a colour">${out.join('')}<circle cx="100" cy="100" r="4.5" fill="#ffffff" data-wc="#ffffff"/>${picked}</svg>`;
+}

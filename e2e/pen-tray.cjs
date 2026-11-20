@@ -20,7 +20,16 @@ const SHOT = process.env.SHOT;
   const rows = await page.$$eval('.pt-pen', (n) => new Set(n.map((x) => Math.round(x.getBoundingClientRect().top))).size);
   check('they stand side by side on one line', rows === 1, String(rows));
   check('six colour circles (five colours and the colour wheel)', (await page.$$('.pt-cols .pt-col')).length === 6);
-  check('the size and colour sliders show straight away', !!(await page.$('[data-pensize]')) && !!(await page.$('[data-penhue]')));
+  check('the size slider shows straight away (no colour slider)', !!(await page.$('[data-pensize]')) && !(await page.$('[data-penhue]')));
+  await page.click('[data-wheel]');
+  await page.waitForTimeout(400);
+  const petals = (await page.$$('.pt-flower [data-wc]')).length;
+  check('the rainbow circle opens the colour flower', petals > 300, String(petals));
+  const fb = await (await page.$('.pt-flower')).boundingBox();
+  await page.mouse.click(fb.x + fb.width * 0.5, fb.y + fb.height * 0.22);
+  await page.waitForTimeout(400);
+  const picked = await page.evaluate(() => window.__teachly.store.tool.color);
+  check('tapping a petal sets that colour and closes the flower', /^#[0-9a-f]{6}$/.test(picked) && picked !== '#f2f2f0' && !(await page.$('.pt-flower')), picked);
   if (SHOT) await page.screenshot({ path: SHOT + '/tray.png' });
   // lift: pressing a pen moves its picture up
   const box = await (await page.$('.pt-pen[data-style=marker] .pt-svg')).boundingBox();

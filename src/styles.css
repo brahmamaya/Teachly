@@ -9753,3 +9753,12 @@ button,
   .pop-tray .pt-cols { grid-template-columns: repeat(3, 30px); gap: 8px; }
   .pop-tray .pt-col { width: 30px; height: 30px; }
 }
+/* the colour flower under the bar (opens from the rainbow circle) */
+.pop-tray .pt-wheel { cursor: pointer; }
+.pop-tray .pt-wheel.open { box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 6px #0d0d0f; }
+.pop-tray .pt-wheelbox { display: flex; justify-content: center; padding: 14px 16px 6px; border-top: 1px solid rgba(255, 255, 255, 0.08); animation: fade-in 0.2s ease; }
+.pop-tray .pt-flower { width: min(300px, 74vw, 46vh); height: auto; aspect-ratio: 1; touch-action: manipulation; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5)); }
+.pop-tray .pt-flower [data-wc] { cursor: pointer; }
+.lite .pop-tray .pt-wheelbox { animation: none; }
+/* the pen icon shows its colour in its own tip: no colour bar over it */
+#app .tb-btn[data-tool='pen'] .swatch-dot { display: none; }
