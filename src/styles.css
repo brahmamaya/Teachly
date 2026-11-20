@@ -9814,3 +9814,70 @@ button,
 .page-ghost.gone { opacity: 0; scale: 0.4; transition: opacity 0.16s ease, scale 0.16s ease; }
 .page-ghost.out::after { content: 'Drop on this page'; position: absolute; left: 50%; bottom: -34px; translate: -50% 0; white-space: nowrap; padding: 6px 14px; border-radius: 999px; background: #16a34a; color: #fff; font: 700 15px/1 system-ui, sans-serif; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
 .page-ghost.out { overflow: visible; } .page-ghost.out img { border-radius: 0.6em; }
+
+/* ---------- Phones: everything in the notebook library sized for a small screen ----------
+   Landscape phones are only ~340-420 px tall: a narrower, tighter side list, a smaller title and buttons, smaller
+   cards. Portrait phones: a smaller title and tighter spacing. Tablets and boards are not touched. */
+@media (orientation: landscape) and (max-height: 520px) {
+  #app .library .lib-side {
+    width: 214px;
+    margin: 8px 0 8px 8px;
+    padding: 42px 8px 10px;
+    border-radius: 22px;
+  }
+  #app .library.side-off .lib-side { margin-left: -230px; }
+  #app .library .ls-toggle { top: 8px; right: 10px; width: 34px; height: 30px; }
+  #app .library .ls-toggle svg { width: 20px; height: 20px; }
+  #app .library .ls-item { height: 36px; min-height: 36px; padding: 0 12px; gap: 9px; border-radius: 18px; font-size: 14px; }
+  #app .library .ls-item svg { width: 18px; height: 18px; }
+  #app .library .ls-n { font-size: 13px; }
+  #app .library .ls-head { margin: 12px 12px 2px; font-size: 11px; }
+  #app .library .ls-empty { margin: 4px 12px; font-size: 13px; }
+  #app .library .ls-sep { margin: 8px 12px; }
+  #app .library .lib-head { padding: 8px 14px 4px; gap: 8px; min-height: 0; }
+  #app .library .lib-head h2 { font-size: 22px; letter-spacing: -0.01em; }
+  #app .library .lib-head .lib-new { height: 34px; min-height: 34px; padding: 0 14px; font-size: 14px; }
+  #app .library .lib-head .lib-new svg { width: 16px; height: 16px; }
+  #app .library .lib-head .icon-btn,
+  #app .library .lib-head .lib-showside { width: 34px; height: 34px; min-width: 34px; }
+  #app .library .lib-theme { transform: scale(0.85); transform-origin: right center; }
+  #app .library .lib-search { height: 36px; min-height: 36px; font-size: 14px; }
+  #app .library .lib-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 16px 12px; padding: 10px 14px calc(20px + env(safe-area-inset-bottom, 0px)); }
+  #app .library .lib-grid .nb-card .nb-title { font-size: 13px; }
+  #app .library .lib-grid .nb-card .nb-meta { font-size: 11px; }
+}
+@media (orientation: portrait) and (max-width: 600px) {
+  #app .library .lib-head h2 { font-size: 26px; }
+  #app .library .lib-head { gap: 8px; }
+  #app .library .lib-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 18px 12px; padding: 12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+/* short screens (phones on their side): dialogs fit and scroll instead of being cut off */
+@media (max-height: 520px) {
+  .sv-back > .dl-box,
+  .sv-back > .sv-box,
+  .sv-back > form {
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+@media (max-height: 520px) {
+  .sv-back > .dl-box > *, .sv-back > form > * { flex-shrink: 0; }
+}
+/* Pages panel on a phone on its side: smaller header and buttons, so the pages themselves get the room */
+@media (orientation: landscape) and (max-height: 520px) {
+  #app .pages-panel { gap: 6px; padding-top: 8px; padding-bottom: 8px; }
+  #app .pages-panel .pages-head { min-height: 0; padding-top: 0; padding-bottom: 0; }
+  #app .pages-panel .pages-head b { font-size: 15px; }
+  #app .pages-panel .pages-actions button { padding-top: 2px; padding-bottom: 2px; min-height: 34px; }
+  #app .pages-panel .pages-actions button span { display: none; }
+  #app .pages-panel [data-pg='add'] { min-height: 36px; height: 36px; padding-top: 0; padding-bottom: 0; font-size: 14px; }
+}
+/* portrait phones: the lists sit in one slim scrolling row at the top (no tall empty box) */
+@media (orientation: portrait) and (max-width: 600px) {
+  #app .library .lib-side { width: auto; padding: 8px; margin: 8px 8px 0; border-radius: 22px; border-width: 1px; }
+  #app .library .ls-toggle { display: none; }
+  #app .library .ls-item { height: 38px; min-height: 38px; padding: 0 14px; font-size: 14px; border-radius: 19px; }
+  #app .library .ls-item svg { width: 18px; height: 18px; }
+}
