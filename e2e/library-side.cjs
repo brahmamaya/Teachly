@@ -23,7 +23,7 @@ const { check, finish } = require('./lib.cjs');
   check('the panel is 318 px wide', g.side.w === 318, JSON.stringify(g.side));
   check('rows are 46 px high and touch each other (no gap)', g.items.every((i) => i.h === 46) && g.items[1].t - g.items[0].t === 46 && g.items[2].t - g.items[1].t === 46, JSON.stringify(g.items));
   check('the chosen row is a pill (23 px corners) in soft grey', g.radius === '23px' && g.bg === 'rgb(56, 56, 58)', `${g.radius} ${g.bg}`);
-  check('type is 16 px medium white', g.size === '16px' && g.weight === '500' && g.color === 'rgb(255, 255, 255)', `${g.size} ${g.weight} ${g.color}`);
+  check('type is 17 px medium white Figtree (the iPad notes look, font kept on the device)', g.size === '17px' && g.weight === '500' && g.color === 'rgb(255, 255, 255)' && (await page.evaluate(() => document.fonts.check('17px Figtree') && getComputedStyle(document.querySelector('.ls-item')).fontFamily.startsWith('Figtree'))), `${g.size} ${g.weight} ${g.color}`);
   await page.click('.lib-side .ls-toggle');
   await page.waitForTimeout(700);
   check('the button at the top of the panel hides the list', !(await page.isVisible('.lib-side')) && (await page.isVisible('.lib-showside')));
