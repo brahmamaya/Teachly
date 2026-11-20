@@ -166,7 +166,7 @@ type HexBtn = (t: ToolState, app: App) => [string, boolean];
 const hb = (attr: string, ic: string, title: string, extra = '') => `<button class="hx-btn" ${attr} title="${title}" aria-label="${title}">${icon(ic, 26)}${extra}</button>`;
 const HEX_BUTTONS: Record<string, HexBtn> = {
   select: (t) => [hb('data-tool="select"', 'select', 'Select'), t.tool === 'select'],
-  pen: (t) => [hb('data-tool="pen"', t.penStyle, 'Pen', `<i class="hx-dot" style="background:${t.penStyle === 'highlighter' ? t.hlColor : t.color}"></i>`), t.tool === 'pen'],
+  pen: (t) => [hb('data-tool="pen"', 'pk_' + t.penStyle, 'Pen', `<i class="hx-dot" style="background:${t.penStyle === 'highlighter' ? t.hlColor : t.color}"></i>`), t.tool === 'pen'],
   eraser: (t) => [hb('data-tool="eraser"', 'eraser', 'Eraser'), t.tool === 'eraser'],
   shape: (t) => [hb('data-tool="shape"', 'shapes', 'Shapes'), t.tool === 'shape'],
   fill: (t) => [hb('data-tool="fill"', 'bucket', 'Fill colour'), t.tool === 'fill'],
@@ -426,6 +426,7 @@ export class App {
     this.tbKey = key;
     const t = store.tool;
     const dot = t.penStyle === 'highlighter' ? t.hlColor : t.color;
+    this.toolbar.style.setProperty('--tip', dot); // the pen icon's tip shows the pen colour
     const tool = (id: ToolId, ic: string, label: string, extra = '') =>
       `<button class="tb-btn ${t.tool === id ? 'active' : ''}" data-tool="${id}" title="${label}">${icon(ic, 22)}${extra}</button>`;
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
@@ -438,7 +439,7 @@ export class App {
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
       ${show('select', tool('select', 'select', 'Select'))}
       ${show('slide', `<button class="tb-btn tb-toggle ${t.slide ? 'on' : ''}" data-act="slide" title="Slide mode — move the board while you write" aria-pressed="${t.slide}">${icon('pan', 22)}</button>`)}
-      ${show('pen', tool('pen', t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`))}
+      ${show('pen', tool('pen', 'pk_' + t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`))}
       ${show('eraser', tool('eraser', 'eraser', 'Eraser'))}
       ${show('shape', tool('shape', 'shapes', 'Shapes'))}
       ${show('fill', tool('fill', 'bucket', 'Fill colour', `<span class="swatch-dot" style="background:${t.fillColor === 'none' ? 'transparent' : t.fillColor}"></span>`))}

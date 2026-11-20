@@ -1,5 +1,15 @@
 // Minimal stroke icon set (24×24, currentColor).
 const P: Record<string, string> = {
+  pk_highlighter: '<path d="M14 5l5 5"/><path d="M16 2.5l5.5 5.5-9 9-5.5-5.5z"/><path d="M7 11.5l5.5 5.5-2.5 2.5H6l-2-2v-3.5z" style="fill:var(--tip,currentColor)"/><path d="M2.5 21.5h9" style="stroke:var(--tip,currentColor)"/>',
+  pk_calligraphy: '<path d="M15 3l6 6"/><path d="M17.5 1.5l5 5"/><path d="M16.5 4.5l3 3-7 7L4 21l2.5-8.5z"/><path d="M4 21l5-5"/><path d="M6.5 12.5l5 5-7.5 3.5z" style="fill:var(--tip,currentColor)"/>',
+  pk_brush: '<path d="M19.5 2.5l2 2-8.5 8.5-2-2z"/><path d="M11 11l2 2"/><path d="M11 11c-2.8-.3-5.2 1.6-5.5 4.2-.2 1.3-.9 2.4-2.5 3.3 2.8 2.2 7.8 1.6 9.2-1.4.6-1.3.5-2.6-.2-3.6z" style="fill:var(--tip,currentColor)"/>',
+  pk_watercolor: '<path d="M21.5 2.5c-2.5.6-7.6 5-10 8l2 2c3-2.4 7.4-7.5 8-10z"/><path d="M11 11c-2.6-.4-5 1.2-5.3 3.7-.2 1.5-.8 2.6-2.7 3.6 3 2.3 8.2 1.5 9.6-1.6.6-1.3.6-2.6-.1-3.6z" style="fill:var(--tip,currentColor)"/>',
+  pk_marker: '<path d="M13.5 5.5l5 5"/><path d="M16.5 2.5l5 5-9.5 9.5-5-5z"/><path d="M7 12l5 5-2.5 2.5h-5v-5z" style="fill:var(--tip,currentColor)"/><path d="M3 21h4"/>',
+  pk_fountain: '<path d="M14 4l6 6"/><path d="M17 1.5l5.5 5.5"/><path d="M15.2 5.2l-7 2.3L3 21l13.5-5.2 2.3-7"/><path d="M3 21l5.8-5.8"/><circle cx="10.4" cy="13.6" r="1.7" style="fill:var(--tip,currentColor)"/>',
+  pk_crayon: '<path d="M14.5 5.5l4 4"/><path d="M17 2.5l4.5 4.5-10.5 10.5-4.5-4.5z"/><path d="M6.5 13l4.5 4.5-6 2.5c-.6.2-1.2-.3-1-1z" style="fill:var(--tip,currentColor)"/>',
+  pk_fineliner: '<path d="M18.6 2.6a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1L12.5 14.3l-2.8-2.8z"/><path d="M9.7 11.5l2.8 2.8-2.2 2.2-2.8-2.8z"/><path d="M7.9 15.9L4.6 19.2"/><circle cx="3.6" cy="20.4" r="1.7" style="fill:var(--tip,currentColor)"/>',
+  pk_pencil: '<path d="M15 4.5l4.5 4.5"/><path d="M16.8 2.7a1.6 1.6 0 0 1 2.3 0l2.2 2.2a1.6 1.6 0 0 1 0 2.3L9 19.5 3.5 20.5l1-5.5z"/><path d="M4.5 15l4.5 4.5"/><path d="M3.9 17.9l2.2 2.2-2.6.4z" style="fill:var(--tip,currentColor)"/>',
+  pk_pen: '<path d="M14.5 5.5l4 4"/><path d="M17.2 2.8a2 2 0 0 1 2.8 0l1.2 1.2a2 2 0 0 1 0 2.8L9.5 18.5l-4 0 0-4z"/><path d="M5.5 14.5l4 4-5.5 1.5z" style="fill:var(--tip,currentColor)"/>',
   // Select: a dashed selection box with a pointer inside its corner.
   select: '<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M4 15v4a1 1 0 0 0 1 1h4" /><path d="M12 4h0M4 12h0M20 12h0M12 20h0" stroke-width="2.4"/><path d="M13 13l7.5 3-3.2 1.2-1.2 3.3z" fill="currentColor" stroke-linejoin="round"/>',
   flipH: '<path d="M12 3v18" stroke-dasharray="2 3"/><path d="M9 7L3 18h6z"/><path d="M15 7l6 11h-6z" fill="currentColor"/>',

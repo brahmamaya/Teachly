@@ -9760,3 +9760,5 @@ button,
 .pop-tray .pt-flower { width: min(300px, 74vw, 46vh); height: auto; aspect-ratio: 1; touch-action: manipulation; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5)); }
 .pop-tray .pt-flower [data-wc] { cursor: pointer; }
 .lite .pop-tray .pt-wheelbox { animation: none; }
+/* the pen icon shows its colour in its own tip: no colour bar over it */
+#app .tb-btn[data-tool='pen'] .swatch-dot { display: none; }
