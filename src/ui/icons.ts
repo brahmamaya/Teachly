@@ -36,7 +36,7 @@ const P: Record<string, string> = {
   paste: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V2h6v2M9 11h6M9 15h6"/>',
   next: '<path d="M9 18l6-6-6-6"/>',
   // All pages: four page thumbnails, each with a few lines of writing.
-  pages: '<rect x="3" y="3" width="7.5" height="8" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="8" rx="1.5"/><rect x="3" y="13" width="7.5" height="8" rx="1.5"/><rect x="13.5" y="13" width="7.5" height="8" rx="1.5"/><path d="M5.2 6h3M5.2 8.2h2M15.7 6h3M15.7 8.2h2M5.2 16h3M5.2 18.2h2M15.7 16h3M15.7 18.2h2" stroke-width="1.4"/>',
+  pages: '<rect x="2.5" y="3.5" width="14" height="10.5" rx="1.2"/><path d="M19.2 6v11H5"/><path d="M21.8 8.6v11.2H7.6"/>',
   sidebar: '<rect x="2.8" y="4.6" width="18.4" height="14.8" rx="3.2"/><path d="M9.6 4.6v14.8"/><path d="M5.6 8.6h1.6M5.6 11.6h1.6M5.6 14.6h1.6"/>',
   crop: '<path d="M6.5 2.5v13a2 2 0 0 0 2 2h13"/><path d="M17.5 21.5v-13a2 2 0 0 0-2-2h-13"/>',
   // a friendlier bin: round lid with a knob, soft body, a small smile
