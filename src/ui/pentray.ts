@@ -22,10 +22,10 @@ const bar = (x: number, y: number, w: number, h: number, fill: string, r = 3): s
   `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="url(#pt-shade)"/>`;
 
 /**
- * One pen lying sideways, tip on the left (viewBox 170 x 30). The colour the teacher chose tints the tip, band or
+ * One pen lying sideways, tip on the left (viewBox 170 x 30, turned upright at the end). The colour the teacher chose tints the tip, band or
  * body, as on a real pen set. Pure SVG, so it stays sharp at every zoom and screen size.
  */
-export function penSvg(kind: PenKind, color: string): string {
+export function penSvg(kind: PenKind, color: string, label = ''): string {
   const dark = shade(color, -0.35);
   let g = '';
   switch (kind) {
@@ -62,5 +62,7 @@ export function penSvg(kind: PenKind, color: string): string {
     default:
       g = bar(3, 8, 160, 14, color);
   }
-  return `<svg class="pt-svg" viewBox="0 0 170 30" width="170" height="30" aria-hidden="true">${g}</svg>`;
+  // Standing upright, tip up (the drawing above lies sideways with the tip on the left); the pen's name is printed small on its body.
+  const text = label ? `<text x="${kind === 'pencil' ? 44 : 40}" y="17.6" font-size="6.2" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" stroke="#000" stroke-opacity=".45" stroke-width=".9" paint-order="stroke" letter-spacing=".2">${label}</text>` : '';
+  return `<svg class="pt-svg" viewBox="0 0 30 170" width="30" height="170" aria-hidden="true"><g transform="translate(30 0) rotate(90)">${g}${text}</g></svg>`;
 }
