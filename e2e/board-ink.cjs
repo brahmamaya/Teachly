@@ -16,9 +16,11 @@ const { check, finish } = require('./lib.cjs');
   // a white page, and a pen colour saved as white (as an earlier version left it)
   await page.evaluate(() => {
     const { store } = window.__teachly;
-    store.updatePage({ bg: '#222222' });
+    // page 1 dark with a white pen, page 2 white: going to page 2 must not leave a white pen
+    const p = store.doc.pages[0];
+    store.commit([{ ...p, id: 'dk', bg: '#222222', els: [] }, { ...p, id: 'wt', bg: '#ffffff', els: [] }], 0);
     store.setTool({ tool: 'pen', penStyle: 'pen', color: '#f2f2f0' });
-    store.updatePage({ bg: '#ffffff' }); // the page turns white (another page, another notebook, or the board colour)
+    store.goTo(1);
   });
   await page.waitForTimeout(300);
   check('a white pen on a white page turns black', (await page.evaluate(() => window.__teachly.store.tool.color)) === '#000000');
@@ -58,13 +60,20 @@ const { check, finish } = require('./lib.cjs');
   await page.waitForTimeout(300);
   if (!(await page.$('.pt-cols'))) await page.click('[data-tool=pen]');
   await page.waitForTimeout(300);
-  const first = await page.$eval('.pt-cols .pt-col', (e) => e.dataset.color);
-  check('on a white page the first colour circle is black', first === '#000000', first);
+  const cols = await page.$$eval('.pt-cols .pt-col', (n) => n.map((e) => e.dataset.color || 'wheel'));
+  check('the pen bar has 10 colour circles: white, black, blue, green, yellow, red, pink, orange, purple and the flower', cols.length === 10 && cols.includes('#000000') && cols.includes('#f2f2f0') && cols.includes('#ff4fa3') && cols[9] === 'wheel', cols.join(','));
   await page.keyboard.press('Escape');
   // a dark page: black ink turns white
-  await page.evaluate(() => window.__teachly.store.updatePage({ bg: '#111111' }));
+  await page.evaluate(() => window.__teachly.store.goTo(0));
   await page.waitForTimeout(300);
-  check('a black pen on a dark page turns white', (await page.evaluate(() => window.__teachly.store.tool.color)) === '#f2f2f0');
+  check('a black pen going to a dark page turns white', (await page.evaluate(() => window.__teachly.store.tool.color)) === '#f2f2f0');
+  // black chosen on purpose on a dark page stays black while writing (it only changes with the page)
+  await page.evaluate(() => window.__teachly.store.setTool({ color: '#000000' }));
+  await tp('touchStart', 300, 600);
+  for (let i = 1; i <= 8; i++) await tp('touchMove', 300 + i * 15, 600);
+  await tp('touchEnd');
+  await page.waitForTimeout(300);
+  check('a black chosen on a dark page stays black after writing', (await page.evaluate(() => window.__teachly.store.tool.color)) === '#000000');
   check('no page errors', errs.length === 0, errs.join('|'));
   await b.close();
   finish();
