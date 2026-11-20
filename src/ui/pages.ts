@@ -52,6 +52,7 @@ export class PagesPanel {
     this.host.appendChild(el);
     this.el = el;
     el.addEventListener('click', (e) => this.onClick(e));
+    this.wireSort(el);
     // Drag a page onto the board: it carries the page itself (sharp, editable
     // lines), not the small preview picture.
     el.addEventListener('dragstart', (e) => {
@@ -103,9 +104,145 @@ export class PagesPanel {
     (newList.querySelector('.page-thumb.on') as HTMLElement | null)?.scrollIntoView({ block: 'nearest' });
   }
 
+  /** A drag just ended: the click that follows it must not open a page. */
+  private sortedAt = 0;
+
+  /**
+   * Hold a page (touch: a short press; mouse: just drag it) and move it up or down the list: it lifts and follows
+   * the finger, the other pages slide aside to make room, the list scrolls by itself near its edges, and on release
+   * the page glides into its new place (one undo step). Instant on classroom boards and with reduced motion.
+   */
+  private wireSort(panel: HTMLElement): void {
+    const smooth = !document.documentElement.classList.contains('lite') && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    type Drag = { list: HTMLElement; items: HTMLElement[]; from: number; to: number; tops: number[]; h: number; step: number; grab: number; s0: number; ghost: HTMLElement; y: number; raf: number };
+    let d: Drag | null = null;
+    let press = 0, sx = 0, sy = 0, cand: HTMLElement | null = null, pid = -1;
+    const listOf = () => panel.querySelector('.pages-list') as HTMLElement;
+    const begin = (t: HTMLElement, y: number) => {
+      const list = listOf();
+      const items = [...list.querySelectorAll<HTMLElement>('.page-thumb')];
+      const from = items.indexOf(t);
+      if (from < 0 || items.length < 2) return;
+      const lr = list.getBoundingClientRect();
+      const rects = items.map((x) => x.getBoundingClientRect());
+      const tops = rects.map((r) => r.top - lr.top + list.scrollTop);
+      const r = rects[from];
+      const ghost = t.cloneNode(true) as HTMLElement;
+      ghost.className = 'page-thumb page-ghost';
+      Object.assign(ghost.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, margin: '0' });
+      document.body.appendChild(ghost);
+      t.classList.add('sort-hole');
+      list.classList.add('sorting');
+      try {
+        list.setPointerCapture(pid);
+      } catch {
+        /* the pointer is gone */
+      }
+      navigator.vibrate?.(8);
+      d = { list, items, from, to: from, tops, h: r.height, step: items.length > 1 ? tops[1] - tops[0] : r.height, grab: y - r.top, s0: list.scrollTop, ghost, y, raf: 0 };
+      requestAnimationFrame(() => ghost.classList.add('up'));
+      edge();
+    };
+    const place = () => {
+      if (!d) return;
+      const { list, items, from, tops, h, step, grab, ghost } = d;
+      const lr = list.getBoundingClientRect();
+      ghost.style.transform = `translateY(${d.y - grab - parseFloat(ghost.style.top)}px)`;
+      // the dragged page's centre, in list coordinates: count the pages whose centre is above it
+      const c = d.y - grab - lr.top + list.scrollTop + h / 2;
+      let to = 0;
+      for (let k = 0; k < tops.length; k++) if (k !== from && tops[k] + h / 2 < c) to++;
+      if (to !== d.to) {
+        d.to = to;
+        items.forEach((it, k) => {
+          const sh = from < to && k > from && k <= to ? -step : to < from && k >= to && k < from ? step : 0;
+          it.style.transform = sh ? `translateY(${sh}px)` : '';
+        });
+      }
+    };
+    // near the top or bottom of the list it scrolls by itself, faster the closer the finger is
+    const edge = () => {
+      if (!d) return;
+      const lr = d.list.getBoundingClientRect();
+      const zone = Math.min(52, lr.height / 5);
+      const v = d.y < lr.top + zone ? -(lr.top + zone - d.y) / zone : d.y > lr.bottom - zone ? (d.y - (lr.bottom - zone)) / zone : 0;
+      if (v) {
+        d.list.scrollTop += v * 14;
+        place();
+      }
+      d.raf = requestAnimationFrame(edge);
+    };
+    const finish = (commit: boolean) => {
+      if (!d) return;
+      const { list, items, from, to, tops, ghost } = d;
+      cancelAnimationFrame(d.raf);
+      d = null;
+      this.sortedAt = performance.now();
+      const done = () => {
+        ghost.remove();
+        list.classList.remove('sorting');
+        items.forEach((it) => {
+          it.style.transform = '';
+          it.classList.remove('sort-hole');
+        });
+        if (commit && to !== from) store.movePage(from, to);
+      };
+      if (!smooth) return done();
+      // glide into the free place, then the list is drawn in its new order
+      const lr = list.getBoundingClientRect();
+      const slot = commit ? lr.top + tops[to] - list.scrollTop : lr.top + tops[from] - list.scrollTop;
+      ghost.classList.add('drop');
+      ghost.style.transform = `translateY(${slot - parseFloat(ghost.style.top)}px)`;
+      setTimeout(done, 200);
+    };
+    panel.addEventListener('pointerdown', (e) => {
+      const t = (e.target as HTMLElement).closest('.page-thumb') as HTMLElement | null;
+      if (!t || e.button > 0 || d) return;
+      cand = t;
+      sx = e.clientX;
+      sy = e.clientY;
+      pid = e.pointerId;
+      clearTimeout(press);
+      if (e.pointerType !== 'mouse') press = window.setTimeout(() => cand && begin(cand, sy), 260);
+    });
+    panel.addEventListener('pointermove', (e) => {
+      if (d) {
+        d.y = e.clientY;
+        place();
+        return;
+      }
+      if (!cand || e.pointerId !== pid) return;
+      const moved = Math.hypot(e.clientX - sx, e.clientY - sy);
+      if (e.pointerType === 'mouse') {
+        if (moved > 6) begin(cand, sy);
+        if (d) {
+          (d as Drag).y = e.clientY;
+          place();
+        }
+      } else if (moved > 10) {
+        // a swipe before the press was long enough: the list scrolls as usual
+        clearTimeout(press);
+        cand = null;
+      }
+    });
+    const up = (commit: boolean) => () => {
+      clearTimeout(press);
+      cand = null;
+      finish(commit);
+    };
+    panel.addEventListener('pointerup', up(true));
+    panel.addEventListener('pointercancel', up(false));
+    // while a page is held, the finger moves the page, not the list (and no long-press menu)
+    panel.addEventListener('touchmove', (e) => d && e.cancelable && e.preventDefault(), { passive: false });
+    panel.addEventListener('contextmenu', (e) => {
+      if ((e.target as HTMLElement).closest('.page-thumb')) e.preventDefault();
+    });
+  }
+
   private onClick(e: MouseEvent): void {
     const b = (e.target as HTMLElement).closest('[data-pg]') as HTMLElement | null;
     if (!b) return;
+    if (b.dataset.pg === 'go' && performance.now() - this.sortedAt < 400) return;
     const i = store.index;
     switch (b.dataset.pg) {
       case 'close':

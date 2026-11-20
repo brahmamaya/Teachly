@@ -1,3 +1,4 @@
+import { askPdfPlace } from './pdfrange';
 import { colorWheelSvg, PEN_DEFS, penSvg } from './pentray';
 import { Board, type Tool } from '../board';
 import { bbox, regroup, resizeEl, similarity, transformEl, translateEl, uid, unionRects } from '../geometry';
@@ -1308,7 +1309,12 @@ export class App {
         void insertImages(b);
         return;
       case 'pdf':
-        void this.withProgress('Opening PDF', (p) => importPdf(b, undefined, p));
+        void pickFiles('application/pdf,.pdf').then(async (files) => {
+          const f = files[0];
+          if (!f) return;
+          const at = await this.pdfPlace(f);
+          if (at !== null) await this.withProgress('Opening PDF', (p) => importPdf(b, f, p, at));
+        });
         return;
       case 'pptx':
         void pickFiles('.pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation').then((f) => f[0] && this.openSlides(f[0]));
@@ -1420,6 +1426,16 @@ export class App {
       return Promise.resolve();
     }
     return this.withProgress('Opening slides', (p) => importPptx(this.board, f, p));
+  }
+
+  /**
+   * Where a PDF added to this notebook goes: a notebook with pages asks (at the end, after this page, or at the start);
+   * an empty notebook just takes it. Undefined = the usual place, null = cancelled.
+   */
+  private async pdfPlace(f: File): Promise<number | null | undefined> {
+    const pages = store.doc.pages;
+    if (pages.length === 1 && pages[0].els.length === 0) return undefined;
+    return askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name: f.name.replace(/\.pdf$/i, '') });
   }
 
   private async withProgress(label: string, fn: (p: (d: number, t: number) => void) => Promise<void>): Promise<void> {
@@ -2042,7 +2058,10 @@ export class App {
       const images = files.filter((f) => f.type.startsWith('image/'));
       if (images.length) await insertImages(this.board, images);
       for (const f of files) {
-        if (f.type === 'application/pdf') await this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p));
+        if (f.type === 'application/pdf') {
+          const at = await this.pdfPlace(f);
+          if (at !== null) await this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, at));
+        }
         else if (/\.pptx?$/i.test(f.name)) await this.openSlides(f);
         else if (/\.(teachly|json)$/i.test(f.name)) await openFile(f);
       }

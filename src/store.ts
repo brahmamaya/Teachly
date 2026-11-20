@@ -390,9 +390,11 @@ export class Store {
   movePage(from: number, to: number): void {
     if (to < 0 || to >= this.doc.pages.length) return;
     const pages = this.doc.pages.slice();
+    const open = pages[this.index];
     const [p] = pages.splice(from, 1);
     pages.splice(to, 0, p);
-    this.commit(pages, from === this.index ? to : this.index);
+    // The open page stays open, wherever it moved to.
+    this.commit(pages, Math.max(0, pages.indexOf(open)));
   }
 
   loadDoc(doc: Doc): void {
