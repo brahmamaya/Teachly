@@ -100,6 +100,7 @@ the microphone works for lesson recording.
 
 ```bash
 KEY=teachly-release.p12 KEY_PASS='…' TOOLS=/path/to/android-tools ./android/build.sh   # → android/build/Teachly.apk
+# Google Play: PLAY=1 BUNDLETOOL=/path/bundletool-all.jar … ./android/build.sh    # → also android/build/Teachly.aab (see docs/PLAY-STORE.md)
 ```
 
 `TOOLS` holds jars from Maven Central (apktool-lib — which carries `aapt2` and
