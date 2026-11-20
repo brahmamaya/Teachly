@@ -17,6 +17,9 @@ export const PEN_DEFS = `<svg width="0" height="0" style="position:absolute" ari
   <linearGradient id="pt-wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6dcb0"/><stop offset="1" stop-color="#c8985a"/></linearGradient>
 </defs></svg>`;
 
+/** The name printed on each pen (short, so it fits on the visible part). */
+const SHORT: Record<string, string> = { pen: 'Ball pen', fineliner: 'Liner', pencil: 'Pencil', crayon: 'Crayon', fountain: 'Fountain', marker: 'Marker', watercolor: 'Water', brush: 'Brush', calligraphy: 'Callig.', highlighter: 'Highlight' };
+
 /** A tiny rounded bar with the 3D shine laid over it. */
 const bar = (x: number, y: number, w: number, h: number, fill: string, r = 3): string =>
   `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="url(#pt-shade)"/>`;
@@ -63,6 +66,8 @@ export function penSvg(kind: PenKind, color: string, label = ''): string {
       g = bar(3, 8, 160, 14, color);
   }
   // Standing upright, tip up (the drawing above lies sideways with the tip on the left); the pen's name is printed small on its body.
-  const text = label ? `<text x="${kind === 'pencil' ? 44 : 40}" y="17.6" font-size="6.2" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" stroke="#000" stroke-opacity=".45" stroke-width=".9" paint-order="stroke" letter-spacing=".2">${label}</text>` : '';
+  const short = SHORT[kind] ?? label;
+  const tx = kind === 'pencil' ? 40 : 37, tl = Math.round(short.length * 3.3);
+  const text = label ? `<rect x="${tx - 2}" y="9.6" width="${tl + 4}" height="10.8" rx="2.4" fill="#14161c"/><text x="${tx}" y="17.2" font-size="5.6" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" textLength="${tl}" lengthAdjust="spacingAndGlyphs">${short}</text>` : '';
   return `<svg class="pt-svg" viewBox="0 0 30 170" width="30" height="170" aria-hidden="true"><g transform="translate(30 0) rotate(90)">${g}${text}</g></svg>`;
 }
