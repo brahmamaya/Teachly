@@ -741,8 +741,7 @@ export class App {
             <span class="pen-prev"><i data-penprev style="width:${Math.min(26, size + 2)}px;height:${Math.min(26, size + 2)}px;background:${color};opacity:${hl ? 0.45 : 1}"></i></span>
           </div>
           <div class="n3-hue"><input type="range" min="0" max="360" value="${hueOf(color)}" data-penhue aria-label="Colour"></div>
-          <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>
-          <div class="seg n3-smooth"><span>Steady</span>${['Exact', 'Light', 'Strong'].map((n, i) => `<button class="${(t.inkSmooth ?? 0) === i ? 'on' : ''}" data-smooth="${i}">${n}</button>`).join('')}</div>`;
+          <div class="n3-colors">${this.swatches(hl ? HL_COLORS : boardColors(), color, 'color')}</div>`;
         break;
       }
       case 'fill':
@@ -1021,7 +1020,6 @@ export class App {
     else if (d.tapec) store.setTool({ tapeColor: d.tapec });
     else if (d.laserc) store.setTool({ laserColor: d.laserc });
     else if (d.lblink) store.setTool({ laserBlink: d.lblink === '1' });
-    else if (d.smooth) store.setTool({ inkSmooth: Number(d.smooth) });
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();
