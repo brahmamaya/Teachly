@@ -21,6 +21,7 @@
         android:fullBackupContent="false"
         android:usesCleartextTraffic="false"
         android:hardwareAccelerated="true"
+        android:enableOnBackInvokedCallback="true"
         android:largeHeap="true"
         android:theme="@android:style/Theme.Light.NoTitleBar.Fullscreen">
 

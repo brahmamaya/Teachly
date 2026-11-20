@@ -14,7 +14,9 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.view.DisplayCutout;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
@@ -182,7 +184,13 @@ public class MainActivity extends Activity {
             }
         });
 
-        setContentView(web);
+        // The WebView sits in a plain frame: the frame (not the WebView, which ignores padding) keeps clear of a notch.
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.setBackgroundColor(Color.BLACK);
+        root.addView(web, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        setContentView(root);
+        keepOutOfCutout(root);
+        registerBack();
         // Fresh start every time: drop the web cache (notebooks live in the
         // app's own storage and are not touched).
         web.clearCache(true);
@@ -370,17 +378,48 @@ public class MainActivity extends Activity {
         if (hasFocus) hideSystemBars();
     }
 
+    /** Everything is saved automatically; a second back press within 2 s closes, so a stray tap does not end the lesson. */
+    private boolean backClosesNow() {
+        long now = System.currentTimeMillis();
+        if (now - lastBack < 2000) return true;
+        lastBack = now;
+        toast("Press back again to close Teachly");
+        return false;
+    }
+
     @Override
     public void onBackPressed() {
-        // Everything is saved automatically; ask for a second press so a stray
-        // tap on the board's back key does not close the lesson.
-        long now = System.currentTimeMillis();
-        if (now - lastBack < 2000) {
-            super.onBackPressed();
-        } else {
-            lastBack = now;
-            toast("Press back again to close Teachly");
-        }
+        // Android 12 and older (13+ use the callback below; apps for Android 16 no longer get this call).
+        if (backClosesNow()) super.onBackPressed();
+    }
+
+    /** Android 13+ back handling (needed when the app targets Android 16, where onBackPressed is not called). */
+    private void registerBack() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                new android.window.OnBackInvokedCallback() {
+                    @Override
+                    public void onBackInvoked() {
+                        if (backClosesNow()) finish();
+                    }
+                });
+    }
+
+    /**
+     * Phones with a notch or camera hole: apps for Android 15+ draw under it, so the board keeps clear of it (the
+     * toolbar and clock stay fully visible). Boards and tablets without a cutout are not changed.
+     */
+    private void keepOutOfCutout(View root) {
+        if (Build.VERSION.SDK_INT < 28) return;
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                DisplayCutout c = insets.getDisplayCutout();
+                if (c != null) v.setPadding(c.getSafeInsetLeft(), c.getSafeInsetTop(), c.getSafeInsetRight(), c.getSafeInsetBottom());
+                else v.setPadding(0, 0, 0, 0);
+                return insets;
+            }
+        });
     }
 
     @Override
