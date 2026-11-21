@@ -130,8 +130,9 @@ export class PenTool implements Tool {
       l.midX = mx;
       l.midY = my;
     }
-    // Reach the pen tip too (the next curve starts from the midpoint again).
-    ctx.lineTo(l.pts[(n - 1) * 3], l.pts[(n - 1) * 3 + 1]);
+    // Only the finished curve goes on the wet layer (it stays). The short bit from here to the pen tip changes with
+    // every move, so it is drawn on the overlay (cleared each frame): drawn here it left straight stubs and kinks
+    // along the line while writing (sparse board touches), which vanished only on lift.
     ctx.stroke();
     l.drawnTo = n - 1;
   }
@@ -223,8 +224,9 @@ export class PenTool implements Tool {
     }
     l.predicted = [];
     if (l.marker) {
-      // Marker: the wet layer alone shows the line — no full-screen redraw per move.
+      // Marker: the wet layer shows the line; the overlay adds only the last short bit up to the pen tip.
       this.drawWet(l);
+      this.board.invalidate('overlay');
       // Optional: a short guess ahead of the pen (the browser's predicted points), drawn on the overlay only, so it
       // never becomes part of the stroke and vanishes at the next frame.
       if (store.settings.inkPredict && !l.snapper) {
@@ -392,7 +394,20 @@ export class PenTool implements Tool {
       // Same smoothing as the finished stroke, so the line does not jump
       // when the pen is lifted.
       if (l.marker) {
-        // drawn on the wet-ink layer; only the guessed bit ahead of the pen (if chosen) goes on the overlay
+        // drawn on the wet-ink layer; the overlay has the last bit up to the pen tip (and the guessed bit ahead, if chosen)
+        const n = l.pts.length;
+        if (n >= 6) {
+          ctx.globalAlpha = 1;
+          const look = lineLook(ctx, l.style, l.color, l.size);
+          ctx.strokeStyle = look.stroke;
+          ctx.lineWidth = look.width;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(l.midX, l.midY);
+          ctx.lineTo(l.pts[n - 3], l.pts[n - 2]);
+          ctx.stroke();
+        }
         if (l.predicted.length && l.pts.length >= 3) {
           ctx.globalAlpha = 1;
           ctx.strokeStyle = l.color;
