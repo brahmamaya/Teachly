@@ -57,7 +57,8 @@ export class SaveBadge {
     el.dataset.state = state;
     el.hidden = false;
     el.classList.remove('fading');
-    el.innerHTML = `<i class="sp-dot"></i><span>${text}</span>${actions}`;
+    el.innerHTML = `<i class="sp-dot"></i><span></span>${actions}`;
+    (el.querySelector('span') as HTMLElement).textContent = text; // the message may come from the browser: never as HTML
   }
 
   private fade(): void {

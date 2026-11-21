@@ -7,6 +7,7 @@
 # First time (no UPLOAD_KEY_P12): a new upload key is made, locked with UPLOAD_KEY_PASSWORD, and offered for download
 # for 1 day as "upload-key". Save it in 2-3 safe places, then add upload-key.base64.txt's text as UPLOAD_KEY_P12.
 name: Build for Play
+# Actions are pinned to exact commits (a moved tag cannot change what runs with the upload key).
 
 on:
   workflow_dispatch:
@@ -20,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
         with:
           distribution: temurin
           java-version: 21
@@ -66,7 +67,7 @@ jobs:
           java -jar "$RUNNER_TEMP/tools/bundletool-all.jar" validate --bundle=android/build/Teachly.aab >/dev/null
           rm -f "$KEY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: Teachly-for-Play
           path: |
@@ -76,7 +77,7 @@ jobs:
 
       - name: New upload key (first time only, 1 day; locked with your password)
         if: env.NEW_KEY == '1'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: upload-key
           path: ${{ runner.temp }}/newkey/
