@@ -112,6 +112,8 @@ export class Board {
   private sawPen = false;
   /** When a stylus last touched or hovered: a finger right then is probably a palm. */
   private lastPenAt = -1e9;
+  /** When the "stylus only" hint was last shown (at most every 15 s). */
+  private penOnlyHintAt = -1e9;
   private lastHover: Ptr | null = null;
 
   constructor(container: HTMLElement) {
@@ -706,7 +708,9 @@ export class Board {
     if (p.type === 'pen') {
       // First stylus on this device: from now on fingers and palms don't
       // draw ("Write with stylus only" in the menu, which can turn it off).
-      if (!this.sawPen && !store.settings.penOnly) {
+      // (Not on classroom boards: many report a finger or a passive pen as a "stylus" now and then, and fingers
+      // would then stop writing for good.)
+      if (!this.sawPen && !store.settings.penOnly && !liteDevice()) {
         store.setSettings({ penOnly: true });
         toast('Stylus found — now only the pen writes; fingers can still select and move (change it in Menu)', 4500);
       }
@@ -737,6 +741,11 @@ export class Board {
     // The hand (✋) means "move the board": a finger (or the mouse) slides it on every board, with or
     // without a stylus; the stylus keeps writing. Many-writers mode and the laser are left alone.
     const slidePan = slide && (p.button === 2 || fingerRest || (!laser && !multi && p.type !== 'pen'));
+    // A finger tries to write while "stylus only" is on: say why nothing appears, and where to change it.
+    if (fingerRest && !slide && store.tool.tool === 'pen' && now - this.lastPenAt > 1200 && now - this.penOnlyHintAt > 15000) {
+      this.penOnlyHintAt = now;
+      toast('"Stylus only" is on: fingers do not write. Turn it off in Menu ▸ Settings ▸ Stylus only', 4500);
+    }
     if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
       if (slide) {
         // Double-tap: zoom in 2× there, or back to the whole page.

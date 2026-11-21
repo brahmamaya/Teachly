@@ -67,13 +67,31 @@ const { check, finish } = require('./lib.cjs');
   await page.evaluate(() => window.__teachly.store.goTo(0));
   await page.waitForTimeout(300);
   check('a black pen going to a dark page turns white', (await page.evaluate(() => window.__teachly.store.tool.color)) === '#f2f2f0');
-  // black chosen on purpose on a dark page stays black while writing (it only changes with the page)
+  // black chosen by mistake on a dark page: the moment the pen touches, it writes white (the board video, 21 Nov)
   await page.evaluate(() => window.__teachly.store.setTool({ color: '#000000' }));
   await tp('touchStart', 300, 600);
   for (let i = 1; i <= 8; i++) await tp('touchMove', 300 + i * 15, 600);
   await tp('touchEnd');
   await page.waitForTimeout(300);
-  check('a black chosen on a dark page stays black after writing', (await page.evaluate(() => window.__teachly.store.tool.color)) === '#000000');
+  const last = await page.evaluate(() => { const els = window.__teachly.store.page.els; return els[els.length - 1]?.color; });
+  check('black on a dark page: the line is written white (it shows)', last === '#f2f2f0', String(last));
+  // a board reporting a "stylus" now and then must not switch fingers off for good
+  const cdp2 = cdp;
+  await cdp2.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 500, y: 300, button: 'left', clickCount: 1, pointerType: 'pen' });
+  await cdp2.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 540, y: 310, button: 'left', pointerType: 'pen' });
+  await cdp2.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 540, y: 310, button: 'left', clickCount: 1, pointerType: 'pen' });
+  await page.waitForTimeout(300);
+  check('on a classroom board a stylus event does not turn on "Stylus only"', (await page.evaluate(() => window.__teachly.store.settings.penOnly)) === false);
+  // when "Stylus only" is on and a finger tries to write, a message says why and where to change it
+  await page.evaluate(() => window.__teachly.store.setSettings({ penOnly: true }));
+  await page.waitForTimeout(1500);
+  await tp('touchStart', 300, 650);
+  for (let i = 1; i <= 6; i++) await tp('touchMove', 300 + i * 15, 650);
+  await tp('touchEnd');
+  await page.waitForTimeout(300);
+  const msg = await page.evaluate(() => document.querySelector('.toasts')?.textContent || '');
+  check('"Stylus only" on: a finger trying to write gets a message how to turn it off', /Stylus only/.test(msg), msg);
+  await page.evaluate(() => window.__teachly.store.setSettings({ penOnly: false }));
   check('no page errors', errs.length === 0, errs.join('|'));
   await b.close();
   finish();
