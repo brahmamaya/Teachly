@@ -120,7 +120,9 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
                 if (HOST.equals(u.getHost())) return false;
-                // Links to websites open in the browser.
+                // Links to websites open in the browser; nothing else (no intent:, file:, tel: … from a page).
+                String sc = u.getScheme();
+                if (!"https".equalsIgnoreCase(sc) && !"http".equalsIgnoreCase(sc)) return true;
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, u));
                 } catch (ActivityNotFoundException e) {
