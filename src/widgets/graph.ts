@@ -713,8 +713,12 @@ export function openGraph(host: HTMLElement, board: Board): void {
     // Same shape as the live graph, so the board shows exactly what you saw.
     const aspect = cv.clientHeight / Math.max(1, cv.clientWidth);
     const w = Math.min(PAGE.w * 0.62, v.w * 0.66), h = Math.min(w * aspect, PAGE.h * 0.8, v.h * 0.8);
-    const cx = Math.max(PAGE.x + w / 2 + 30, Math.min(PAGE.x + PAGE.w - w / 2 - 30, v.x + v.w / 2));
-    const cy = Math.max(PAGE.y + h / 2 + 30, Math.min(PAGE.y + PAGE.h - h / 2 - 30, v.y + v.h / 2));
+    // In the middle of what the teacher sees. Kept inside the page when the view is on the page; when the board was
+    // slid off the page (hand tool), it goes where the teacher is looking (inside the page it would be off screen).
+    const vx = v.x + v.w / 2, vy = v.y + v.h / 2;
+    const onPage = vx >= PAGE.x && vx <= PAGE.x + PAGE.w && vy >= PAGE.y && vy <= PAGE.y + PAGE.h;
+    const cx = onPage ? Math.max(PAGE.x + w / 2 + 30, Math.min(PAGE.x + PAGE.w - w / 2 - 30, vx)) : vx;
+    const cy = onPage ? Math.max(PAGE.y + h / 2 + 30, Math.min(PAGE.y + PAGE.h - h / 2 - 30, vy)) : vy;
     try {
       els = buildGraph(spec(), { x: cx - w / 2, y: cy - h / 2, w, h }, theme);
     } catch (e) {
