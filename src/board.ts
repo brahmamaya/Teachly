@@ -143,6 +143,9 @@ export class Board {
     });
     this.bindEvents();
 
+    // Classroom boards: an older version turned "Stylus only" on by itself when the board reported a touch as a
+    // stylus; fingers and the board's pen then stopped writing and erasing. Switch it off once there.
+    if (liteDevice() && !store.settings.penOnlyBoardFix) store.setSettings({ penOnly: false, penOnlyBoardFix: true });
     store.on('doc', () => this.invalidate('bg', 'ink', 'overlay'));
     store.on('page', () => {
       this.cancelAll();
@@ -742,9 +745,9 @@ export class Board {
     // without a stylus; the stylus keeps writing. Many-writers mode and the laser are left alone.
     const slidePan = slide && (p.button === 2 || fingerRest || (!laser && !multi && p.type !== 'pen'));
     // A finger tries to write while "stylus only" is on: say why nothing appears, and where to change it.
-    if (fingerRest && !slide && store.tool.tool === 'pen' && now - this.lastPenAt > 1200 && now - this.penOnlyHintAt > 15000) {
+    if (fingerRest && !slide && (store.tool.tool === 'pen' || store.tool.tool === 'eraser') && now - this.lastPenAt > 1200 && now - this.penOnlyHintAt > 15000) {
       this.penOnlyHintAt = now;
-      toast('"Stylus only" is on: fingers do not write. Turn it off in Menu ▸ Settings ▸ Stylus only', 4500);
+      toast('"Stylus only" is on: fingers do not write or erase. Turn it off in Menu ▸ Settings ▸ Stylus only', 4500);
     }
     if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
       if (slide) {

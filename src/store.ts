@@ -16,6 +16,8 @@ export interface Settings {
   /** Four saved pens (null = empty slot). */
   penPresets?: (PenPreset | null)[];
   penOnly: boolean;
+  /** Set once "Stylus only" was switched off on a classroom board (an older version switched it on by itself there). */
+  penOnlyBoardFix?: boolean;
   palmErase: boolean;
   /** Hold the pen still at the end of a line to turn it into a neat shape (off: ink stays exactly as written). */
   holdShapes: boolean;
