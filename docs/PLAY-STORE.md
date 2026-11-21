@@ -31,7 +31,7 @@ is only the *upload* key: if it is ever lost or leaked, ask Google for an upload
 1. **Play Console account** (one-time fee). Use an organisation/brand name (e.g. Physica) so no personal name shows. Personal accounts must show address/name and need a 14-day closed test with 12 testers before production: plan this month.
 2. **Upload key + AAB**: make an upload key once (`keytool -genkeypair -keystore upload-key.p12 -storetype PKCS12 -alias teachly -keyalg RSA -keysize 2048 -validity 10000`), keep it and its password outside the repo, download bundletool, then run the command above. Use **Play App Signing**.
 3. **Test on Android 16 and older**: the target-36 build was made and checked here (manifest, permissions, bundle format) but never run on a device: try back (twice to close), a phone with a notch, a tablet and a board before uploading.
-4. **Privacy policy URL**: a public page with the same text as in-app (physica.in/privacy), no personal name.
+4. **Privacy policy URL**: https://physica.in/teachly-privacy.html (terms: https://physica.in/teachly-terms.html), same text as in the app. When `src/ui/legal.ts` changes, update these two pages in the Physica site repo in the same change.
 5. **Data safety form**: Data collected: *No*. Data shared: *No*. Encrypted in transit: n/a. Deletion: data is only on device, uninstall deletes it.
 6. **Permissions form**: RECORD_AUDIO is used for recording the teacher's lessons on device; nothing is uploaded.
 7. **Content rating** questionnaire (no violence/ads/purchases/user content sharing). **Target audience**: teachers/adults 18+ (avoid "children" audience: stricter rules).
