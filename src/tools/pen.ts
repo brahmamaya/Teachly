@@ -3,7 +3,7 @@ import { bbox, dist, hitTest, pathFromPoints, uid } from '../geometry';
 import type { Snapper } from '../instruments';
 import { freehandPath, isMarker, lineLook, markerPath, styleAlpha } from '../renderer';
 import { recognize } from '../shapes';
-import { store } from '../store';
+import { readableInk, store } from '../store';
 import { inkScale } from '../ui/scale';
 import { tapeAt, toggleTape } from './tape';
 import type { PathEl, PathStyle } from '../types';
@@ -47,6 +47,11 @@ export class PenTool implements Tool {
     const t = store.tool;
     const style: PathStyle = t.penStyle;
     const hl = style === 'highlighter';
+    // Writing must always show: a black pen on a dark page (or white on a white one) becomes the readable one.
+    if (!hl) {
+      const ink = readableInk(t.color, store.page.bg);
+      if (ink !== t.color) store.setTool({ color: ink });
+    }
     const snapper = this.board.instruments.snapAt(p.x, p.y);
     const [x, y] = snapper ? snapper.project(p.x, p.y) : [p.x, p.y];
     const l: Live = {
