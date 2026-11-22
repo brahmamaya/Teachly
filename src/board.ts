@@ -736,9 +736,9 @@ export class Board {
     // in use) or the right mouse button slide the board; on boards without
     // a stylus one finger writes and two fingers slide.
     const slide = store.tool.slide;
-    // The laser pointer works with anything — finger, pen or mouse — whatever
-    // the "stylus only" setting (it writes nothing, so nothing to reject).
-    const laser = store.tool.tool === 'laser';
+    // The laser pointer works with a finger, pen or mouse; with "stylus only" on, a finger does not draw with it
+    // either (the setting says fingers do not draw, and a resting hand would leave glowing trails).
+    const laser = store.tool.tool === 'laser' && !(store.settings.penOnly && p.type === 'touch');
     // With "stylus only" a finger does not write, but it still has to EDIT: select, move, resize,
     // type, fill (the stylus is a poor tool for dragging a handle). Not while the stylus is near
     // (that is a resting hand), for a palm-sized touch, or in slide mode (fingers slide the board).
@@ -748,9 +748,9 @@ export class Board {
     // without a stylus; the stylus keeps writing. Many-writers mode and the laser are left alone.
     const slidePan = slide && (p.button === 2 || fingerRest || (!laser && !multi && p.type !== 'pen'));
     // A finger tries to write while "stylus only" is on: say why nothing appears, and where to change it.
-    if (fingerRest && !slide && (store.tool.tool === 'pen' || store.tool.tool === 'eraser') && now - this.lastPenAt > 1200 && now - this.penOnlyHintAt > 15000) {
+    if (fingerRest && !slide && (store.tool.tool === 'pen' || store.tool.tool === 'eraser' || store.tool.tool === 'laser') && now - this.lastPenAt > 1200 && now - this.penOnlyHintAt > 15000) {
       this.penOnlyHintAt = now;
-      toast('"Stylus only" is on: fingers do not write or erase. Turn it off in Menu ▸ Settings ▸ Stylus only', 4500);
+      toast('"Stylus only" is on: fingers do not draw, erase or point. Turn it off in Menu ▸ Settings ▸ Stylus only', 4500);
     }
     // Read only: every touch, pen or mouse only slides the board (double-tap zooms); nothing is written.
     const ro = store.readOnly;

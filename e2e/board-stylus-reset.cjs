@@ -30,7 +30,7 @@ const { check, finish } = require('./lib.cjs');
   await page.waitForTimeout(1300);
   await tp('touchStart', 600, 400); for (let j = 1; j <= 6; j++) await tp('touchMove', 600, 400 + j * 10); await tp('touchEnd');
   await page.waitForTimeout(300);
-  check('and a finger trying to erase gets the message', /fingers do not write or erase/.test(await page.evaluate(() => document.querySelector('.toasts')?.textContent || '')));
+  check('and a finger trying to erase gets the message', /fingers do not draw, erase or point/.test(await page.evaluate(() => document.querySelector('.toasts')?.textContent || '')));
   await b.close();
   finish();
 })();

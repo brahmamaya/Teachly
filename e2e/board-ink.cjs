@@ -91,6 +91,23 @@ const { check, finish } = require('./lib.cjs');
   await page.waitForTimeout(300);
   const msg = await page.evaluate(() => document.querySelector('.toasts')?.textContent || '');
   check('"Stylus only" on: a finger trying to write gets a message how to turn it off', /Stylus only/.test(msg), msg);
+  // the laser too: with "Stylus only" a finger leaves no glowing trail (the owner saw one, 22 Nov)
+  await page.evaluate(() => window.__teachly.store.setTool({ tool: 'laser' }));
+  await page.waitForTimeout(200);
+  await tp('touchStart', 400, 500);
+  const lit = [];
+  for (let i = 1; i <= 10; i++) {
+    await tp('touchMove', 400 + i * 20, 500 + i * 5);
+    if (i === 8) lit.push(await page.evaluate(() => {
+      const c = window.teachly.board.overlay, d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let n = 0;
+      for (let k = 3; k < d.length; k += 4 * 7) if (d[k] > 40) n++;
+      return n;
+    }));
+  }
+  await tp('touchEnd');
+  check('"Stylus only" on: a finger leaves no laser trail either', lit[0] === 0, `lit pixels ${lit[0]}`);
+  await page.evaluate(() => window.__teachly.store.setTool({ tool: 'pen' }));
   await page.evaluate(() => window.__teachly.store.setSettings({ penOnly: false }));
   check('no page errors', errs.length === 0, errs.join('|'));
   await b.close();
