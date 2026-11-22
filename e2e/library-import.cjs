@@ -56,14 +56,14 @@ function makePdf(n, w, h) {
   await page.waitForTimeout(400);
   check('tapped again: covers again', await page.evaluate(() => !document.querySelector('.lib-grid').classList.contains('as-list')));
 
-  await page.click('.lib-head [data-lib=add]');
+  await page.click('.lib-fab');
   await page.waitForTimeout(300);
   const items = await page.$$eval('.lib-addmenu [data-lib]', (n) => n.map((e) => e.dataset.lib).join(','));
   check('+ offers New notebook and Import files', items === 'new,import', items);
 
   const importFiles = async (files, wait) => {
     if (!(await page.$('.lib-addmenu'))) {
-      await page.click('.lib-head [data-lib=add]');
+      await page.click('.lib-fab');
       await page.waitForTimeout(300);
     }
     await page.evaluate(() => {

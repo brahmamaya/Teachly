@@ -272,12 +272,12 @@ export class Library {
           <input class="lib-search" type="search" placeholder="Search" aria-label="Search notebooks">
           <button class="icon-btn lib-layout" data-lib="layout" title="Grid or list" aria-label="Show as a list" aria-pressed="false">${icon('list', 24)}</button>
           <button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('folderPlus', 24)}</button>
-          <button class="lib-new" data-lib="add" aria-haspopup="menu" aria-expanded="false">${icon('plus', 20)}<span>New</span></button>
           <button class="icon-btn" data-lib="close" title="Back to board" aria-label="Back to board">${icon('close', 22)}</button>
         </header>
         <div class="lib-bar"></div>
         <div class="lib-grid"></div>
-      </div>`;
+      </div>
+      <button class="lib-fab" data-lib="add" aria-haspopup="menu" aria-expanded="false" title="New notebook or import files" aria-label="New notebook or import files">${icon('plus', 30)}</button>`;
     this.host.appendChild(el);
     this.el = el;
     el.addEventListener('click', (e) => void this.onClick(e));
@@ -409,7 +409,12 @@ export class Library {
     const r = anchor.getBoundingClientRect(), host = this.el.getBoundingClientRect();
     const w = 260;
     m.style.left = `${Math.max(8, Math.min(r.right - host.left - w, r.left - host.left))}px`;
-    m.style.top = `${r.bottom - host.top + 8}px`;
+    // The round + sits at the bottom: the menu opens above it; from a card it opens below.
+    const up = r.top - host.top > host.height / 2;
+    if (up) {
+      m.style.bottom = `${host.bottom - r.top + 10}px`;
+      m.style.transformOrigin = '100% 100%';
+    } else m.style.top = `${r.bottom - host.top + 8}px`;
     this.el.querySelectorAll('[data-lib=add]').forEach((x) => x.setAttribute('aria-expanded', String(x === anchor)));
     const off = (e: PointerEvent) => {
       if (!m.contains(e.target as Node) && !(e.target as HTMLElement).closest('[data-lib=add]')) this.closeAddMenu();

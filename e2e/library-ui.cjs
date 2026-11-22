@@ -15,7 +15,7 @@ const d = '/tmp/claude-0/-home-user/d5235605-7a47-541d-aa6c-5d97c2dc1d83/scratch
     await page.waitForTimeout(300);
     await page.click('[data-act=library]');
     await page.waitForTimeout(800);
-    check(name + ': library opens with Favorites and New', !!(await page.$('.library .ls-item[data-v=fav]')) && !!(await page.$('.lib-new')));
+    check(name + ': library opens with Favorites and New', !!(await page.$('.library .ls-item[data-v=fav]')) && !!(await page.$('.lib-fab')));
     await page.screenshot({ path: d + 'lib-' + name + '.png' });
     if (await page.$('.nb-card:not(.nb-new)')) {
       await page.click('.nb-card:not(.nb-new) .nb-star');
