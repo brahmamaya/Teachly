@@ -26,16 +26,16 @@ const { check, finish } = require('./lib.cjs');
   // --- Escape closes one layer at a time
   await page.keyboard.press('Escape');
   await page.waitForTimeout(250);
-  check('Escape closes the open menu first', !(await page.$('.popover')));
+  check('Escape closes the open menu first', !(await page.$('.popover:not(.leaving)')));
   await page.evaluate(() => { const { store } = window.__teachly; store.addEls([{ id: 'e1', type: 'text', text: 'hi', color: '#fff', fontSize: 40, x: 300, y: 300, w: 60, h: 50, rot: 0 }]); store.setTool({ tool: 'select' }); store.select(['e1']); });
   await page.click('[data-act=pages]');
   await page.waitForTimeout(400);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(250);
-  check('with something selected, Escape clears the selection and keeps the Pages panel', (await page.evaluate(() => window.__teachly.store.selection.size)) === 0 && !!(await page.$('.pages-panel')));
+  check('with something selected, Escape clears the selection and keeps the Pages panel', (await page.evaluate(() => window.__teachly.store.selection.size)) === 0 && !!(await page.$('.pages-panel:not(.leaving)')));
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
-  check('the next Escape closes the Pages panel', !(await page.$('.pages-panel')));
+  check('the next Escape closes the Pages panel', !(await page.$('.pages-panel:not(.leaving)')));
 
   // --- the board shows no notebook name on top; My notebooks opens from the menu
   check('no notebook name is written on the board', !(await page.$('.doc-title')));

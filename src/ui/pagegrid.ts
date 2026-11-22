@@ -143,7 +143,7 @@ export class PagesGrid {
 
   close(): void {
     if (!this.el) return;
-    fadeOut(this.el, 180);
+    fadeOut(this.el, 280);
     this.el = null;
     this.stopThumbs?.();
     this.stopThumbs = null;
@@ -227,10 +227,10 @@ export class PagesGrid {
     const scroll = grid?.scrollTop ?? 0;
     el.innerHTML = `
       <header class="pgs-top">
-        <button class="pgs-round" data-pg="close" title="Close" aria-label="Close">${icon('close', 22)}</button>
+        <button class="pgs-round" data-pg="close" title="Close" aria-label="Close">${icon('close', 18)}</button>
         <span class="pgs-hist">
-          <button class="pgs-round" data-pg="undo" title="Undo" aria-label="Undo" ${store.canUndo ? '' : 'disabled'}>${icon('undo', 20)}</button>
-          <button class="pgs-round" data-pg="redo" title="Redo" aria-label="Redo" ${store.canRedo ? '' : 'disabled'}>${icon('redo', 20)}</button>
+          <button class="pgs-round" data-pg="undo" title="Undo" aria-label="Undo" ${store.canUndo ? '' : 'disabled'}>${icon('undo', 17)}</button>
+          <button class="pgs-round" data-pg="redo" title="Redo" aria-label="Redo" ${store.canRedo ? '' : 'disabled'}>${icon('redo', 17)}</button>
         </span>
         <h2 class="pgs-title"></h2>
         <button class="pgs-pill ${this.multi ? 'on' : ''}" data-pg="select">${this.multi ? 'Done' : 'Select'}</button>
@@ -261,7 +261,7 @@ export class PagesGrid {
   }
 
   private act(id: string, ic: string, label: string, danger = false): string {
-    return `<button class="pgs-act ${danger ? 'danger' : ''}" data-pg="${id}">${icon(ic, 22)}<span>${label}</span></button>`;
+    return `<button class="pgs-act ${danger ? 'danger' : ''}" data-pg="${id}">${icon(ic, 18)}<span>${label}</span></button>`;
   }
 
   /** Selection look and the buttons that need a selection (no page redraw). */
