@@ -107,7 +107,7 @@ const GUIDE: Section[] = [
   {
     title: 'Save and share',
     items: [
-      { name: 'Import files', keys: 'pdf picture photo powerpoint open book notebook', what: 'Turn a PDF, a picture or slides into a notebook.', steps: ['My notebooks ▸ + ▸ Import files.', 'Pick one or more files: each becomes its own notebook.'], tip: 'The pages take the file\'s shape, and even a book of thousands of pages opens in seconds.' },
+      { name: 'Import files', keys: 'pdf picture photo powerpoint open book notebook', what: 'Turn a PDF, a picture or slides into a notebook.', steps: ['My notebooks ▸ the round + at the bottom ▸ Import files.', 'Pick one or more files: each becomes its own notebook.'], tip: 'The pages take the file\'s shape, and even a book of thousands of pages opens in seconds.' },
       { name: 'List or covers', keys: 'my notebooks rows grid view', what: 'See your notebooks as covers or as a list.', steps: ['My notebooks ▸ tap the list button at the top.'], tip: 'The list shows long names in full.' },
       { name: 'Save PDF', keys: 'export download print', what: 'Your notes as a sharp PDF.', steps: ['Menu ▸ Save PDF.', 'Choose this page, all pages or a range.'], tip: 'Print your notes or share them as a PDF.' },
       { name: 'Save picture', keys: 'png image export', what: 'The page as a picture.', steps: ['Menu ▸ Save picture.'], tip: 'Good for a single diagram or a homework question.' },
