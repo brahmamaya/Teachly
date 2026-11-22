@@ -10499,3 +10499,16 @@ button,
 @media (prefers-reduced-motion: reduce) {
   #app .toolbar .tb-ind, #app .toolbar .tb-btn .icon { transition: none; }
 }
+
+/* ---------- Read only: the one-bar toolbar squeezes into the Read only pill (a copy of its background shrinks) ---------- */
+.tb-morph {
+  position: fixed;
+  z-index: 3999;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+#app.tb-morphing[data-tbjoin] .toolbar.tb-left::before { opacity: 0; }
+#app.tb-hide .toolbar.tb-left > *,
+#app.tb-hide .toolbar.tb-right > * { opacity: 0 !important; transition: none !important; }
+#app.tb-fadein .toolbar.tb-left > *,
+#app.tb-fadein .toolbar.tb-right > * { transition: opacity 0.26s ease !important; }
