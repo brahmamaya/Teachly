@@ -536,23 +536,21 @@ export class App {
   private morphReadOnly(on: boolean): void {
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
+    const ind = left.querySelector('.tb-ind') as HTMLElement | null;
     const box = () => {
       const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
       return { x: Math.min(a.left, b.left), y: Math.min(a.top, b.top), w: Math.max(a.right, b.right) - Math.min(a.left, b.left), h: Math.max(a.bottom, b.bottom) - Math.min(a.top, b.top) };
     };
     const STAY = '.tb-ro, .tb-ind, [data-act=shot], [data-act=pages]';
     const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
-    const ro = () => left.querySelector('.tb-ro') as HTMLElement | null;
-    // How far a button must move (in the bar's own, unscaled units) to sit on the Read only button.
-    const toRo = (el: HTMLElement) => {
-      const a = el.getBoundingClientRect(), b = (ro() ?? el).getBoundingClientRect();
-      const k = a.width / (el.offsetWidth || 1) || 1;
-      return (b.left + Math.min(b.height, b.width) / 2 - (a.left + a.width / 2)) / k;
-    };
-    const look = getComputedStyle(left, '::before');
-    const ind = left.querySelector('.tb-ind') as HTMLElement | null;
-    const shrink = (from: ReturnType<typeof box>, ms: number) => {
-      this.root.classList.add('tb-morphing');
+    const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')];
+    const lefts = () => stays.map((el) => el.getBoundingClientRect().left);
+    const scaleOf = (el: HTMLElement) => el.getBoundingClientRect().width / (el.offsetWidth || 1) || 1;
+    const MS = 480;
+    const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    // One calm movement: the bar's background, the buttons that stay and the tools all move at the same time.
+    const ghostBar = (from: ReturnType<typeof box>, to: ReturnType<typeof box>) => {
+      const look = getComputedStyle(left, '::before');
       const ghost = document.createElement('div');
       ghost.className = 'tb-morph';
       Object.assign(ghost.style, {
@@ -563,99 +561,104 @@ export class App {
         border: `${look.borderBottomWidth} solid ${look.borderBottomColor}`,
       });
       this.toolbar.appendChild(ghost);
-      const to = box();
+      this.root.classList.add('tb-morphing');
       const frame = (r: typeof from) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
-      // a little spring at the end: the bar overshoots a touch and settles
-      const anim = ghost.animate([frame(from), frame(to)], { duration: ms, easing: 'cubic-bezier(0.34, 1.32, 0.64, 1)', fill: 'forwards' });
-      const done = () => {
-        this.root.classList.remove('tb-morphing');
+      const anim = ghost.animate([frame(from), frame(to)], { duration: MS, easing: EASE, fill: 'forwards' });
+      return () => {
+        anim.cancel();
         ghost.remove();
+        this.root.classList.remove('tb-morphing');
       };
-      anim.onfinish = done;
-      anim.oncancel = done;
     };
-    const glow = () => {
-      const b = ro();
-      if (!b) return;
-      b.classList.remove('ro-glow');
-      void b.offsetWidth;
-      b.classList.add('ro-glow');
-      window.setTimeout(() => b.classList.remove('ro-glow'), 900);
-    };
-    if (on) {
-      // 1) every tool is drawn into the Read only button, one after another (it gulps them with a little bounce)
-      const list = tools();
-      const from = box();
-      if (ind) ind.style.opacity = '0'; // the tool highlight fades as the tools leave
-      list.forEach((el, i) => {
-        const d = Math.min(i, 14) * 22;
-        el.style.transition = `transform 0.36s cubic-bezier(0.55, 0, 0.75, 0.3) ${d}ms, opacity 0.3s ease ${d + 60}ms`;
-        el.style.transform = `translateX(${toRo(el)}px) scale(0.25) rotate(-12deg)`;
-        el.style.opacity = '0';
+    const clear = (els: HTMLElement[]) =>
+      els.forEach((el) => {
+        el.style.transition = 'none';
+        el.style.transform = el.style.opacity = '';
       });
-      ro()?.classList.add('ro-gulp');
-      const wait = Math.min(list.length, 14) * 22 + 300;
+    if (on) {
+      const from = box();
+      const list = tools();
+      const was = lefts();
+      // where everything ends: lay the bar out the Read only way for a moment, measure, and put it back
+      // (no frame is drawn in between, nothing is seen)
+      const rb = left.querySelector('.tb-ro') as HTMLElement | null;
+      this.root.classList.add('ro-compact');
+      this.applyScale(true);
+      const to = box();
+      const will = lefts();
+      this.root.classList.remove('ro-compact');
+      this.applyScale(true);
+      const end = ghostBar(from, to);
+      rb?.classList.add('on'); // the pill opens while everything moves
+      if (ind) {
+        ind.style.transition = 'opacity 0.1s ease';
+        ind.style.opacity = '0';
+      }
+      // the leaving tools are gone before the bar's edge reaches them (never seen outside the bar)
+      list.forEach((el, i) => {
+        const d = Math.min(i, 12) * 4;
+        el.style.transition = `opacity 0.14s ease ${d}ms, transform 0.24s ${EASE} ${d}ms`;
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.7)';
+      });
+      stays.forEach((el, i) => {
+        el.style.transition = `transform ${MS}ms ${EASE}`;
+        el.style.transform = `translateX(${(will[i] - was[i]) / scaleOf(el)}px)`;
+      });
       window.setTimeout(() => {
-        // 2) the bar squeezes around what is left, the pill opens and glows once
         store.setReadOnly(true);
         this.root.classList.add('ro-compact');
         this.applyScale(true);
-        list.forEach((el) => (el.style.transition = el.style.transform = el.style.opacity = ''));
-        ro()?.classList.remove('ro-gulp');
-        if (ind) ind.style.opacity = ''; // Read only keeps it hidden (CSS); nothing left behind for later
-        shrink(from, 560);
-        glow();
-      }, wait);
+        clear([...list, ...stays]);
+        if (ind) {
+          ind.style.transition = '';
+          ind.style.opacity = '';
+        }
+        end();
+      }, MS);
     } else {
-      // back: the bar opens out with a spring, and the tools pop out of the Read only button to their places
       const from = box();
-      const b0 = ro()?.getBoundingClientRect();
-      const origin = b0 ? b0.left + Math.min(b0.height, b0.width) / 2 : 0; // where the tools come out of
-      const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')];
-      const was = stays.map((el) => el.getBoundingClientRect().left);
+      const was = lefts();
       this.root.classList.remove('ro-compact');
       store.setReadOnly(false);
       this.applyScale(true);
+      const to = box();
       const list = tools();
-      const fromOrigin = (el: HTMLElement) => {
-        const a = el.getBoundingClientRect(), k = a.width / (el.offsetWidth || 1) || 1;
-        return (origin - (a.left + a.width / 2)) / k;
-      };
-      // the buttons that stay glide from their old places to the new ones (never seen jumping outside the bar)
+      // the buttons that stay glide from where they were; the tools fade in a moment after the bar starts opening
       stays.forEach((el, i) => {
-        const r = el.getBoundingClientRect(), k = r.width / (el.offsetWidth || 1) || 1;
         el.style.transition = 'none';
-        el.style.transform = `translateX(${(was[i] - r.left) / k}px)`;
+        el.style.transform = `translateX(${(was[i] - el.getBoundingClientRect().left) / scaleOf(el)}px)`;
+      });
+      list.forEach((el) => {
+        el.style.transition = 'none';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.7)';
       });
       if (ind) {
         ind.style.transition = 'none';
         ind.style.opacity = '0';
       }
-      list.forEach((el) => {
-        el.style.transition = 'none';
-        el.style.transform = `translateX(${fromOrigin(el)}px) scale(0.25) rotate(-12deg)`;
-        el.style.opacity = '0';
-      });
       void left.offsetWidth;
-      shrink(from, 560);
+      const end = ghostBar(from, to);
       stays.forEach((el) => {
-        el.style.transition = 'transform 0.56s cubic-bezier(0.34, 1.32, 0.64, 1)';
+        el.style.transition = `transform ${MS}ms ${EASE}`;
         el.style.transform = '';
       });
-      window.setTimeout(() => stays.forEach((el) => (el.style.transition = '')), 600);
-      window.setTimeout(() => {
-        if (!ind) return;
-        ind.style.transition = '';
-        ind.style.opacity = '';
-        this.moveIndicator(left);
-      }, 520);
       list.forEach((el, i) => {
-        const d = 90 + Math.min(i, 14) * 24;
-        el.style.transition = `transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) ${d}ms, opacity 0.28s ease ${d}ms`;
-        el.style.transform = '';
+        const d = 140 + Math.min(i, 12) * 12;
+        el.style.transition = `opacity 0.3s ease ${d}ms, transform 0.36s ${EASE} ${d}ms`;
         el.style.opacity = '';
+        el.style.transform = '';
       });
-      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 90 + Math.min(list.length, 14) * 24 + 560);
+      window.setTimeout(() => {
+        end();
+        if (ind) {
+          ind.style.transition = '';
+          ind.style.opacity = '';
+          this.moveIndicator(left);
+        }
+      }, MS);
+      window.setTimeout(() => list.concat(stays).forEach((el) => (el.style.transition = '')), 140 + 12 * 12 + 380);
     }
   }
 
