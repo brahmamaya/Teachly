@@ -502,6 +502,25 @@ export class App {
     }
   }
 
+  /** Read only on/off. The bar keeps only Read only, Screenshot and Pages (no empty gap), so its size changes: it fades
+   *  out for a moment, is re-laid out, and fades back in while the button opens into its pill (opacity only, no jolt). */
+  private toggleReadOnly(): void {
+    const on = !store.readOnly;
+    const swap = () => {
+      store.setReadOnly(on);
+      this.root.classList.toggle('ro-compact', on);
+      this.applyScale(true);
+    };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return swap();
+    this.root.classList.add('tb-swap');
+    window.setTimeout(() => {
+      swap();
+      this.root.classList.add('tb-fadein');
+      requestAnimationFrame(() => requestAnimationFrame(() => this.root.classList.remove('tb-swap')));
+      window.setTimeout(() => this.root.classList.remove('tb-fadein'), 300);
+    }, 150);
+  }
+
   /** Last place of the sliding highlight, so it can glide to the new tool. */
   private indAt: { x: number; y: number; w: number; h: number } | null = null;
 
@@ -1263,7 +1282,7 @@ export class App {
         return;
       case 'readonly':
         this.closePopover();
-        return store.setReadOnly(!store.readOnly);
+        return this.toggleReadOnly();
       case 'slide': {
         const on = !store.tool.slide;
         store.setTool({ slide: on });

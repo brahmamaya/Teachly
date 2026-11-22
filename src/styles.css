@@ -10116,3 +10116,11 @@ button,
 }
 #app .toolbar.tb-right .tb-btn:active,
 #app .toolbar.tb-right .icon-btn:active { transition-duration: 0s; }
+
+/* ---------- Read only: a short bar with just Read only, Screenshot and Pages ---------- */
+#app.tb-swap .toolbar { opacity: 0 !important; transition: opacity 0.15s var(--ease) !important; }
+#app.ro-compact .tb-left > :not(.tb-ro):not(.tb-ind),
+#app.ro-compact .tb-right > :not([data-act='shot']):not([data-act='pages']),
+#app.ro-compact .hexdock { display: none !important; }
+#app.ro-compact .toolbar .tb-ro { width: 134px; justify-items: start; padding-left: 12px; }
+#app.tb-fadein .toolbar { transition: opacity 0.2s var(--ease); }
