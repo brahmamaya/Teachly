@@ -637,7 +637,7 @@ export class App {
 
   private closePopover(): void {
     if (!this.popover) return;
-    fadeOut(this.popover);
+    fadeOut(this.popover, 200);
     this.popover = null;
     this.root.classList.remove('pop-open');
     if (this.popArrow) fadeOut(this.popArrow);
@@ -728,6 +728,9 @@ export class App {
     arrow.style.left = `${ax - s / 2}px`;
     arrow.style.top = `${edge === 'bottom' ? top + ph - s / 2 - 1 : top - s / 2 + 1}px`;
     arrow.dataset.dir = edge === 'bottom' ? 'down' : 'up';
+    // It opens out of its button: grows from the arrow's point and slides in from the toolbar's side.
+    pop.style.transformOrigin = `${ax - left}px ${edge === 'bottom' ? ph : 0}px`;
+    pop.style.setProperty('--pop-dy', edge === 'bottom' ? '10px' : edge === 'top' ? '-10px' : '0px');
   }
 
   private popArrow: HTMLElement | null = null;
