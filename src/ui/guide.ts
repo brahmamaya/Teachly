@@ -205,6 +205,10 @@ const BG: [string, number, number, number, number][] = [
   ['"Σ"', 4, 62, -8, 44], ['graph', 22, 88, -12, 42], ['"H₂O"', 50, 94, 0, 30],
   ['compass', 78, 88, -20, 42], ['bolt', 30, 8, 16, 34], ['"∫"', 70, 6, 10, 46],
   ['abc', 96, 82, 14, 34], ['"Δ"', 3, 88, 12, 36],
+  // in the middle too, behind the words (very faint)
+  ['"E=mc²"', 60, 44, -6, 28], ['setsquare', 36, 47, 18, 40], ['"x²"', 68, 66, 12, 34], ['protractor', 30, 72, -14, 40],
+  ['"∞"', 42, 26, 0, 36], ['calc', 62, 24, 10, 32], ['"θ"', 18, 44, 0, 34], ['magnifier', 80, 46, -18, 34],
+  ['"%"', 54, 72, 8, 30], ['notebook', 46, 60, -8, 34],
 ];
 
 /** The short welcome shown the first time Teachly opens: four calm cards, Skip any time. */

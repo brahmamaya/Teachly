@@ -9998,7 +9998,7 @@ button,
 .wl-card > *:not(.wl-bg) { position: relative; z-index: 1; }
 .wl-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 0.35s ease; }
 .wl-card.first .wl-bg { opacity: 1; }
-.wl-bg i { position: absolute; opacity: 0.13; color: #6e6e73; font-style: normal; font-weight: 600; line-height: 1; font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif; white-space: nowrap; }
+.wl-bg i { position: absolute; opacity: 0.08; color: #6e6e73; font-style: normal; font-weight: 600; line-height: 1; font-family: 'Cambria Math', 'STIX Two Math', 'Times New Roman', serif; white-space: nowrap; }
 .wl-bg .icon { display: block; stroke-width: 1.6; }
 .wl-card p { min-height: 48px; }
 .lite .wl-bg { transition: none; }
