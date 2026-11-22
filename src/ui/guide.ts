@@ -52,7 +52,7 @@ const GUIDE: Section[] = [
       { name: 'Text', keys: 'type keyboard words', what: 'Typed text for titles and notes.', steps: ['Tap Text, then tap the board where it should go.', 'Type. Tap outside when done.'], tip: 'Typed headings with handwritten notes look clean in the saved PDF.' },
       { name: 'Fill colour', keys: 'bucket paint inside', what: 'Colours the inside of a shape or a closed drawing.', steps: ['Tap the bucket and pick a colour.', 'Tap inside the shape.'], tip: 'Colour the parts of a diagram (lens, prism, cell): easier to remember, and visible from far away on a board.' },
       { name: 'Select', keys: 'move resize rotate copy lock group', what: 'Move, resize, turn, copy, recolour or delete things.', steps: ['Tap the select arrow.', 'Tap an item, or draw around several.', 'Use the handles and the buttons that appear.'], tip: 'Lock a picture you write on so it does not move by accident.' },
-      { name: 'Table', keys: 'rows columns grid', what: 'A clean table you can type into.', steps: ['Insert ▸ Table.', 'Slide to choose rows and columns.'], tip: 'Great for observation tables in practicals.' },
+      { name: 'Table', keys: 'rows columns grid style look theme colour stripes', what: 'A table you can type into, in many looks.', steps: ['Insert ▸ Table, pick a look, then slide to choose rows and columns.', 'Select the table and tap Table style to change its look, stripes, lines and text.'], tip: 'Great for observation tables in practicals and for marks or timetables.' },
     ],
   },
   {
@@ -92,7 +92,7 @@ const GUIDE: Section[] = [
       { name: 'Poll A B C D', keys: 'vote quiz question', what: 'Quick hand-count of answers.', steps: ['Tools ▸ Poll and tap the counts.'], tip: 'Shows at once which wrong idea most students have.' },
       { name: 'Random picker', keys: 'name student choose dice', what: 'Picks a student at random.', steps: ['Tools ▸ Random picker and add names.'], tip: 'Fair turns: nobody feels left out.' },
       { name: 'Scoreboard', keys: 'team points game', what: 'Scores for teams.', steps: ['Tools ▸ Scoreboard.'], tip: 'Turn revision into a team quiz.' },
-      { name: 'Record lesson', keys: 'video voice microphone record', what: 'Records your page and your voice as a video on your device.', steps: ['Tap Record and allow the microphone.', 'Tap Stop to save the video.'], tip: 'Explain a topic once and keep the video for revision, or share it with anyone who missed the class.' },
+      { name: 'Record lesson', keys: 'video voice microphone record', what: 'Records your page and your voice as a video on your device.', steps: ['Tap Record and allow the microphone.', 'Tap Stop to save the video.'], tip: 'Long lessons (two hours and more) are fine: the video is written to your device while you teach, and if the app closes by mistake you can still save it next time.' },
     ],
   },
   {

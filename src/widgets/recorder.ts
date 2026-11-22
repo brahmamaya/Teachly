@@ -1,5 +1,6 @@
 import { type Board, liteDevice } from '../board';
 import { download } from '../io/files';
+import { clearParts, forgetType, leftBlob, leftRecordings, noteType, RecParts } from '../io/recparts';
 import { icon } from '../ui/icons';
 import { fadeOut, toast } from '../ui/panel';
 
@@ -9,7 +10,8 @@ import { fadeOut, toast } from '../ui/panel';
 
 interface Rec {
   rec: MediaRecorder;
-  chunks: Blob[];
+  /** The video so far, written to the device piece by piece (a 2-hour lesson never fills the memory). */
+  parts: RecParts;
   mic: MediaStream | null;
   timer: number;
   raf: number;
@@ -41,10 +43,12 @@ function pickType(): string {
 
 /** Video sizes offered before recording (the board's shape is kept inside this box). */
 const QUALITIES = [
-  { id: '720', label: '720p', sub: 'HD · small file', w: 1280, h: 720, bps: 6_000_000 },
-  { id: '1080', label: '1080p', sub: 'Full HD', w: 1920, h: 1080, bps: 12_000_000 },
-  { id: '1440', label: '2K', sub: '1440p · sharper', w: 2560, h: 1440, bps: 20_000_000 },
-  { id: '2160', label: '4K', sub: 'Ultra HD · big file', w: 3840, h: 2160, bps: 40_000_000 },
+  // A board changes little from frame to frame: these rates keep writing sharp while a 2-hour lesson stays a sensible
+  // size (1080p: about 1.5 GB an hour at most, usually much less).
+  { id: '720', label: '720p', sub: 'HD · small file', w: 1280, h: 720, bps: 2_000_000 },
+  { id: '1080', label: '1080p', sub: 'Full HD', w: 1920, h: 1080, bps: 3_500_000 },
+  { id: '1440', label: '2K', sub: '1440p · sharper', w: 2560, h: 1440, bps: 6_000_000 },
+  { id: '2160', label: '4K', sub: 'Ultra HD · big file', w: 3840, h: 2160, bps: 12_000_000 },
 ] as const;
 type Quality = (typeof QUALITIES)[number];
 const QKEY = 'teachly.recQuality';
@@ -78,7 +82,7 @@ function chooseQuality(host: HTMLElement, board: Board): Promise<{ q: Quality; u
       <p class="sv-note">Your board and your voice are saved as a video on this device.</p>
       <div class="rq-grid">${QUALITIES.map((q) => `<button type="button" class="rq-opt ${q.id === last ? 'on' : ''}" data-q="${q.id}"><b>${q.label}</b><span>${q.sub}</span>${q.id === best ? '<i class="rq-best">Best for this screen</i>' : ''}</button>`).join('')}</div>
       <label class="rq-check"><input type="checkbox" data-ui ${showUI ? 'checked' : ''}><span><b>Show the toolbar in the video</b><small>Buttons, menus and what is selected are recorded too</small></span></label>
-      <p class="sv-note small">Higher quality is sharper but needs a faster device and more space.</p>
+      <p class="sv-note small">Long lessons are fine (two hours and more): the video is written to this device while you teach. Higher quality is sharper but needs a faster device and more space.</p>
       <div class="sv-row"><button type="button" class="btn" data-x>Cancel</button><button type="button" class="btn primary rq-start" data-go>${icon('record', 18)} Start recording</button></div>
     </div>`;
     host.appendChild(back);
@@ -152,7 +156,9 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
   const type = pickType();
   let rec: MediaRecorder;
   try {
-    rec = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), videoBitsPerSecond: q.bps });
+    // A key frame every 2 s: the recorder can hand over a piece every second (an MP4 piece ends only at a key frame, and
+    // a still board would otherwise make none for a long time, keeping the whole video in memory).
+    rec = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), videoBitsPerSecond: q.bps, videoKeyFrameIntervalDuration: 2000 } as MediaRecorderOptions);
   } catch {
     mic?.getTracks().forEach((t) => t.stop());
     ui?.stop();
@@ -168,8 +174,15 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
   pill.querySelector('button')!.addEventListener('click', () => stop());
   host.appendChild(pill);
 
-  const r: Rec = { rec, chunks: [], mic, timer: 0, raf: 0, pill, start: Date.now(), type: rec.mimeType || type || 'video/webm', board, ui, touches };
-  rec.ondataavailable = (e) => e.data.size && r.chunks.push(e.data);
+  const start = Date.now();
+  const r: Rec = { rec, parts: new RecParts(start.toString(36)), mic, timer: 0, raf: 0, pill, start, type: rec.mimeType || type || 'video/webm', board, ui, touches };
+  void noteType(r.parts.id, r.type, start).catch(() => undefined);
+  // Ask the browser to keep the stored pieces even when space runs low (no prompt in most browsers).
+  void navigator.storage?.persist?.().catch(() => undefined);
+  void warnIfLowSpace(q.bps);
+  rec.ondataavailable = (e) => {
+    if (e.data.size) r.parts.add(e.data);
+  };
   rec.onstop = () => save(r);
   rec.start(1000);
   // Copy the board ~30 times a second.
@@ -198,7 +211,7 @@ function stop(): void {
   changed();
   cancelAnimationFrame(r.raf);
   clearInterval(r.timer);
-  r.pill.remove();
+  fadeOut(r.pill);
   if (r.rec.state !== 'inactive') r.rec.stop();
   r.mic?.getTracks().forEach((t) => t.stop());
   r.ui?.stop();
@@ -208,10 +221,36 @@ function stop(): void {
   r.board.resize();
 }
 
+/** Less than about 45 minutes of video fits in the free space: say so at the start (the recording still runs). */
+async function warnIfLowSpace(bps: number): Promise<void> {
+  try {
+    const e = await navigator.storage?.estimate?.();
+    if (!e?.quota) return;
+    const free = e.quota - (e.usage ?? 0);
+    const minutes = free / (bps / 8) / 60;
+    if (minutes < 45) toast(`Little free space: about ${Math.max(1, Math.floor(minutes))} minutes of video fit. Free some space or pick a lower quality for a long lesson.`, 6000);
+  } catch {
+    /* unknown: just record */
+  }
+}
+
 async function save(r: Rec): Promise<void> {
-  const ext = r.type.includes('mp4') ? 'mp4' : 'webm';
-  const blob = new Blob(r.chunks, { type: r.type.split(';')[0] });
-  const d = new Date();
+  let blob: Blob;
+  try {
+    blob = await r.parts.blob(r.type.split(';')[0]);
+  } catch {
+    toast('Could not put the video together', 4000);
+    return;
+  }
+  // The video is handed over now; its pieces are removed a while later (the file is read from them while saving).
+  void noteType(r.parts.id, r.type, r.start, true).catch(() => undefined);
+  window.setTimeout(() => void r.parts.clear().then(() => forgetType(r.parts.id)).catch(() => undefined), 10 * 60_000);
+  offerVideo(blob, r.type, new Date(r.start));
+}
+
+/** Save (or share) a finished lesson video. */
+function offerVideo(blob: Blob, type: string, d: Date): void {
+  const ext = type.includes('mp4') ? 'mp4' : 'webm';
   const name = `Teachly lesson ${d.toISOString().slice(0, 10)} ${d.getHours()}-${String(d.getMinutes()).padStart(2, '0')}.${ext}`;
   const file = new File([blob], name, { type: blob.type });
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
@@ -230,8 +269,46 @@ async function save(r: Rec): Promise<void> {
     navigator.share({ files: [file], title: name }).catch(() => download(blob, name));
     pill.remove();
   });
-  closeBtn.addEventListener('click', () => pill.remove());
+  closeBtn.addEventListener('click', () => fadeOut(pill));
   hostEl?.appendChild(pill);
+}
+
+/**
+ * A lesson recording whose pieces are still on the device because the app closed while it was recording (battery,
+ * crash): offer to save it. Pieces of videos that were already saved are cleaned up quietly.
+ */
+export async function recoverRecordings(host: HTMLElement): Promise<void> {
+  hostEl ??= host;
+  let left: Awaited<ReturnType<typeof leftRecordings>>;
+  try {
+    left = await leftRecordings();
+  } catch {
+    return;
+  }
+  for (const l of left) {
+    if (cur && cur.parts.id === l.id) continue;
+    if (l.saved) {
+      await clearParts(l.id).then(() => forgetType(l.id)).catch(() => undefined);
+      continue;
+    }
+    const pill = document.createElement('div');
+    pill.className = 'rec-pill ready';
+    pill.innerHTML = `<b>A lesson recording was not finished</b><button class="rec-btn save">${icon('download', 18)}<span>Save video</span></button><button class="rec-btn round" aria-label="Delete it" title="Delete it">${icon('trash', 18)}</button>`;
+    const [saveBtn, delBtn] = pill.querySelectorAll('button');
+    saveBtn.addEventListener('click', async () => {
+      fadeOut(pill);
+      const blob = await leftBlob(l.id, l.type.split(';')[0]);
+      await noteType(l.id, l.type, l.start, true);
+      window.setTimeout(() => void clearParts(l.id).then(() => forgetType(l.id)).catch(() => undefined), 10 * 60_000);
+      offerVideo(blob, l.type, new Date(l.start || Date.now()));
+    });
+    delBtn.addEventListener('click', () => {
+      fadeOut(pill);
+      void clearParts(l.id).then(() => forgetType(l.id));
+    });
+    host.appendChild(pill);
+    return; // one at a time
+  }
 }
 
 /**

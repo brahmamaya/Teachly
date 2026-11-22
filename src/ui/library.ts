@@ -228,6 +228,28 @@ export class Library {
     el.querySelector('.lib-theme')?.setAttribute('aria-checked', String(!light));
   }
 
+  /**
+   * The sun / moon switch: the whole page fades softly into the other look (no sudden flash) while the knob slides.
+   * Uses the browser's own cross-fade where there is one (a cheap picture fade), else a short colour fade.
+   */
+  private switchTheme(el: HTMLElement): void {
+    const flip = () => {
+      store.setSettings({ libTheme: store.settings.libTheme === 'light' ? 'dark' : 'light' });
+      this.applyTheme(el);
+    };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return flip();
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    if (doc.startViewTransition) {
+      document.documentElement.classList.add('vt-theme');
+      const vt = doc.startViewTransition(flip) as { finished?: Promise<void> };
+      void vt.finished?.finally(() => document.documentElement.classList.remove('vt-theme'));
+      return;
+    }
+    el.classList.add('theme-fade');
+    flip();
+    window.setTimeout(() => el.classList.remove('theme-fade'), 450);
+  }
+
   async show(): Promise<void> {
     if (this.el) return;
     // Save what is on the board first so its cover is up to date (the board may change meanwhile: it is never replaced).
@@ -471,8 +493,7 @@ export class Library {
         return this.refresh();
       }
       case 'theme':
-        store.setSettings({ libTheme: store.settings.libTheme === 'light' ? 'dark' : 'light' });
-        return this.applyTheme(this.el);
+        return this.switchTheme(this.el);
       case 'view':
         this.view = (b.dataset.v ?? 'all') as View;
         this.query = '';

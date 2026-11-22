@@ -95,6 +95,24 @@ export interface TableEl extends BoxBase {
   fill: string | null;
   headerFill: string;
   fontSize: number;
+  /** The look it was given (Table style); the fields below can then be changed one by one. */
+  theme?: string;
+  /** Line colour (missing: the text colour). */
+  lineColor?: string;
+  /** Header text colour (missing: the text colour). */
+  headerText?: string;
+  /** Every other row tinted. */
+  stripes?: boolean;
+  stripe?: string;
+  /** First column tinted and bold. */
+  firstCol?: boolean;
+  colFill?: string;
+  /** Which lines are drawn (missing: all). */
+  lines?: 'all' | 'outer' | 'rows' | 'none';
+  /** Rounded outer corners. */
+  round?: boolean;
+  /** Text in the cells (missing: centred). */
+  align?: 'left' | 'center';
 }
 
 /** Tape strip that hides part of the page; tap it to reveal (and hide again). */

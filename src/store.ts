@@ -62,6 +62,8 @@ export interface Settings {
   libTheme?: 'light' | 'dark';
   /** My notebooks shown as a list (rows) instead of covers. */
   libList?: boolean;
+  /** The look new tables get (the last one chosen). */
+  tableTheme?: string;
   /** The first-open welcome has been shown (or skipped). */
   welcomeDone?: boolean;
 }

@@ -461,45 +461,89 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 function drawTable(ctx: CanvasRenderingContext2D, el: TableEl): void {
   const { rows, cols, w, h } = el;
   const cw = w / cols, rh = h / rows;
+  const lines = el.lines ?? 'all';
+  const rad = el.round ? Math.min(rh * 0.35, el.fontSize * 0.7, w / 4, h / 4) : 0;
+  const frame = () => {
+    ctx.beginPath();
+    if (rad && ctx.roundRect) ctx.roundRect(0, 0, w, h, rad);
+    else ctx.rect(0, 0, w, h);
+  };
+  // Fills (inside the rounded frame).
+  ctx.save();
+  frame();
+  ctx.clip();
   if (el.fill) {
     ctx.fillStyle = el.fill;
     ctx.fillRect(0, 0, w, h);
   }
-  if (el.header) {
+  const first = el.header ? 1 : 0;
+  if (el.stripes && el.stripe) {
+    ctx.fillStyle = el.stripe;
+    for (let r = first + 1; r < rows; r += 2) ctx.fillRect(0, r * rh, w, rh);
+  }
+  if (el.firstCol && el.colFill) {
+    ctx.fillStyle = el.colFill;
+    ctx.fillRect(0, first * rh, cw, h - first * rh);
+  }
+  if (el.header && el.headerFill && el.headerFill !== 'transparent') {
     ctx.fillStyle = el.headerFill;
     ctx.fillRect(0, 0, w, rh);
   }
-  ctx.strokeStyle = el.color;
+  ctx.restore();
+  // Lines.
+  ctx.strokeStyle = el.lineColor ?? el.color;
   ctx.lineWidth = Math.max(1.5, el.fontSize / 14);
   ctx.beginPath();
-  for (let r = 0; r <= rows; r++) {
-    ctx.moveTo(0, r * rh);
-    ctx.lineTo(w, r * rh);
+  if (lines === 'all' || lines === 'rows') {
+    for (let r = 1; r < rows; r++) {
+      ctx.moveTo(0, r * rh);
+      ctx.lineTo(w, r * rh);
+    }
+  } else if (lines === 'outer' && el.header && rows > 1) {
+    ctx.moveTo(0, rh);
+    ctx.lineTo(w, rh);
   }
-  for (let c = 0; c <= cols; c++) {
-    ctx.moveTo(c * cw, 0);
-    ctx.lineTo(c * cw, h);
+  if (lines === 'all') {
+    for (let c = 1; c < cols; c++) {
+      ctx.moveTo(c * cw, 0);
+      ctx.lineTo(c * cw, h);
+    }
   }
   ctx.stroke();
-  ctx.fillStyle = el.color;
-  ctx.textAlign = 'center';
+  if (lines === 'all' || lines === 'outer') {
+    frame();
+    ctx.stroke();
+  } else if (lines === 'rows') {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(w, 0);
+    ctx.moveTo(0, h);
+    ctx.lineTo(w, h);
+    ctx.stroke();
+  }
+  // Text.
+  const left = el.align === 'left';
+  ctx.textAlign = left ? 'left' : 'center';
   ctx.textBaseline = 'middle';
   const pad = el.fontSize * 0.3;
   for (let r = 0; r < rows; r++) {
-    ctx.font = textFont({ fontSize: el.fontSize, bold: el.header && r === 0 });
+    const head = el.header && r === 0;
     for (let c = 0; c < cols; c++) {
       const text = el.cells[r]?.[c] ?? '';
       if (!text) continue;
-      const lines = wrapText(ctx, text, cw - pad * 2);
+      ctx.font = textFont({ fontSize: el.fontSize, bold: head || (!!el.firstCol && c === 0) });
+      ctx.fillStyle = head ? (el.headerText ?? el.color) : el.color;
+      const lines2 = wrapText(ctx, text, cw - pad * 2);
       const lh = el.fontSize * 1.25;
       const maxLines = Math.max(1, Math.floor((rh - pad) / lh));
-      const shown = lines.slice(0, maxLines);
+      const shown = lines2.slice(0, maxLines);
       const y0 = r * rh + rh / 2 - ((shown.length - 1) * lh) / 2;
       ctx.save();
       ctx.beginPath();
       ctx.rect(c * cw, r * rh, cw, rh);
       ctx.clip();
-      shown.forEach((l, k) => ctx.fillText(l, c * cw + cw / 2, y0 + k * lh));
+      const x = left ? c * cw + pad * 1.6 : c * cw + cw / 2;
+      shown.forEach((l, k) => ctx.fillText(l, x, y0 + k * lh));
       ctx.restore();
     }
   }
