@@ -540,44 +540,123 @@ export class App {
       const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
       return { x: Math.min(a.left, b.left), y: Math.min(a.top, b.top), w: Math.max(a.right, b.right) - Math.min(a.left, b.left), h: Math.max(a.bottom, b.bottom) - Math.min(a.top, b.top) };
     };
-    const from = box();
+    const STAY = '.tb-ro, .tb-ind, [data-act=shot], [data-act=pages]';
+    const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
+    const ro = () => left.querySelector('.tb-ro') as HTMLElement | null;
+    // How far a button must move (in the bar's own, unscaled units) to sit on the Read only button.
+    const toRo = (el: HTMLElement) => {
+      const a = el.getBoundingClientRect(), b = (ro() ?? el).getBoundingClientRect();
+      const k = a.width / (el.offsetWidth || 1) || 1;
+      return (b.left + Math.min(b.height, b.width) / 2 - (a.left + a.width / 2)) / k;
+    };
     const look = getComputedStyle(left, '::before');
-    const ghost = document.createElement('div');
-    ghost.className = 'tb-morph';
-    Object.assign(ghost.style, {
-      backgroundImage: look.backgroundImage,
-      backgroundColor: look.backgroundColor,
-      borderRadius: look.borderTopLeftRadius === '0px' ? look.borderBottomLeftRadius : look.borderTopLeftRadius,
-      boxShadow: look.boxShadow,
-      border: `${look.borderBottomWidth} solid ${look.borderBottomColor}`,
-    });
-    this.toolbar.appendChild(ghost);
-    this.root.classList.add('tb-morphing');
+    const ind = left.querySelector('.tb-ind') as HTMLElement | null;
+    const shrink = (from: ReturnType<typeof box>, ms: number) => {
+      this.root.classList.add('tb-morphing');
+      const ghost = document.createElement('div');
+      ghost.className = 'tb-morph';
+      Object.assign(ghost.style, {
+        backgroundImage: look.backgroundImage,
+        backgroundColor: look.backgroundColor,
+        borderRadius: look.borderTopLeftRadius === '0px' ? look.borderBottomLeftRadius : look.borderTopLeftRadius,
+        boxShadow: look.boxShadow,
+        border: `${look.borderBottomWidth} solid ${look.borderBottomColor}`,
+      });
+      this.toolbar.appendChild(ghost);
+      const to = box();
+      const frame = (r: typeof from) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+      // a little spring at the end: the bar overshoots a touch and settles
+      const anim = ghost.animate([frame(from), frame(to)], { duration: ms, easing: 'cubic-bezier(0.34, 1.32, 0.64, 1)', fill: 'forwards' });
+      const done = () => {
+        this.root.classList.remove('tb-morphing');
+        ghost.remove();
+      };
+      anim.onfinish = done;
+      anim.oncancel = done;
+    };
+    const glow = () => {
+      const b = ro();
+      if (!b) return;
+      b.classList.remove('ro-glow');
+      void b.offsetWidth;
+      b.classList.add('ro-glow');
+      window.setTimeout(() => b.classList.remove('ro-glow'), 900);
+    };
     if (on) {
-      store.setReadOnly(true);
-      this.root.classList.add('ro-compact');
-      this.applyScale(true);
+      // 1) every tool is drawn into the Read only button, one after another (it gulps them with a little bounce)
+      const list = tools();
+      const from = box();
+      if (ind) ind.style.opacity = '0'; // the tool highlight fades as the tools leave
+      list.forEach((el, i) => {
+        const d = Math.min(i, 14) * 22;
+        el.style.transition = `transform 0.36s cubic-bezier(0.55, 0, 0.75, 0.3) ${d}ms, opacity 0.3s ease ${d + 60}ms`;
+        el.style.transform = `translateX(${toRo(el)}px) scale(0.25) rotate(-12deg)`;
+        el.style.opacity = '0';
+      });
+      ro()?.classList.add('ro-gulp');
+      const wait = Math.min(list.length, 14) * 22 + 300;
+      window.setTimeout(() => {
+        // 2) the bar squeezes around what is left, the pill opens and glows once
+        store.setReadOnly(true);
+        this.root.classList.add('ro-compact');
+        this.applyScale(true);
+        list.forEach((el) => (el.style.transition = el.style.transform = el.style.opacity = ''));
+        ro()?.classList.remove('ro-gulp');
+        if (ind) ind.style.opacity = ''; // Read only keeps it hidden (CSS); nothing left behind for later
+        shrink(from, 560);
+        glow();
+      }, wait);
     } else {
-      // back: the bar opens out first (its buttons hidden), then all of them fade in inside it
-      this.root.classList.add('tb-hide');
+      // back: the bar opens out with a spring, and the tools pop out of the Read only button to their places
+      const from = box();
+      const b0 = ro()?.getBoundingClientRect();
+      const origin = b0 ? b0.left + Math.min(b0.height, b0.width) / 2 : 0; // where the tools come out of
+      const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')];
+      const was = stays.map((el) => el.getBoundingClientRect().left);
       this.root.classList.remove('ro-compact');
       store.setReadOnly(false);
       this.applyScale(true);
+      const list = tools();
+      const fromOrigin = (el: HTMLElement) => {
+        const a = el.getBoundingClientRect(), k = a.width / (el.offsetWidth || 1) || 1;
+        return (origin - (a.left + a.width / 2)) / k;
+      };
+      // the buttons that stay glide from their old places to the new ones (never seen jumping outside the bar)
+      stays.forEach((el, i) => {
+        const r = el.getBoundingClientRect(), k = r.width / (el.offsetWidth || 1) || 1;
+        el.style.transition = 'none';
+        el.style.transform = `translateX(${(was[i] - r.left) / k}px)`;
+      });
+      if (ind) {
+        ind.style.transition = 'none';
+        ind.style.opacity = '0';
+      }
+      list.forEach((el) => {
+        el.style.transition = 'none';
+        el.style.transform = `translateX(${fromOrigin(el)}px) scale(0.25) rotate(-12deg)`;
+        el.style.opacity = '0';
+      });
+      void left.offsetWidth;
+      shrink(from, 560);
+      stays.forEach((el) => {
+        el.style.transition = 'transform 0.56s cubic-bezier(0.34, 1.32, 0.64, 1)';
+        el.style.transform = '';
+      });
+      window.setTimeout(() => stays.forEach((el) => (el.style.transition = '')), 600);
       window.setTimeout(() => {
-        this.root.classList.add('tb-fadein');
-        this.root.classList.remove('tb-hide');
-        window.setTimeout(() => this.root.classList.remove('tb-fadein'), 320);
-      }, 260);
+        if (!ind) return;
+        ind.style.transition = '';
+        ind.style.opacity = '';
+        this.moveIndicator(left);
+      }, 520);
+      list.forEach((el, i) => {
+        const d = 90 + Math.min(i, 14) * 24;
+        el.style.transition = `transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) ${d}ms, opacity 0.28s ease ${d}ms`;
+        el.style.transform = '';
+        el.style.opacity = '';
+      });
+      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 90 + Math.min(list.length, 14) * 24 + 560);
     }
-    const to = box();
-    const frame = (r: typeof from) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
-    const anim = ghost.animate([frame(from), frame(to)], { duration: 440, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' });
-    const done = () => {
-      this.root.classList.remove('tb-morphing');
-      ghost.remove();
-    };
-    anim.onfinish = done;
-    anim.oncancel = done;
   }
 
   /** Last place of the sliding highlight, so it can glide to the new tool. */

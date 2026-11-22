@@ -23,7 +23,7 @@ const { check, finish } = require('./lib.cjs');
   check('the pen writes before Read only', n0 === 1, String(n0));
   check('the Read only button is on the tool bar', !!(await page.$('.tb-left [data-act=readonly]')));
   await page.click('[data-act=readonly]');
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(1300); // the toolbar's Read only animation takes about a second
   check('on: the button says "Read only"', (await page.evaluate(() => getComputedStyle(document.querySelector('.tb-ro-label')).opacity)) === '1');
   const left = await page.evaluate(() => [...document.querySelectorAll('.tb-left > *, .tb-right > *')].filter((e) => getComputedStyle(e).display !== 'none' && e.offsetWidth).map((e) => e.dataset.act).join(','));
   check('on: only Read only, Screenshot and Pages stay on the bar (no empty gap)', left === 'readonly,shot,pages', left);
@@ -38,10 +38,24 @@ const { check, finish } = require('./lib.cjs');
   // one tap on the words "Read only" (not the icon) turns it off
   const lb = await (await page.$('.tb-ro-label')).boundingBox();
   await page.mouse.click(lb.x + lb.width / 2, lb.y + lb.height / 2);
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(1300); // the toolbar's Read only animation takes about a second
   check('off: the tools come back', (await page.evaluate(() => getComputedStyle(document.querySelector('.tb-left [data-tool=pen]')).opacity)) === '1');
   await draw(500);
   check('off: the pen writes again', (await n()) === n0 + 1);
+  // one bar in the middle: the tools fly into the Read only button and the bar squeezes (and opens out again)
+  await page.evaluate(() => window.__teachly.store.setSettings({ tbAlign: 'middle' }));
+  await page.setViewportSize({ width: 1367, height: 834 });
+  await page.waitForTimeout(400);
+  const look = () => page.evaluate(() => [...document.querySelectorAll('.tb-left > :not(.tb-ind), .tb-right > *')].filter((e) => getComputedStyle(e).display !== 'none' && e.offsetWidth).map((e) => `${e.className}:${getComputedStyle(e).opacity}:${e.style.transform}`).join('|'));
+  const before = await look();
+  await page.click('[data-act=readonly]');
+  await page.waitForTimeout(1300);
+  const shown = () => page.evaluate(() => [...document.querySelectorAll('.tb-left > *, .tb-right > *')].filter((e) => getComputedStyle(e).display !== 'none' && e.offsetWidth).map((e) => e.dataset.act).join(','));
+  check('one bar: squeezed into Read only, Screenshot and Pages', (await shown()) === 'readonly,shot,pages' && !(await page.$('.tb-morph')));
+  await page.click('[data-act=readonly]');
+  await page.waitForTimeout(1300);
+  const after = await look();
+  check('one bar: opened out again, every tool back as it was (nothing left moved or hidden)', after === before && !(await page.$('.tb-morph')), after === before ? '' : `${before}\n${after}`);
   check('no page errors', errs.length === 0, errs.join('|'));
   await b.close();
   finish();
