@@ -35,13 +35,14 @@ try {
 if (splash) {
   window.setTimeout(
     () => {
-      splash.classList.add('hide');
+      // Start the fade on a fresh frame (never in the middle of the app's own start-up work), then remove it.
+      requestAnimationFrame(() => requestAnimationFrame(() => splash.classList.add('hide')));
       window.setTimeout(() => {
         splash.remove();
         // The small "Teachly by Physica" in the corner appears only now, so the
         // name never seems to jump from the middle to the corner.
         root.classList.remove('starting');
-      }, 350);
+      }, 650);
     },
     quick ? 0 : Math.max(0, 1500 - performance.now()),
   );
