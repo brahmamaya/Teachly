@@ -10446,35 +10446,36 @@ button,
 
 /* ---------- Menus and the Pages panel open softly out of their button (and close the same way) ---------- */
 .popover {
-  animation: pop-soft 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: pop-soft 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes pop-soft {
   from {
     opacity: 0;
-    scale: 0.94;
+    scale: 0.9;
     translate: 0 var(--pop-dy, 8px);
   }
 }
 .pop-arrow { animation: pop-arrow-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
 @keyframes pop-arrow-in { from { opacity: 0; } }
 .popover.leaving {
-  scale: 0.96;
+  scale: 0.94;
   translate: 0 calc(var(--pop-dy, 8px) * 0.6);
-  transition: opacity 0.2s ease, scale 0.2s ease, translate 0.2s ease !important;
+  transition: opacity 0.26s ease, scale 0.26s ease, translate 0.26s ease !important;
 }
 .pop-arrow.leaving { transition: opacity 0.18s ease !important; }
 .pages-panel {
-  animation: pages-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: pages-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  touch-action: pan-y; /* a sideways swipe closes it (pages.ts), up and down still scroll */
 }
 @keyframes pages-in {
   from {
     opacity: 0;
-    translate: 36px 0;
+    translate: calc(100% + 24px) 0;
   }
 }
 .pages-panel.leaving {
-  translate: 36px 0;
-  transition: opacity 0.24s ease, translate 0.24s ease !important;
+  translate: calc(100% + 24px) 0;
+  transition: opacity 0.32s ease, translate 0.32s cubic-bezier(0.4, 0, 1, 1) !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .popover, .pop-arrow, .pages-panel { animation: none !important; }
@@ -10512,3 +10513,6 @@ button,
 #app.tb-hide .toolbar.tb-right > * { opacity: 0 !important; transition: none !important; }
 #app.tb-fadein .toolbar.tb-left > *,
 #app.tb-fadein .toolbar.tb-right > * { transition: opacity 0.26s ease !important; }
+/* sideways moves in the Pages panel are a swipe to close (the list itself only scrolls up and down) */
+.pages-panel .pages-list,
+.pages-panel .page-thumb { touch-action: pan-y; }
