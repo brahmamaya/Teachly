@@ -25,6 +25,8 @@ const { check, finish } = require('./lib.cjs');
   await page.click('[data-act=readonly]');
   await page.waitForTimeout(600);
   check('on: the button says "Read only"', (await page.evaluate(() => getComputedStyle(document.querySelector('.tb-ro-label')).opacity)) === '1');
+  const left = await page.evaluate(() => [...document.querySelectorAll('.tb-left > *, .tb-right > *')].filter((e) => getComputedStyle(e).display !== 'none' && e.offsetWidth).map((e) => e.dataset.act).join(','));
+  check('on: only Read only, Screenshot and Pages stay on the bar (no empty gap)', left === 'readonly,shot,pages', left);
   check('on: the writing tools fade away', (await page.evaluate(() => getComputedStyle(document.querySelector('.tb-left [data-tool=pen]')).opacity)) === '0');
   const cam0 = await page.evaluate(() => JSON.stringify(window.teachly.board.cam));
   await draw(400);
