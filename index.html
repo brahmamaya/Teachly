@@ -74,6 +74,13 @@
             transform: none;
           }
         }
+        #splash .sp-logo {
+          display: block;
+          width: clamp(72px, 12vmin, 160px);
+          height: auto;
+          margin: 0 auto 18px;
+          filter: drop-shadow(0 8px 20px rgba(13, 148, 136, 0.35));
+        }
         #splash .sp-name {
           font-size: clamp(44px, 9vmin, 120px);
           font-weight: 700;
@@ -91,6 +98,7 @@
         }
       </style>
       <div class="sp-in">
+        <img class="sp-logo" src="./icon-192.png" width="96" height="96" alt="" />
         <div class="sp-name">Physica Notes</div>
       </div>
     </div>
