@@ -10688,3 +10688,16 @@ button,
 }
 #app.ro-compact .toolbar.tb-left { border-radius: 22px 0 0 22px !important; }
 #app.ro-compact .toolbar.tb-right { border-radius: 0 22px 22px 0 !important; }
+/* phone docks: the small buttons have no side padding, so the icon sits exactly in the middle (under the teal circle) */
+#app.tb-stacked .toolbar .tb-btn { padding: 0; }
+
+/* big notebooks: the pages shown in the list sit straight in it (same gaps) */
+.pages-list .pv-items { display: contents; }
+.pages-list .pv-pad { display: block; flex: none; }
+/* All pages (Expand) with thousands of pages: pages off screen are not laid out or drawn until scrolled to, and only the
+   first rows glide in (thousands of small animations froze the screen) */
+.pgs-grid .pgs-item { content-visibility: auto; contain-intrinsic-size: auto 150px; }
+.pgs-grid.fresh .pgs-item:nth-child(n + 41) { animation: none; }
+.pgs-grid .pv-pad { display: block; grid-column: 1 / -1; }
+.pgs-grid .pgs-card { aspect-ratio: var(--pg-ar, 16 / 9); min-height: 0; }
+.pgs-grid .pgs-card img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
