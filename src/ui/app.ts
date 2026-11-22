@@ -276,12 +276,12 @@ export class App {
     this.root = root;
     // The whole teaching surface is one landmark (the canvas has no text for a screen reader; see docs/redesign/DESIGN-SPEC.md).
     root.setAttribute('role', 'main');
-    root.setAttribute('aria-label', 'Teachly whiteboard');
+    root.setAttribute('aria-label', 'Physica Notes whiteboard');
     root.innerHTML = `
       <div class="board" id="board"></div>
       <div class="corner" aria-hidden="true">
         <div class="clock"><b data-time></b></div>
-        <div class="brand"><b>Teachly</b></div>
+        <div class="brand"><b>Physica Notes</b></div>
       </div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav><div class="hexdock" hidden></div></div>
@@ -1212,7 +1212,7 @@ export class App {
         pop.className = 'popover pop-menu';
         pop.innerHTML = `
           <div class="mt-row">
-            <button class="mt-info" data-act="guide" title="Guide: how to use Teachly" aria-label="Guide: how to use Teachly">${icon('info', 22)}</button>
+            <button class="mt-info" data-act="guide" title="Guide: how to use Physica Notes" aria-label="Guide: how to use Physica Notes">${icon('info', 22)}</button>
             <div class="board-palette">${BOARDS.map((c) => `<button class="swatch ${p.bg === c ? 'on' : ''}" style="background:${c}" data-bg="${c}" aria-label="Board colour ${c}"></button>`).join('')}
               <label class="swatch custom" title="Any colour"><input type="color" id="board-color" value="${p.bg}" data-bgpick aria-label="Pick any board colour"></label></div>
           </div>
@@ -1711,7 +1711,7 @@ export class App {
 
   /**
    * My notebooks ▸ + ▸ Import files: every file becomes its own notebook. A PDF or a picture gives the pages its own
-   * shape (an A4 PDF makes A4 pages); slides open as a notebook too; a Teachly file opens as it was saved.
+   * shape (an A4 PDF makes A4 pages); slides open as a notebook too; a Physica Notes file opens as it was saved.
    * The last one stays open behind My notebooks. False if nothing could be opened.
    */
   async importAsNotebooks(files: File[]): Promise<boolean> {
@@ -1720,7 +1720,7 @@ export class App {
       const name = f.name.replace(/\.\w+$/, '') || 'Notebook';
       const kind = f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'pdf' : f.type.startsWith('image/') ? 'img' : /\.pptx?$/i.test(f.name) ? 'pptx' : /\.(teachly|json)$/i.test(f.name) ? 'nb' : '';
       if (!kind) {
-        toast(`"${f.name}" cannot be opened here (PDF, pictures, PowerPoint and Teachly files can)`, 4500);
+        toast(`"${f.name}" cannot be opened here (PDF, pictures, PowerPoint and Physica Notes files can)`, 4500);
         continue;
       }
       await saveNow();
@@ -1763,7 +1763,7 @@ export class App {
     try {
       await fn((d, t) => (el.textContent = `${label}… ${d}/${t}`));
     } catch (e) {
-      // Teachly was updated while this page stayed open: the part that opens
+      // Physica Notes was updated while this page stayed open: the part that opens
       // PDF / PowerPoint / files is a newer file now. Save, reload once (the
       // lesson comes back as it was), then ask to open the file again.
       if (isStaleCode(e) && reloadForUpdate()) return;
@@ -2259,7 +2259,7 @@ export class App {
     if (!free) for (const bar of [left, right]) bar.style.top = bar.style.bottom = '';
     // Toolbar at the bottom: the page fills the whole screen and the bars
     // float over it. Toolbar on top: the page starts just below the bar (it
-    // is never covered), and "Teachly by Physica" stays in the top right,
+    // is never covered), and "Physica Notes" stays in the top right,
     // moving under the bar only when the bar reaches that corner.
     let barBottom = 0;
     if (pos === 'top' && !free && (!roLayout || this.root.classList.contains('ro-keep'))) {
@@ -2507,7 +2507,7 @@ function reloadForUpdate(): boolean {
   } catch {
     return false;
   }
-  toast('Teachly was updated: reloading…', 3000);
+  toast('Physica Notes was updated: reloading…', 3000);
   // Save first (not on idle), then reload.
   void saveNow()
     .catch(() => {

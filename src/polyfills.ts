@@ -1,4 +1,4 @@
-// Small fill-ins so Teachly also runs on older Android boards (older
+// Small fill-ins so Physica Notes also runs on older Android boards (older
 // WebView / Chrome) without errors.
 
 const proto = (globalThis as unknown as { CanvasRenderingContext2D?: { prototype: CanvasRenderingContext2D } }).CanvasRenderingContext2D?.prototype;

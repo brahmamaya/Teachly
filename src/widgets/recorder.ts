@@ -254,7 +254,7 @@ async function save(r: Rec): Promise<void> {
 /** Save (or share) a finished lesson video. */
 function offerVideo(blob: Blob, type: string, d: Date): void {
   const ext = type.includes('mp4') ? 'mp4' : 'webm';
-  const name = `Teachly lesson ${d.toISOString().slice(0, 10)} ${d.getHours()}-${String(d.getMinutes()).padStart(2, '0')}.${ext}`;
+  const name = `Physica Notes lesson ${d.toISOString().slice(0, 10)} ${d.getHours()}-${String(d.getMinutes()).padStart(2, '0')}.${ext}`;
   const file = new File([blob], name, { type: blob.type });
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
   const mobile = /iPad|iPhone|Android|Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1;

@@ -27,7 +27,7 @@ try {
   sessionStorage.removeItem('teachly.quickStart');
   if (sessionStorage.getItem('teachly.afterUpdate') === '1') {
     sessionStorage.removeItem('teachly.afterUpdate');
-    window.setTimeout(() => toast('Teachly is up to date. Please open the file again.', 5000), 400);
+    window.setTimeout(() => toast('Physica Notes is up to date. Please open the file again.', 5000), 400);
   }
 } catch {
   /* ignore */
@@ -39,7 +39,7 @@ if (splash) {
       requestAnimationFrame(() => requestAnimationFrame(() => splash.classList.add('hide')));
       window.setTimeout(() => {
         splash.remove();
-        // The small "Teachly by Physica" in the corner appears only now, so the
+        // The small "Physica Notes" in the corner appears only now, so the
         // name never seems to jump from the middle to the corner.
         root.classList.remove('starting');
       }, 650);

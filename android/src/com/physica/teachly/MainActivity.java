@@ -41,9 +41,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Teachly for Android boards: the whole app runs offline from the files
+ * Physica Notes for Android boards: the whole app runs offline from the files
  * inside the APK, full screen, with file picking (PDF, PowerPoint, pictures),
- * saving into Downloads/Teachly and the microphone for lesson recording.
+ * saving into Downloads/Physica Notes and the microphone for lesson recording.
  */
 public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
@@ -114,7 +114,7 @@ public class MainActivity extends Activity {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
-                // Teachly's own files are served from the app. A request to any other website (a picture, a font, a
+                // Physica Notes' own files are served from the app. A request to any other website (a picture, a font, a
                 // script) is refused here, so the device's address is never shared with another site.
                 if (!HOST.equals(u.getHost())) {
                     return new WebResourceResponse("text/plain", "utf-8", 403, "Blocked", null, new ByteArrayInputStream(new byte[0]));
@@ -164,7 +164,7 @@ public class MainActivity extends Activity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        // Only Teachly's own page, and only the microphone
+                        // Only Physica Notes' own page, and only the microphone
                         // (Record lesson). The camera is never allowed.
                         Uri o = request.getOrigin();
                         if (o == null || !HOST.equals(o.getHost())) {
@@ -203,7 +203,7 @@ public class MainActivity extends Activity {
         // app's own storage and are not touched).
         web.clearCache(true);
         // A new version downloaded last time? Switch to it before the page loads.
-        if (!Flavor.PLAY && state == null && Updater.applyPending(this)) toast("Teachly updated to the newest version");
+        if (!Flavor.PLAY && state == null && Updater.applyPending(this)) toast("Physica Notes updated to the newest version");
         if (state != null) web.restoreState(state);
         else web.loadUrl(START);
         // Quietly look for a newer version (used from the next start).
@@ -389,7 +389,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Save a file that was received in pieces (see saveBegin) into Downloads/Teachly. */
+    /** Save a file that was received in pieces (see saveBegin) into Downloads/Physica Notes. */
     private void saveFrom(File f, String name, String mime) {
         try {
             if (Build.VERSION.SDK_INT >= 29) {
@@ -397,7 +397,7 @@ public class MainActivity extends Activity {
                 ContentValues v = new ContentValues();
                 v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
                 v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
-                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Teachly");
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Physica Notes");
                 Uri uri = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
                 if (uri == null) throw new IOException("Could not create the file");
                 OutputStream os = cr.openOutputStream(uri);
@@ -415,7 +415,7 @@ public class MainActivity extends Activity {
                 startActivityForResult(save, REQ_SAVE);
                 return;
             }
-            toast("Saved in Downloads/Teachly: " + name);
+            toast("Saved in Downloads/Physica Notes: " + name);
         } catch (Exception e) {
             f.delete();
             toast("Could not save: " + e.getMessage());
@@ -429,7 +429,7 @@ public class MainActivity extends Activity {
                 ContentValues v = new ContentValues();
                 v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
                 v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
-                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Teachly");
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Physica Notes");
                 Uri uri = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
                 if (uri == null) throw new IOException("Could not create the file");
                 OutputStream os = cr.openOutputStream(uri);
@@ -449,7 +449,7 @@ public class MainActivity extends Activity {
                 startActivityForResult(save, REQ_SAVE);
                 return;
             }
-            toast("Saved in Downloads/Teachly: " + name);
+            toast("Saved in Downloads/Physica Notes: " + name);
         } catch (Exception e) {
             toast("Could not save: " + e.getMessage());
         }
@@ -502,7 +502,7 @@ public class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         if (now - lastBack < 2000) return true;
         lastBack = now;
-        toast("Press back again to close Teachly");
+        toast("Press back again to close Physica Notes");
         return false;
     }
 
