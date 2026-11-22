@@ -1138,8 +1138,8 @@ export class App {
             .join('');
         pop.className = 'popover pop-tbedit';
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
-          <div class="seg tbe-pos"><span>Toolbar at</span>${(['bottom', 'top'] as const).map((k) => `<button class="${tbEdge() === k ? 'on' : ''}" data-tbpos="${k}">${k === 'bottom' ? 'Bottom' : 'Top'}</button>`).join('')}</div>
-          <div class="seg tbe-pos"><span>Buttons</span>${(['middle', 'sides'] as const).map((k) => `<button class="${tbMiddle() === (k === 'middle') ? 'on' : ''}" data-tbalign="${k}">${k === 'middle' ? 'Middle' : 'Sides'}</button>`).join('')}</div>
+          <div class="seg tbe-pos tbe-row"><span>Toolbar at</span>${(['bottom', 'top'] as const).map((k) => `<button class="${tbEdge() === k ? 'on' : ''}" data-tbpos="${k}">${k === 'bottom' ? 'Bottom' : 'Top'}</button>`).join('')}</div>
+          <div class="seg tbe-pos tbe-row"><span>Buttons</span>${(['middle', 'sides'] as const).map((k) => `<button class="${tbMiddle() === (k === 'middle') ? 'on' : ''}" data-tbalign="${k}">${k === 'middle' ? 'Middle' : 'Sides'}</button>`).join('')}</div>
           <div class="slider-row">
             <span class="slider-label">Height</span>
             <input type="range" min="0" max="100" step="1" value="${Math.round((store.settings.tbY ?? (tbEdge() === 'top' ? 0 : 1)) * 100)}" data-tby aria-label="Toolbar height: top to bottom">
