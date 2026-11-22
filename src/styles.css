@@ -10712,3 +10712,11 @@ button,
 .pgs-grid .pgs-card { aspect-ratio: var(--pg-ar, 16 / 9); min-height: 0; }
 .pgs-grid .pgs-card img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .pages-list, .pgs-grid { overflow-anchor: none; }
+
+/* Panels moved by touching anywhere (calculator): no text selection while dragging, a soft lift while held */
+.panel.panel-grab { user-select: none; -webkit-user-select: none; }
+/* the whole calculator is the handle: its scrolling body must not take the finger for a scroll (which cancelled the drag) */
+.panel.panel-grab .panel-body, .panel.panel-grab .panel-body * { touch-action: none; }
+.panel.panel-grab .calc-expr { touch-action: manipulation; }
+.panel.panel-grab .calc-expr { user-select: text; -webkit-user-select: text; }
+.panel.dragging { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45); transition: box-shadow 0.2s ease; }
