@@ -98,6 +98,7 @@ const GUIDE: Section[] = [
   {
     title: 'Move, zoom and show',
     items: [
+      { name: 'Read only', keys: 'lock view look protect safe', what: 'Look at the notes without changing them by mistake.', steps: ['Tap the page with the eye.', 'Slide, pinch and double tap to zoom; nothing is written or erased.', 'Tap Read only again to write.'], tip: 'Good for showing finished notes to the class.' },
       { name: 'Slide mode (hand)', keys: 'move pan zoom pinch', what: 'Move and zoom the board.', steps: ['Tap the hand.', 'Drag to move, pinch to zoom, double tap to zoom in or out.'], tip: 'Tap the frame button to see the whole page again.' },
       { name: 'Screenshot', keys: 'capture picture area', what: 'Saves a picture of part of the board.', steps: ['Tap the camera-frame button and drag over an area.'], tip: 'Save a key diagram to revise later or share with friends.' },
       { name: 'Full screen', keys: 'big hide browser', what: 'Hides everything except Teachly.', steps: ['Menu ▸ Full screen.'], tip: 'Use it on boards and projectors for a clean view.' },
@@ -129,7 +130,7 @@ const ICON: Record<string, string> = {
   'All pages (full screen)': 'expand', 'New page and page arrows': 'plus', 'Board colour and paper': 'background', 'PDF / Book': 'pdf',
   PowerPoint: 'slides', 'Picture and Crop': 'crop', 'Laser pointer': 'laser', Tape: 'tape', 'Spotlight and Screen cover': 'spotlight',
   Magnifier: 'magnifier', 'Ruler, Protractor, Compass': 'ruler', Graph: 'graph', Calculator: 'calc', Timer: 'timer', 'Subject helpers': 'atom',
-  'Poll A B C D': 'poll', 'Random picker': 'dice', Scoreboard: 'score', 'Record lesson': 'record', 'Slide mode (hand)': 'pan',
+  'Poll A B C D': 'poll', 'Random picker': 'dice', Scoreboard: 'score', 'Record lesson': 'record', 'Slide mode (hand)': 'pan', 'Read only': 'readonly',
   Screenshot: 'shot', 'Full screen': 'fullscreen', 'Save PDF': 'download', 'Save picture': 'image', 'Share Teachly': 'share',
   'Edit toolbar': 'settings', 'Large buttons': 'bigger', 'Your privacy': 'shield',
 };

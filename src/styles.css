@@ -10012,3 +10012,65 @@ button,
 #app .toolbar .tb-btn.active:active {
   color: #ffffff;
 }
+
+/* ---------- Read only (the page-with-an-eye button, first on the tool bar) ----------
+   On: the button opens into a teal "Read only" pill and the writing tools fade away; off: the reverse.
+   Only opacity, clip and small moves (cheap on classroom boards). */
+#app .toolbar .tb-ro { color: #334155; overflow: visible; z-index: 2; }
+.tb-ro .icon { position: relative; z-index: 1; transition: color 0.25s var(--ease); }
+.tb-ro-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 134px;
+  height: 100%;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
+  clip-path: inset(0 calc(100% - 46px) 0 0 round 18px);
+  opacity: 0;
+  transition: clip-path 0.38s var(--spring), opacity 0.2s var(--ease);
+  pointer-events: none;
+}
+.tb-ro-label {
+  position: absolute;
+  left: 44px;
+  top: 50%;
+  z-index: 1;
+  font: 600 15px/1 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #fff;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-8px, -50%);
+  transition: opacity 0.22s var(--ease), transform 0.32s var(--spring);
+  pointer-events: none;
+}
+#app .toolbar .tb-ro.on { color: #fff; --eye: #fff; --eye-in: #0d9488; }
+.tb-ro.on .tb-ro-pill { clip-path: inset(0 0 0 0 round 18px); opacity: 1; }
+.tb-ro.on .tb-ro-label { opacity: 1; transform: translate(0, -50%); transition-delay: 0.08s; }
+/* the tools that change the page fade out (and cannot be tapped) while Read only is on */
+#app .tb-left > :not(.tb-ro):not(.tb-ind),
+#app .tb-right > [data-act='undo'],
+#app .tb-right > [data-act='redo'],
+#app .tb-right > [data-pop='insert'],
+#app .tb-right > [data-pop='tools'],
+#app .tb-right > [data-act='graph'],
+#app .hexdock {
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease), background 0.18s var(--ease);
+}
+#app.ro .tb-left > :not(.tb-ro):not(.tb-ind),
+#app.ro .tb-right > [data-act='undo'],
+#app.ro .tb-right > [data-act='redo'],
+#app.ro .tb-right > [data-pop='insert'],
+#app.ro .tb-right > [data-pop='tools'],
+#app.ro .tb-right > [data-act='graph'],
+#app.ro .hexdock {
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
+}
+#app.ro .tb-ind { opacity: 0 !important; }
+#app.ro .board { cursor: grab; }
+@media (prefers-reduced-motion: reduce) {
+  .tb-ro-pill, .tb-ro-label, #app .tb-left > *, #app .tb-right > *, #app .hexdock { transition: none !important; }
+}
