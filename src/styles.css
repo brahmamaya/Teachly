@@ -10516,3 +10516,27 @@ button,
 /* sideways moves in the Pages panel are a swipe to close (the list itself only scrolls up and down) */
 .pages-panel .pages-list,
 .pages-panel .page-thumb { touch-action: pan-y; }
+/* Read only: the button gulps the tools (a small bounce), then its pill glows once with a teal ring */
+#app .toolbar .tb-ro.ro-gulp { animation: ro-gulp 0.5s cubic-bezier(0.34, 1.5, 0.64, 1); }
+@keyframes ro-gulp { 40% { transform: scale(1.18); } 70% { transform: scale(0.96); } }
+#app .toolbar .tb-ro.ro-glow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 134px;
+  height: 100%;
+  border-radius: 18px;
+  border: 2.5px solid rgba(20, 184, 166, 0.8);
+  pointer-events: none;
+  animation: ro-glow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes ro-glow {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.18, 1.5); }
+}
+#app .toolbar .tb-ro.ro-glow .icon { animation: ro-blink 0.6s ease 0.15s; }
+@keyframes ro-blink { 40% { transform: scaleY(0.15); } }
+@media (prefers-reduced-motion: reduce) {
+  #app .toolbar .tb-ro.ro-gulp, #app .toolbar .tb-ro.ro-glow::after, #app .toolbar .tb-ro.ro-glow .icon { animation: none; }
+}
