@@ -564,7 +564,11 @@ export class App {
     const STAY = '.tb-ro, .tb-ind, [data-act=shot], [data-act=pages]';
     const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
     const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')].filter((e) => e.offsetWidth > 0 || !!e.closest('.toolbar'));
-    const MS = 520;
+    const MS = 480;
+    // The toolbar is already one bar in the middle of the top edge: Read only squeezes it right where it is, keeping its
+    // shape (the calm squeeze from before). Anywhere else it glides up to the middle of the top edge.
+    if (on) this.root.classList.toggle('ro-keep', !this.root.classList.contains('tb-stacked') && this.root.hasAttribute('data-tbjoin') && tbEdge() === 'top' && !tbFree());
+    const keep = this.root.classList.contains('ro-keep');
     const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
     // How a button gets from where it is (a) to where it will be (b): its left edge and middle line move there and it
     // takes the other bar's scale (so the Read only pill is exactly its final size on the way, never bigger).
@@ -592,7 +596,7 @@ export class App {
         this.toolbar.appendChild(g);
         const a = u(from), b2 = u(to);
         // Read only on: from the bar as it is now to the small round bar; off: the other way
-        const [ra, rb] = on ? [here, '22px'] : ['22px', here];
+        const [ra, rb] = keep ? [here, here] : on ? [here, '22px'] : ['22px', here];
         const fr = (r: ReturnType<typeof u>, rad: string) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: rad });
         g.animate([fr(a, ra), fr(b2, rb)], { duration: MS, easing: EASE, fill: 'forwards' });
         this.root.classList.add('tb-morphing');
@@ -711,6 +715,7 @@ export class App {
       });
       window.setTimeout(() => {
         end();
+        this.root.classList.remove('ro-keep');
         clear(stays);
         if (ind) {
           ind.style.transition = '';
@@ -2251,7 +2256,7 @@ export class App {
     // is never covered), and "Teachly by Physica" stays in the top right,
     // moving under the bar only when the bar reaches that corner.
     let barBottom = 0;
-    if (pos === 'top' && !free && !roLayout) {
+    if (pos === 'top' && !free && (!roLayout || this.root.classList.contains('ro-keep'))) {
       // The bar touches the top edge when it stays clear of the status bar's
       // time (left) and battery (right) on iPad / iPhone; otherwise it sits
       // just below the status bar.

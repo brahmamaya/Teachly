@@ -10680,14 +10680,14 @@ button,
   box-shadow: none !important;
 }
 /* Read only: the small bar floats a little below the top edge, round on every side (phone, tablet, laptop, board) */
-#app.ro-compact .toolbar.tb-left,
-#app.ro-compact .toolbar.tb-right {
+#app.ro-compact:not(.ro-keep) .toolbar.tb-left,
+#app.ro-compact:not(.ro-keep) .toolbar.tb-right {
   top: calc(12px + env(safe-area-inset-top, 0px)) !important;
   bottom: auto !important;
   border-width: 1px !important;
 }
-#app.ro-compact .toolbar.tb-left { border-radius: 22px 0 0 22px !important; }
-#app.ro-compact .toolbar.tb-right { border-radius: 0 22px 22px 0 !important; }
+#app.ro-compact:not(.ro-keep) .toolbar.tb-left { border-radius: 22px 0 0 22px !important; }
+#app.ro-compact:not(.ro-keep) .toolbar.tb-right { border-radius: 0 22px 22px 0 !important; }
 /* phone docks: the small buttons have no side padding, so the icon sits exactly in the middle (under the teal circle) */
 #app.tb-stacked .toolbar .tb-btn { padding: 0; }
 
