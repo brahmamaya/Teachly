@@ -10002,3 +10002,6 @@ button,
 .wl-bg .icon { display: block; stroke-width: 1.8; }
 .wl-card p { min-height: 48px; }
 .lite .wl-bg { transition: none; }
+.gd-item h3 { display: flex; align-items: center; gap: 10px; }
+.gd-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: #f2f4f8; color: #2f3a4f; }
+.gd-ic .icon { --tip: #2f6bff; }

@@ -121,6 +121,19 @@ const GUIDE: Section[] = [
   },
 ];
 
+/** The icon each feature has in the app (shown beside its name). */
+const ICON: Record<string, string> = {
+  Toolbar: 'tools', Notebooks: 'notebook', Saving: 'save', Pen: 'pk_pen', 'Colour flower': 'palette', Highlighter: 'pk_highlighter',
+  'Perfect shapes by hand': 'magic', 'Group writing': 'pen', 'Stylus only': 'pk_pencil', Eraser: 'eraser', 'Undo and Redo': 'undo',
+  Shapes: 'shapes', Text: 'text', 'Fill colour': 'bucket', Select: 'select', Table: 'table', 'Pages panel': 'pages',
+  'All pages (full screen)': 'expand', 'New page and page arrows': 'plus', 'Board colour and paper': 'background', 'PDF / Book': 'pdf',
+  PowerPoint: 'slides', 'Picture and Crop': 'crop', 'Laser pointer': 'laser', Tape: 'tape', 'Spotlight and Screen cover': 'spotlight',
+  Magnifier: 'magnifier', 'Ruler, Protractor, Compass': 'ruler', Graph: 'graph', Calculator: 'calc', Timer: 'timer', 'Subject helpers': 'atom',
+  'Poll A B C D': 'poll', 'Random picker': 'dice', Scoreboard: 'score', 'Record lesson': 'record', 'Slide mode (hand)': 'pan',
+  Screenshot: 'shot', 'Full screen': 'fullscreen', 'Save PDF': 'download', 'Save picture': 'image', 'Share Teachly': 'share',
+  'Edit toolbar': 'settings', 'Large buttons': 'bigger', 'Your privacy': 'shield',
+};
+
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const words = (e: Entry) => `${e.name} ${e.keys ?? ''} ${e.what}`.toLowerCase();
 
@@ -139,7 +152,7 @@ export function openGuide(host: HTMLElement): void {
     <div class="gd-body">
       <p class="gd-intro">Everything Teachly can do, with the quickest way to do it.</p>
       ${GUIDE.map((s, si) => `<div class="gd-sec" data-s="${si}"><h2>${esc(s.title)}</h2>${s.items
-        .map((e, i) => `<article class="gd-item" data-k="${esc(words(e))}" data-i="${si}-${i}"><h3>${esc(e.name)}</h3><p>${esc(e.what)}</p><ol>${e.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol><p class="gd-tip"><b>Tip</b> ${esc(e.tip)}</p></article>`)
+        .map((e, i) => `<article class="gd-item" data-k="${esc(words(e))}" data-i="${si}-${i}"><h3><span class="gd-ic" aria-hidden="true">${icon(ICON[e.name] ?? 'help', 20)}</span>${esc(e.name)}</h3><p>${esc(e.what)}</p><ol>${e.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol><p class="gd-tip"><b>Tip</b> ${esc(e.tip)}</p></article>`)
         .join('')}</div>`).join('')}
       <p class="gd-none" hidden>Nothing found. Try another word, like “colour” or “page”.</p>
     </div>`;
