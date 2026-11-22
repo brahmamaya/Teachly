@@ -2140,8 +2140,10 @@ export class App {
       if (!b || b.hasAttribute('disabled') || e.button > 0) return;
       done = null;
       b.classList.add('pressed');
+      const t0 = performance.now();
       const release = () => {
-        b.classList.remove('pressed');
+        // a quick tap still shows its teal for a moment (then it fades out softly)
+        window.setTimeout(() => b.classList.remove('pressed'), Math.max(0, 140 - (performance.now() - t0)));
         window.removeEventListener('pointerup', release, true);
         window.removeEventListener('pointercancel', release, true);
       };
