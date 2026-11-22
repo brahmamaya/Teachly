@@ -13,10 +13,13 @@ const { check, finish } = require('./lib.cjs');
   check('first open: the welcome shows', !!(await page.$('.welcome .wl-card')));
   check('the first card has faint subject pictures behind it', (await page.$$('.wl-card.first .wl-bg i')).length >= 20);
   for (let i = 0; i < 3; i++) { await page.click('[data-wl=next]'); await page.waitForTimeout(250); }
-  check('the last card has the start button', (await page.textContent('[data-wl=next]')) === 'Let’s start');
+  check('the last card leads to the guide', (await page.textContent('[data-wl=next]')) === 'Show me');
   await page.click('[data-wl=next]');
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(700);
   check('it closes and is remembered', !(await page.$('.welcome')) && (await page.evaluate(() => window.__teachly.store.settings.welcomeDone)) === true);
+  check('the first time, the whole guide opens by itself', (await page.$$('.guide .gd-item')).length >= 40);
+  await page.click('[data-gd=close]');
+  await page.waitForTimeout(400);
   await page.reload();
   await page.waitForTimeout(1600);
   check('it does not show again', !(await page.$('.welcome')));

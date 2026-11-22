@@ -192,7 +192,7 @@ const CARDS: [string, string, string][] = [
   ['✨', 'Notes that feel like magic', 'Write, draw and explain. On phone, tablet or board.'],
   ['🖊️', 'Ten real pens', 'Each pen keeps its own colour.'],
   ['📚', 'Everything in one notebook', 'Notes, PDFs and pictures together. Saves by itself.'],
-  ['ⓘ', 'Need help? Tap the i', 'Every button explained, with search.'],
+  ['ⓘ', 'Everything, in one guide', 'Next: every button, explained. Find it again any time with the i in the Menu.'],
 ];
 
 /**
@@ -211,7 +211,7 @@ const BG: [string, number, number, number, number][] = [
   ['calc', 78, 88, -16, 38], ['"€"', 68, 66, 12, 32], ['"P & L"', 30, 72, -6, 24],
 ];
 
-/** The short welcome shown the first time Teachly opens: four calm cards, Skip any time. */
+/** The short welcome shown the first time Teachly opens: four calm cards, then the full guide (Skip goes straight to it). */
 export function showWelcome(host: HTMLElement, done: () => void): void {
   const back = document.createElement('div');
   back.className = 'welcome';
@@ -227,7 +227,7 @@ export function showWelcome(host: HTMLElement, done: () => void): void {
     (card.querySelector('p') as HTMLElement).textContent = p;
     card.querySelectorAll('.wl-dots i').forEach((d, k) => d.classList.toggle('on', k === i));
     card.classList.toggle('first', i === 0);
-    (card.querySelector('[data-wl=next]') as HTMLElement).textContent = i === CARDS.length - 1 ? 'Let’s start' : 'Next';
+    (card.querySelector('[data-wl=next]') as HTMLElement).textContent = i === CARDS.length - 1 ? 'Show me' : 'Next';
     card.classList.remove('turn');
     void card.offsetWidth;
     card.classList.add('turn');
@@ -235,6 +235,7 @@ export function showWelcome(host: HTMLElement, done: () => void): void {
   const end = () => {
     fadeOut(back, 220);
     done();
+    openGuide(host); // the first time, the whole guide follows: no need to find the i
   };
   back.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest('[data-wl]') as HTMLElement | null;
