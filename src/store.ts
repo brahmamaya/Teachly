@@ -60,6 +60,8 @@ export interface Settings {
   tbSimpleDone?: boolean;
   /** Look of My notebooks: dark (default) or light. */
   libTheme?: 'light' | 'dark';
+  /** My notebooks shown as a list (rows) instead of covers. */
+  libList?: boolean;
   /** The first-open welcome has been shown (or skipped). */
   welcomeDone?: boolean;
 }
@@ -423,10 +425,18 @@ export class Store {
     this.commit(pages, Math.max(0, pages.indexOf(open)));
   }
 
+  /** The notebook's pages take this shape (height / width) from now on: an imported file sets it, once, on a new notebook. */
+  setShape(ratio: number): void {
+    const r = Math.min(3, Math.max(0.33, ratio));
+    this.doc = { ...this.doc, shape: r };
+    setPageShape(r);
+    this.emit('doc');
+  }
+
   loadDoc(doc: Doc): void {
     this.emit('leave');
     this.doc = doc.id ? doc : { ...doc, id: uid() };
-    setPageShape(doc.orient === 'portrait' ? 4 / 3 : null);
+    setPageShape(doc.shape ?? (doc.orient === 'portrait' ? 4 / 3 : null));
     this.index = 0;
     this.undoStack = [];
     this.redoStack = [];

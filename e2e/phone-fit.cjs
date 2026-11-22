@@ -24,6 +24,8 @@ const { check, finish } = require('./lib.cjs');
     else check(`${n}: the lists are one slim row across the top, a smaller title`, m.side >= w - 20 && m.row <= 40 && m.title <= 26, JSON.stringify(m));
     check(`${n}: nothing sticks out sideways`, !m.wide);
     await page.click('.lib-new');
+    await page.waitForTimeout(300);
+    await page.click('.lib-addmenu [data-lib=new]'); // + opens a small menu: New notebook / Import files
     await page.waitForTimeout(600);
     const go = await page.$('.nn-box button[type=submit], .nn-box .dl-go');
     if (go) await go.scrollIntoViewIfNeeded();

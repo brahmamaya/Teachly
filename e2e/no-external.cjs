@@ -31,6 +31,8 @@ const { check, finish } = require('./lib.cjs');
   await page.click('.mt-tile[data-act=library]');
   await page.waitForTimeout(900);
   await page.click('.nb-new');
+  await page.waitForTimeout(300);
+  await page.click('.lib-addmenu [data-lib=new]'); // + opens a small menu: New notebook / Import files
   await page.waitForTimeout(600);
   for (const t of ['phy', 'zoo', 'bot']) { await page.click(`.cv-tab[data-cg="${t}"]`); await page.waitForTimeout(150); }
   await page.keyboard.press('Escape');

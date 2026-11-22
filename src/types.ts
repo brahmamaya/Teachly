@@ -127,6 +127,8 @@ export interface Doc {
   pages: Page[];
   /** A vertical notebook: its pages are tall (3:4). Missing = the pages follow the screen. */
   orient?: 'portrait';
+  /** Page shape (height / width) taken from an imported file (PDF, picture): the pages match the file exactly. */
+  shape?: number;
   /** Format of the saved document (2 = pictures kept as separate assets). Older ones are migrated on load. */
   schema?: number;
   /** Counts every change; a save never replaces a newer revision with an older one. */

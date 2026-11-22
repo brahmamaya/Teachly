@@ -212,7 +212,10 @@ export class Library {
   /** The notebook whose ⋯ menu is open. */
   private menuFor = '';
 
-  constructor(private host: HTMLElement) {}
+  constructor(
+    private host: HTMLElement,
+    private importFiles: (files: File[]) => Promise<boolean> = async () => false,
+  ) {}
 
   get open(): boolean {
     return !!this.el;
@@ -245,8 +248,9 @@ export class Library {
             <i class="lt-thumb"></i>
           </button>
           <input class="lib-search" type="search" placeholder="Search" aria-label="Search notebooks">
+          <button class="icon-btn lib-layout" data-lib="layout" title="Grid or list" aria-label="Show as a list" aria-pressed="false">${icon('list', 24)}</button>
           <button class="icon-btn" data-lib="new-folder" title="New folder" aria-label="New folder">${icon('folderPlus', 24)}</button>
-          <button class="lib-new" data-lib="new">${icon('plus', 20)}<span>New</span></button>
+          <button class="lib-new" data-lib="add" aria-haspopup="menu" aria-expanded="false">${icon('plus', 20)}<span>New</span></button>
           <button class="icon-btn" data-lib="close" title="Back to board" aria-label="Back to board">${icon('close', 22)}</button>
         </header>
         <div class="lib-bar"></div>
@@ -312,6 +316,13 @@ export class Library {
     // Cards glide in only when the list is opened or another list is chosen
     // (not after every rename or move).
     const grid = el.querySelector('.lib-grid') as HTMLElement;
+    const asList = !!store.settings.libList;
+    grid.classList.toggle('as-list', asList);
+    const lb = el.querySelector('.lib-layout') as HTMLElement;
+    lb.classList.toggle('on', asList);
+    lb.setAttribute('aria-pressed', String(asList));
+    lb.innerHTML = icon(asList ? 'grid' : 'list', 24);
+    lb.setAttribute('aria-label', asList ? 'Show as covers' : 'Show as a list');
     grid.classList.toggle('fresh', grid.dataset.shown !== this.view);
     grid.dataset.shown = this.view;
 
@@ -335,7 +346,7 @@ export class Library {
       return true;
     });
     const inTrash = this.view === 'trash';
-    const newCard = inTrash ? '' : `<button class="nb-card nb-new" data-lib="new"><span class="nb-cover">${icon('plus', 34)}</span><span class="nb-title">New notebook</span></button>`;
+    const newCard = inTrash ? '' : `<button class="nb-card nb-new" data-lib="add"><span class="nb-cover">${icon('plus', 34)}</span><span class="nb-title">New notebook</span></button>`;
     (el.querySelector('.lib-grid') as HTMLElement).innerHTML =
       newCard +
       items
@@ -361,6 +372,42 @@ export class Library {
         </div>`;
         })
         .join('');
+  }
+
+  /** The + menu: a new notebook, or files (PDF, pictures, slides) that each become a notebook. */
+  private addMenu(anchor: HTMLElement): void {
+    if (!this.el) return;
+    if (this.closeAddMenu()) return;
+    const m = document.createElement('div');
+    m.className = 'lib-addmenu';
+    m.setAttribute('role', 'menu');
+    m.innerHTML = `<button role="menuitem" data-lib="new">${icon('notebook', 22)}<span>New notebook</span></button>
+      <button role="menuitem" data-lib="import">${icon('download', 22)}<span>Import files<small>PDF, pictures, PowerPoint</small></span></button>`;
+    this.el.appendChild(m);
+    const r = anchor.getBoundingClientRect(), host = this.el.getBoundingClientRect();
+    const w = 260;
+    m.style.left = `${Math.max(8, Math.min(r.right - host.left - w, r.left - host.left))}px`;
+    m.style.top = `${r.bottom - host.top + 8}px`;
+    this.el.querySelectorAll('[data-lib=add]').forEach((x) => x.setAttribute('aria-expanded', String(x === anchor)));
+    const off = (e: PointerEvent) => {
+      if (!m.contains(e.target as Node) && !(e.target as HTMLElement).closest('[data-lib=add]')) this.closeAddMenu();
+    };
+    window.setTimeout(() => this.el?.addEventListener('pointerdown', off), 0);
+    this.offAdd = () => this.el?.removeEventListener('pointerdown', off);
+  }
+
+  private offAdd: (() => void) | null = null;
+
+  /** Close the + menu (with a short fade). True if it was open. */
+  private closeAddMenu(): boolean {
+    const m = this.el?.querySelector('.lib-addmenu') as HTMLElement | null;
+    this.offAdd?.();
+    this.offAdd = null;
+    this.el?.querySelectorAll('[data-lib=add]').forEach((x) => x.setAttribute('aria-expanded', 'false'));
+    if (!m || m.classList.contains('closing')) return false;
+    m.classList.add('closing');
+    fadeOut(m, 140);
+    return true;
   }
 
   /** Cards shrink and fade away one after another before the list changes. */
@@ -405,6 +452,24 @@ export class Library {
       case 'side':
         this.el.classList.toggle('side-off');
         return;
+      case 'layout': {
+        store.setSettings({ libList: !store.settings.libList });
+        const grid = this.el.querySelector('.lib-grid') as HTMLElement;
+        grid.dataset.shown = ''; // the cards glide in again in their new layout
+        return this.render();
+      }
+      case 'add':
+        return this.addMenu(b);
+      case 'import': {
+        this.closeAddMenu();
+        const { pickFiles } = await import('../io/files');
+        const files = await pickFiles('application/pdf,.pdf,image/*,.pptx,.teachly,.json', true);
+        if (!files.length) return;
+        if (await this.importFiles(files)) {
+          toast(files.length === 1 ? `"${files[0].name.replace(/\.\w+$/, '')}" is now a notebook` : `${files.length} files are now notebooks`, 3500);
+        }
+        return this.refresh();
+      }
       case 'theme':
         store.setSettings({ libTheme: store.settings.libTheme === 'light' ? 'dark' : 'light' });
         return this.applyTheme(this.el);
@@ -438,6 +503,7 @@ export class Library {
         this.view = 'all';
         return this.refresh();
       case 'new': {
+        this.closeAddMenu();
         // Name, shape and (if wanted) a cover first.
         const doc = await newNotebookFlow(this.el, { name: `Notebook ${this.list.length + 1}`, bg: store.page.bg, folder: folderId });
         if (!doc) return;
