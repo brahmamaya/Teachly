@@ -1,5 +1,6 @@
 import { icon } from './icons';
 import { fadeOut } from './panel';
+import { startTour } from './tour';
 
 // The Teachly guide (the "i" button in the Menu): every feature in plain English, with steps and a tip, on a calm
 // white page that scrolls; a search box finds a button by its name. And the short welcome shown the first time
@@ -149,7 +150,7 @@ export function openGuide(host: HTMLElement): void {
   el.setAttribute('aria-label', 'Teachly guide');
   el.innerHTML = `
     <header class="gd-top">
-      <div class="gd-bar"><h1>Guide</h1><button class="gd-x" data-gd="close" aria-label="Close the guide">✕</button></div>
+      <div class="gd-bar"><h1>Guide</h1><button class="gd-tour" data-gd="tour">Take the tour</button><button class="gd-x" data-gd="close" aria-label="Close the guide">✕</button></div>
       <label class="gd-search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input type="search" placeholder="Search a button, e.g. pen, PDF, tape" aria-label="Search the guide"></label>
     </header>
     <div class="gd-body">
@@ -188,6 +189,10 @@ export function openGuide(host: HTMLElement): void {
   document.addEventListener('keydown', onKey);
   el.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).closest('[data-gd=close]')) close();
+    else if ((e.target as HTMLElement).closest('[data-gd=tour]')) {
+      close();
+      window.setTimeout(() => startTour(host), 220);
+    }
   });
 }
 
@@ -238,7 +243,8 @@ export function showWelcome(host: HTMLElement, done: () => void): void {
   const end = () => {
     fadeOut(back, 220);
     done();
-    openGuide(host); // the first time, the whole guide follows: no need to find the i
+    // the first time, a short tour shows each button where it really is (the full guide stays under Menu ▸ ⓘ)
+    window.setTimeout(() => startTour(host), 260);
   };
   back.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest('[data-wl]') as HTMLElement | null;
