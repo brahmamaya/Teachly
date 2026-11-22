@@ -9993,3 +9993,12 @@ button,
 @media (prefers-reduced-motion: reduce) { .guide, .welcome, .wl-card.turn > * { animation: none; } }
 .guide .gd-search input:focus, .guide .gd-search input:focus-visible { outline: none; box-shadow: none; }
 .guide .gd-search:focus-within { box-shadow: 0 0 0 2px #2f6bff inset; }
+/* welcome card: faint tool icons at angles behind the first card */
+.wl-card { position: relative; overflow: hidden; }
+.wl-card > *:not(.wl-bg) { position: relative; z-index: 1; }
+.wl-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 0.35s ease; }
+.wl-card.first .wl-bg { opacity: 1; }
+.wl-bg i { position: absolute; opacity: 0.16; }
+.wl-bg .icon { display: block; stroke-width: 1.8; }
+.wl-card p { min-height: 48px; }
+.lite .wl-bg { transition: none; }

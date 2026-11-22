@@ -1,3 +1,4 @@
+import { icon } from './icons';
 import { fadeOut } from './panel';
 
 // The Teachly guide (the "i" button in the Menu): every feature in plain English, with steps and a tip, on a calm
@@ -175,17 +176,26 @@ export function openGuide(host: HTMLElement): void {
 }
 
 const CARDS: [string, string, string][] = [
-  ['✨', 'Notes that feel like magic', 'Make notes, sketch, mark up PDFs or explain on a big board. Works on phones, tablets and digital boards. No login, and nothing leaves your device.'],
-  ['🖊️', 'Ten real pens', 'Pencil, fountain pen, marker, highlighter and more. Each pen keeps its own colour, so switching takes one tap.'],
-  ['📚', 'Everything in one notebook', 'Notes, PDFs, pictures and slides together. Hold a page to move it. Everything saves by itself.'],
-  ['ⓘ', 'Stuck? Tap the i', 'The guide in the Menu explains every button, with tips. Just search a button by its name.'],
+  ['✨', 'Notes that feel like magic', 'Write, draw and explain. On phone, tablet or board.'],
+  ['🖊️', 'Ten real pens', 'Each pen keeps its own colour.'],
+  ['📚', 'Everything in one notebook', 'Notes, PDFs and pictures together. Saves by itself.'],
+  ['ⓘ', 'Need help? Tap the i', 'Every button explained, with search.'],
+];
+
+/** Faint tool icons scattered at angles behind the first card: [icon, left %, top %, turn°, size px, colour]. */
+const BG: [string, number, number, number, number, string][] = [
+  ['pen', 6, 8, -18, 34, '#2f6bff'], ['shapes', 78, 6, 14, 30, '#9b5cf6'], ['ruler', 88, 40, 32, 34, '#ff8a1f'],
+  ['eraser', 4, 46, 22, 30, '#ff4fa3'], ['graph', 70, 78, -12, 32, '#1aa37a'], ['text', 14, 80, 10, 28, '#3a3a3c'],
+  ['pdf', 42, 3, -8, 26, '#fb2d48'], ['compass', 90, 74, -24, 28, '#2f6bff'], ['tape', 30, 90, 18, 26, '#fdb330'],
+  ['protractor', 2, 24, -30, 26, '#9b5cf6'], ['laser', 60, 92, 26, 24, '#fb2d48'], ['bucket', 94, 20, -16, 24, '#1a7cf5'],
 ];
 
 /** The short welcome shown the first time Teachly opens: four calm cards, Skip any time. */
 export function showWelcome(host: HTMLElement, done: () => void): void {
   const back = document.createElement('div');
   back.className = 'welcome';
-  back.innerHTML = `<div class="wl-card" role="dialog" aria-label="Welcome to Teachly"><div class="wl-ic" aria-hidden="true"></div><h2></h2><p></p><div class="wl-dots">${CARDS.map(() => '<i></i>').join('')}</div><div class="wl-btns"><button class="wl-skip" data-wl="skip">Skip</button><button class="wl-next" data-wl="next">Next</button></div></div>`;
+  const bg = BG.map(([n, x, y, r, z, c]) => `<i style="left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${r}deg);color:${c}">${icon(n, z)}</i>`).join('');
+  back.innerHTML = `<div class="wl-card" role="dialog" aria-label="Welcome to Teachly"><div class="wl-bg" aria-hidden="true">${bg}</div><div class="wl-ic" aria-hidden="true"></div><h2></h2><p></p><div class="wl-dots">${CARDS.map(() => '<i></i>').join('')}</div><div class="wl-btns"><button class="wl-skip" data-wl="skip">Skip</button><button class="wl-next" data-wl="next">Next</button></div></div>`;
   host.appendChild(back);
   let i = 0;
   const card = back.querySelector('.wl-card') as HTMLElement;
@@ -195,6 +205,7 @@ export function showWelcome(host: HTMLElement, done: () => void): void {
     (card.querySelector('h2') as HTMLElement).textContent = h;
     (card.querySelector('p') as HTMLElement).textContent = p;
     card.querySelectorAll('.wl-dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+    card.classList.toggle('first', i === 0);
     (card.querySelector('[data-wl=next]') as HTMLElement).textContent = i === CARDS.length - 1 ? 'Let’s start' : 'Next';
     card.classList.remove('turn');
     void card.offsetWidth;
