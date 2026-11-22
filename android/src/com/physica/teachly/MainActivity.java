@@ -33,6 +33,7 @@ import android.widget.Toast;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -70,6 +71,11 @@ public class MainActivity extends Activity {
     /** A microphone request from the page, waiting for the user's answer. */
     private PermissionRequest pendingMedia;
     private byte[] pendingData;
+    /** A big file (a long lesson video) written in pieces, waiting for the system "Save to" screen (Android 7–9). */
+    private File pendingFile;
+    /** Files being received in pieces from the page: id -> [temp file, name, mime]. */
+    private final Map<String, Object[]> parts = new HashMap<String, Object[]>();
+    private int partSeq = 0;
     private String pendingName;
     private String pendingMime;
     private long lastBack;
@@ -264,6 +270,22 @@ public class MainActivity extends Activity {
             fileCallback = null;
             return;
         }
+        if (requestCode == REQ_SAVE && pendingFile != null) {
+            File f = pendingFile;
+            pendingFile = null;
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    OutputStream os = getContentResolver().openOutputStream(data.getData());
+                    if (os == null) throw new IOException("Could not write the file");
+                    copy(f, os);
+                    toast("Saved: " + pendingName);
+                } catch (Exception e) {
+                    toast("Could not save: " + e.getMessage());
+                }
+            }
+            f.delete();
+            return;
+        }
         if (requestCode == REQ_SAVE && pendingData != null) {
             byte[] d = pendingData;
             pendingData = null;
@@ -299,9 +321,104 @@ public class MainActivity extends Activity {
             });
         }
 
+        /**
+         * A big file (a long lesson video) comes in pieces so it never has to fit in memory at once:
+         * saveBegin, then saveChunk for each piece (base64, a few MB), then saveEnd.
+         */
+        @JavascriptInterface
+        public String saveBegin(String name, String mime) {
+            try {
+                File f = File.createTempFile("save", ".part", getCacheDir());
+                String id = "p" + (++partSeq);
+                synchronized (parts) {
+                    parts.put(id, new Object[] { f, name, mime });
+                }
+                return id;
+            } catch (IOException e) {
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public boolean saveChunk(String id, String base64) {
+            Object[] p;
+            synchronized (parts) {
+                p = parts.get(id);
+            }
+            if (p == null) return false;
+            try {
+                FileOutputStream os = new FileOutputStream((File) p[0], true);
+                os.write(Base64.decode(base64, Base64.DEFAULT));
+                os.close();
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void saveEnd(String id) {
+            final Object[] p;
+            synchronized (parts) {
+                p = parts.remove(id);
+            }
+            if (p == null) return;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    saveFrom((File) p[0], (String) p[1], (String) p[2]);
+                }
+            });
+        }
+
         @JavascriptInterface
         public String version() {
-            return "1";
+            return "2";
+        }
+    }
+
+    private static void copy(File from, OutputStream os) throws IOException {
+        InputStream in = new FileInputStream(from);
+        try {
+            byte[] buf = new byte[1 << 16];
+            int n;
+            while ((n = in.read(buf)) > 0) os.write(buf, 0, n);
+        } finally {
+            in.close();
+            os.close();
+        }
+    }
+
+    /** Save a file that was received in pieces (see saveBegin) into Downloads/Teachly. */
+    private void saveFrom(File f, String name, String mime) {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                ContentResolver cr = getContentResolver();
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Teachly");
+                Uri uri = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (uri == null) throw new IOException("Could not create the file");
+                OutputStream os = cr.openOutputStream(uri);
+                if (os == null) throw new IOException("Could not write the file");
+                copy(f, os);
+                f.delete();
+            } else {
+                pendingFile = f;
+                pendingName = name;
+                pendingMime = mime;
+                Intent save = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                save.addCategory(Intent.CATEGORY_OPENABLE);
+                save.setType(mime);
+                save.putExtra(Intent.EXTRA_TITLE, name);
+                startActivityForResult(save, REQ_SAVE);
+                return;
+            }
+            toast("Saved in Downloads/Teachly: " + name);
+        } catch (Exception e) {
+            f.delete();
+            toast("Could not save: " + e.getMessage());
         }
     }
 

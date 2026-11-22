@@ -36,6 +36,33 @@ export function readAsDataURL(blob: Blob): Promise<string> {
 /** The Teachly Android app (APK) passes files to the device through this bridge. */
 interface AndroidBridge {
   saveFile(base64: string, name: string, mime: string): void;
+  /** App version 2+: a big file in pieces (a long lesson video never has to fit in memory at once). */
+  saveBegin?(name: string, mime: string): string;
+  saveChunk?(id: string, base64: string): boolean;
+  saveEnd?(id: string): void;
+}
+
+/** One piece of a file as base64 (no data: prefix). */
+function base64Of(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+/** Android app: send a big file in 3 MB pieces, one after another, letting the screen breathe between them. */
+async function saveInPieces(app: AndroidBridge, blob: Blob, name: string, mime: string): Promise<boolean> {
+  const id = app.saveBegin?.(name, mime);
+  if (!id) return false;
+  const PIECE = 3 * 1024 * 1024;
+  for (let at = 0; at < blob.size; at += PIECE) {
+    if (!app.saveChunk!(id, await base64Of(blob.slice(at, at + PIECE)))) return false;
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  app.saveEnd!(id);
+  return true;
 }
 export function androidApp(): AndroidBridge | null {
   return (window as unknown as { TeachlyAndroid?: AndroidBridge }).TeachlyAndroid ?? null;
@@ -44,7 +71,11 @@ export function androidApp(): AndroidBridge | null {
 export function download(blob: Blob, name: string): void {
   const app = androidApp();
   if (app) {
-    // In the Android app: save straight into Downloads/Teachly.
+    // In the Android app: save straight into Downloads/Teachly (big files in pieces when the app can take them).
+    if (app.saveBegin && blob.size > 8 * 1024 * 1024) {
+      void saveInPieces(app, blob, name, blob.type || 'application/octet-stream').then((ok) => ok || toast('Could not save the file'));
+      return;
+    }
     const r = new FileReader();
     r.onload = () => app.saveFile(String(r.result).split(',')[1] ?? '', name, blob.type || 'application/octet-stream');
     r.readAsDataURL(blob);

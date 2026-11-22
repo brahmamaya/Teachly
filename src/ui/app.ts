@@ -37,6 +37,7 @@ import { FillTool } from '../tools/fill';
 import { LaserTool } from '../tools/laser';
 import { TapeTool } from '../tools/tape';
 import { makeTable, resizeTable, TableEditor } from '../tools/table';
+import { applyTheme, previewColors, TABLE_THEMES } from '../tools/tablethemes';
 import { CompassTool, ShapeTool } from '../tools/misc';
 import { PenTool } from '../tools/pen';
 import { SelectTool } from '../tools/select';
@@ -46,7 +47,7 @@ import type { BgPattern, El, PathEl, ShapeKind, TableEl, TextEl, ToolId } from '
 import { closeSpotlight, toggleCurtain, toggleSpotlight } from '../widgets/focus';
 import { openPoll } from '../widgets/poll';
 import { openTimer } from '../widgets/timer';
-import { isRecording, onRecordingChange, toggleRecording } from '../widgets/recorder';
+import { isRecording, onRecordingChange, recoverRecordings, toggleRecording } from '../widgets/recorder';
 import { openCalculator, openPicker, openScoreboard } from '../widgets/classroom';
 import { openGraph } from '../widgets/graph';
 import { closeMagnifier, toggleMagnifier } from '../widgets/magnifier';
@@ -135,7 +136,7 @@ const SHAPES: [ShapeKind, string, string][] = [
   ['axes3', 'x–y–z axes (3D)', '<path d="M10 14h12M10 14V2M10 14l-7 7M20 12l2 2-2 2M8 4l2-2 2 2"/><path d="M10 14H5M10 14v5M10 14l4-4" stroke-dasharray="2 2"/>'],
 ];
 
-type PropSection = 'color' | 'width' | 'fill' | null;
+type PropSection = 'color' | 'width' | 'fill' | 'table' | null;
 
 /** Toolbar buttons the teacher can show or hide (Menu → Edit toolbar). Menu itself always stays. */
 /** Buttons that are off until the teacher ticks them in Edit toolbar. */
@@ -398,6 +399,8 @@ export class App {
       trackSession(this.board);
     });
     startHousekeeping(this.board);
+    // A lesson recording cut off when the app closed (battery, crash) can still be saved.
+    window.setTimeout(() => void recoverRecordings(this.root), 3000);
   }
 
   // ---------------------------------------------------------------------------
@@ -868,7 +871,12 @@ export class App {
         // Word-style picker: slide over the grid to choose rows × columns.
         pop.innerHTML = `<div class="pop-title">Table <span data-tsize>3 × 3</span></div>
           <div class="table-picker">${Array.from({ length: 8 * 10 }, (_, i) => `<button data-tr="${Math.floor(i / 10) + 1}" data-tc="${(i % 10) + 1}" aria-label="${Math.floor(i / 10) + 1} by ${(i % 10) + 1}"></button>`).join('')}</div>
-          <div class="muted small center">Tap to insert. Double-tap a cell later to type.</div>`;
+          <div class="pop-sub">Look</div>
+          <div class="tt-looks small">${TABLE_THEMES.map((th) => {
+            const c = previewColors(th, isDarkColor(store.page.bg));
+            return `<button class="tt-opt ${(store.settings.tableTheme ?? 'classic') === th.id ? 'on' : ''}" data-tnew="${th.id}" title="${th.name}" aria-label="${th.name} look"><span class="tt-prev ${th.round ? 'round' : ''}" style="--h:${c.head};--b:${c.body};--s:${c.stripe};--l:${c.line};--t:${c.text}"><i></i><i></i><i></i><i></i></span></button>`;
+          }).join('')}</div>
+          <div class="muted small center">Tap to insert. Double-tap a cell later to type. Select the table for more styles.</div>`;
         pop.onpointerover = (e) => {
           const b = (e.target as HTMLElement).closest('[data-tr]') as HTMLElement | null;
           if (!b) return;
@@ -1162,6 +1170,10 @@ export class App {
     else if (d.shape) {
       store.setTool({ shape: d.shape as ShapeKind, tool: 'shape' });
       this.closePopover();
+      return;
+    } else if (d.tnew) {
+      store.setSettings({ tableTheme: d.tnew });
+      this.fillPopover();
       return;
     } else if (d.tr) {
       const tbl = makeTable(this.board, Number(d.tr), Number(d.tc));
@@ -1574,6 +1586,7 @@ export class App {
         <div class="sizes">${[2, 4, 8, 14].map((s) => `<button class="size ${Math.round(width) === s ? 'on' : ''}" data-pw="${s}"><span style="width:${s + 3}px;height:${s + 3}px;background:var(--text)"></span></button>`).join('')}</div>`;
     if (sec === 'fill')
       panel = this.swatches(FILLS, fill, 'pfill', `<button class="swatch none ${!fill ? 'on' : ''}" data-pfill="none" aria-label="No fill"></button>`);
+    if (sec === 'table' && table) panel = this.tableStylePanel(table);
 
     // A slim vertical bar of icons beside the selection; its options open
     // to the side.
@@ -1599,7 +1612,7 @@ export class App {
         ${els.some((e) => e.group) ? act('data-pact="ungroup"', 'shapes', 'Ungroup') : ''}
         ${
           table
-            ? `${act('data-trows="1"', 'plus', 'Add row')}${act('data-tcols="1"', 'next', 'Add column')}${act('data-trows="-1"', 'up', 'Remove row')}${act('data-tcols="-1"', 'prev', 'Remove column')}<button class="pv-btn ${table.header ? 'on' : ''}" data-pact="header" title="Header row" aria-label="Header row">${icon('table', 22)}</button>`
+            ? `${btn('table', 'Table style: looks, stripes, lines, text', `${icon('table', 22)}<i class="pv-dot" style="background:${table.headerFill && table.headerFill !== 'transparent' ? table.headerFill : table.color}"></i>`)}${act('data-trows="1"', 'plus', 'Add row')}${act('data-tcols="1"', 'next', 'Add column')}${act('data-trows="-1"', 'up', 'Remove row')}${act('data-tcols="-1"', 'prev', 'Remove column')}`
             : ''
         }
       </div>
@@ -1617,6 +1630,22 @@ export class App {
       if (el.dataset.pwidth !== undefined) this.setWidth(Number(el.value) * inkScale(), true);
     };
     this.positionProps();
+  }
+
+  /** Table style: ready-made looks, then the details (header, stripes, first column, corners, lines, text). */
+  private tableStylePanel(t: TableEl): string {
+    const dark = isDarkColor(store.page.bg);
+    const looks = TABLE_THEMES.map((th) => {
+      const c = previewColors(th, dark);
+      return `<button class="tt-opt ${t.theme === th.id || (!t.theme && th.id === 'classic') ? 'on' : ''}" data-ttheme="${th.id}" title="${th.name}" aria-label="${th.name} look">
+        <span class="tt-prev ${th.round ? 'round' : ''}" style="--h:${c.head};--b:${c.body};--s:${c.stripe};--l:${c.line};--t:${c.text}"><i></i><i></i><i></i><i></i></span><span class="tt-name">${th.name}</span></button>`;
+    }).join('');
+    const tog = (k: string, on: boolean, label: string) => `<button class="tt-tog ${on ? 'on' : ''}" data-${k} aria-pressed="${on}">${label}</button>`;
+    const seg = (attr: string, cur: string, opts: [string, string][]) => `<div class="tt-seg">${opts.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" ${attr}="${v}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`;
+    return `<div class="tt-looks">${looks}</div>
+      <div class="tt-row">${tog('pact="header"', t.header, 'Header row')}${tog('ttog="stripes"', !!t.stripes, 'Stripes')}${tog('ttog="firstCol"', !!t.firstCol, 'First column')}${tog('ttog="round"', !!t.round, 'Round corners')}</div>
+      <div class="tt-line"><span>Lines</span>${seg('data-tlines', t.lines ?? 'all', [['all', 'All'], ['outer', 'Outside'], ['rows', 'Rows'], ['none', 'None']])}</div>
+      <div class="tt-line"><span>Text</span>${seg('data-talign', t.align ?? 'center', [['left', 'Left'], ['center', 'Centre']])}<div class="tt-seg"><button data-tfont="0.88" aria-label="Smaller text">A−</button><button data-tfont="1.14" aria-label="Bigger text">A+</button></div></div>`;
   }
 
   private onPropsClick(e: MouseEvent): void {
@@ -1644,6 +1673,29 @@ export class App {
       if (one?.type === 'image') openCrop(this.root, this.board, one);
     } else if (d.pact === 'header') {
       store.mapEls(store.selection, (el) => (el.type === 'table' ? { ...el, header: !el.header } : el));
+    } else if (d.ttheme) {
+      const id = d.ttheme;
+      const dark = isDarkColor(store.page.bg);
+      store.mapEls(store.selection, (el) => (el.type === 'table' ? applyTheme(el, id, dark) : el));
+      store.setSettings({ tableTheme: id }); // new tables get this look too
+    } else if (d.ttog) {
+      const k = d.ttog as 'stripes' | 'firstCol' | 'round';
+      store.mapEls(store.selection, (el) => {
+        if (el.type !== 'table') return el;
+        const on = !el[k];
+        // a tint to show when it is switched on for a table whose look has none
+        const tint = isDarkColor(store.page.bg) ? 'rgba(248,250,252,0.08)' : 'rgba(15,23,42,0.05)';
+        return { ...el, [k]: on, ...(k === 'stripes' && on && !el.stripe ? { stripe: tint } : {}), ...(k === 'firstCol' && on && !el.colFill ? { colFill: tint } : {}) };
+      });
+    } else if (d.tlines) {
+      const v = d.tlines as 'all' | 'outer' | 'rows' | 'none';
+      store.mapEls(store.selection, (el) => (el.type === 'table' ? { ...el, lines: v } : el));
+    } else if (d.talign) {
+      const v = d.talign as 'left' | 'center';
+      store.mapEls(store.selection, (el) => (el.type === 'table' ? { ...el, align: v } : el));
+    } else if (d.tfont) {
+      const k = Number(d.tfont);
+      store.mapEls(store.selection, (el) => (el.type === 'table' ? { ...el, fontSize: Math.max(10, Math.min(80, el.fontSize * k)) } : el));
     } else if (d.scale) this.scaleSelection(Number(d.scale));
     else if (d.pact === 'ungroup') {
       // Split into separate pieces (e.g. to change one label of a graph).

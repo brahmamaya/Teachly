@@ -4,14 +4,15 @@ import { isDarkColor, textFont } from '../renderer';
 import { store } from '../store';
 import type { TableEl } from '../types';
 import { inkScale } from '../ui/scale';
+import { applyTheme } from './tablethemes';
 
-/** A new table centred in view, styled for the current board colour. */
-export function makeTable(board: Board, rows: number, cols: number): TableEl {
+/** A new table centred in view, in the chosen look (styled for the current board colour). */
+export function makeTable(board: Board, rows: number, cols: number, theme = store.settings.tableTheme ?? 'classic'): TableEl {
   const k = inkScale();
   const dark = isDarkColor(store.page.bg);
   const w = cols * 170 * k, h = rows * 58 * k;
   const v = board.viewRect();
-  return {
+  const t: TableEl = {
     id: uid(),
     type: 'table',
     rows,
@@ -28,6 +29,7 @@ export function makeTable(board: Board, rows: number, cols: number): TableEl {
     h,
     rot: 0,
   };
+  return applyTheme(t, theme, dark);
 }
 
 /** Add or remove a row / column, keeping the cell size the same. */
@@ -135,8 +137,9 @@ export class TableEditor {
       top: `${sy}px`,
       width: `${cw * z}px`,
       height: `${rh * z}px`,
-      font: textFont({ fontSize: t.fontSize * z, bold: t.header && this.r === 0 }),
-      color: t.color,
+      font: textFont({ fontSize: t.fontSize * z, bold: (t.header && this.r === 0) || (!!t.firstCol && this.c === 0) }),
+      color: t.header && this.r === 0 ? (t.headerText ?? t.color) : t.color,
+      textAlign: t.align === 'left' ? 'left' : 'center',
     });
   }
 }
