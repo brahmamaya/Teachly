@@ -517,6 +517,8 @@ export class App {
       this.applyScale(true);
     };
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return swap();
+    // One bar in the middle: it squeezes smoothly into the small Read only bar (and opens out again).
+    if (this.root.hasAttribute('data-tbjoin') && !this.root.classList.contains('tb-morphing')) return this.morphReadOnly(on);
     this.root.classList.add('tb-swap');
     window.setTimeout(() => {
       swap();
@@ -524,6 +526,58 @@ export class App {
       requestAnimationFrame(() => requestAnimationFrame(() => this.root.classList.remove('tb-swap')));
       window.setTimeout(() => this.root.classList.remove('tb-fadein'), 300);
     }, 150);
+  }
+
+  /**
+   * Read only on/off for the one-bar toolbar: the buttons take their new places at once while a copy of the bar's
+   * background shrinks (or grows) from the old size to the new one, so the bar is seen squeezing into the Read only
+   * pill. The leaving tools vanish under it; coming back, they fade in as the bar opens out.
+   */
+  private morphReadOnly(on: boolean): void {
+    const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
+    const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
+    const box = () => {
+      const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
+      return { x: Math.min(a.left, b.left), y: Math.min(a.top, b.top), w: Math.max(a.right, b.right) - Math.min(a.left, b.left), h: Math.max(a.bottom, b.bottom) - Math.min(a.top, b.top) };
+    };
+    const from = box();
+    const look = getComputedStyle(left, '::before');
+    const ghost = document.createElement('div');
+    ghost.className = 'tb-morph';
+    Object.assign(ghost.style, {
+      backgroundImage: look.backgroundImage,
+      backgroundColor: look.backgroundColor,
+      borderRadius: look.borderTopLeftRadius === '0px' ? look.borderBottomLeftRadius : look.borderTopLeftRadius,
+      boxShadow: look.boxShadow,
+      border: `${look.borderBottomWidth} solid ${look.borderBottomColor}`,
+    });
+    this.toolbar.appendChild(ghost);
+    this.root.classList.add('tb-morphing');
+    if (on) {
+      store.setReadOnly(true);
+      this.root.classList.add('ro-compact');
+      this.applyScale(true);
+    } else {
+      // back: the bar opens out first (its buttons hidden), then all of them fade in inside it
+      this.root.classList.add('tb-hide');
+      this.root.classList.remove('ro-compact');
+      store.setReadOnly(false);
+      this.applyScale(true);
+      window.setTimeout(() => {
+        this.root.classList.add('tb-fadein');
+        this.root.classList.remove('tb-hide');
+        window.setTimeout(() => this.root.classList.remove('tb-fadein'), 320);
+      }, 260);
+    }
+    const to = box();
+    const frame = (r: typeof from) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+    const anim = ghost.animate([frame(from), frame(to)], { duration: 440, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' });
+    const done = () => {
+      this.root.classList.remove('tb-morphing');
+      ghost.remove();
+    };
+    anim.onfinish = done;
+    anim.oncancel = done;
   }
 
   /** Last place of the sliding highlight, so it can glide to the new tool. */
