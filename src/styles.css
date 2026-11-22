@@ -10784,3 +10784,28 @@ button,
 @media (prefers-reduced-motion: reduce) {
   #app .toolbar.tb-left .tb-btn, #app .toolbar.tb-left .icon-btn { transition: none; }
 }
+
+/* ---------- Edit toolbar: tidy rows (owner, 22 Nov) ----------
+   "Toolbar at" and "Buttons" sit in the same label column with room from the edge, so both rows' choices line up;
+   no row is squeezed (the Pen colour bar line was pressed flat under "Stick to the top edge"). */
+.pop-tbedit > * { flex-shrink: 0; }
+.pop-tbedit .seg.tbe-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 1fr;
+  align-items: center;
+}
+.pop-tbedit .seg.tbe-row > span {
+  padding-left: 10px;
+  font-size: 14px;
+  color: var(--muted, #94a3b8);
+  white-space: nowrap;
+}
+.pop-tbedit .tbe-qb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.3;
+}
