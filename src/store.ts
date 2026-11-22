@@ -193,6 +193,16 @@ export class Store {
   private redoStack: Snapshot[] = [];
   private listeners = new Map<string, Set<Listener>>();
 
+  /** Read only: the board can be looked at, slid and zoomed, but nothing on it is written, erased or moved.
+   *  Lives only while the app is open (a fresh start is always ready to write). */
+  readOnly = false;
+
+  setReadOnly(on: boolean): void {
+    if (on) this.clearSelection();
+    this.readOnly = on;
+    this.emit('tool');
+  }
+
   on(evt: 'doc' | 'page' | 'leave' | 'nav' | 'tool' | 'selection' | 'settings' | 'camera', fn: Listener): () => void {
     let set = this.listeners.get(evt);
     if (!set) this.listeners.set(evt, (set = new Set()));

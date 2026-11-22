@@ -266,7 +266,7 @@ export class Board {
 
   /** May the view move / zoom right now? Only in slide mode (✋). */
   private get free(): boolean {
-    return store.tool.slide;
+    return store.tool.slide || store.readOnly;
   }
 
   setCam(c: Camera): void {
@@ -684,7 +684,7 @@ export class Board {
       const drawing = [...this.routed.entries()].find(([id, r]) => id !== p.id && (r === 'tool' || r === 'override'));
       const started = drawing ? this.downAt.get(drawing[0]) : undefined;
       const writing = !!drawing && (now - (started ?? now) > 250 || this.travel(drawing[0]) > 30);
-      if (!store.tool.slide || writing) {
+      if (!(store.tool.slide || store.readOnly) || writing) {
         this.routed.set(p.id, 'ignore');
         return;
       }
@@ -749,8 +749,10 @@ export class Board {
       this.penOnlyHintAt = now;
       toast('"Stylus only" is on: fingers do not write or erase. Turn it off in Menu ▸ Settings ▸ Stylus only', 4500);
     }
-    if (p.button === 1 || this.spaceDown || slidePan || fingerRest) {
-      if (slide) {
+    // Read only: every touch, pen or mouse only slides the board (double-tap zooms); nothing is written.
+    const ro = store.readOnly;
+    if (ro || p.button === 1 || this.spaceDown || slidePan || fingerRest) {
+      if (slide || ro) {
         // Double-tap: zoom in 2× there, or back to the whole page.
         const now = performance.now(), lt = this.lastHandTap;
         if (now - lt.t < 320 && Math.hypot(p.sx - lt.x, p.sy - lt.y) < 40) {

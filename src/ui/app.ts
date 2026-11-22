@@ -140,6 +140,7 @@ type PropSection = 'color' | 'width' | 'fill' | null;
 /** Buttons that are off until the teacher ticks them in Edit toolbar. */
 const TB_OPT_IN = new Set(['record']);
 const TB_ITEMS: [string, string, 'left' | 'right'][] = [
+  ['readonly', 'Read only', 'left'],
   ['select', 'Select', 'left'],
   ['slide', 'Slide mode', 'left'],
   ['pen', 'Pen', 'left'],
@@ -414,6 +415,7 @@ export class App {
   /** Quick path: only mark the active tool and the slide switch (no markup rebuild, a few class changes). */
   private markActive(): void {
     const t = store.tool;
+    this.markReadOnly();
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     left.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.classList.toggle('active', b.dataset.tool === t.tool));
     const sl = left.querySelector<HTMLElement>('[data-act=slide]');
@@ -443,7 +445,9 @@ export class App {
     const sub = chapterById(store.settings.subject);
     const subjectBtn = sub && !this.subject.open ? `<button class="tb-btn tb-subject ${this.subject.open ? 'open' : ''}" data-act="subject-tray" title="${sub.subject.name}: ${sub.chapter.name}">${sub.subject.name} · ${sub.chapter.short}</button>` : '';
     const show = (k: string, html: string) => ((TB_OPT_IN.has(k) ? !on.has(k) : hide.has(k)) ? '' : html);
+    const ro = store.readOnly;
     left.innerHTML = `<span class="tb-ind" aria-hidden="true"></span>
+      ${show('readonly', `<button class="tb-btn tb-ro ${ro ? 'on' : ''}" data-act="readonly" title="Read only: look, slide and zoom; nothing on the page changes" aria-pressed="${ro}"><i class="tb-ro-pill" aria-hidden="true"></i>${icon('readonly', 22)}<span class="tb-ro-label">Read only</span></button><i class="tb-sep tb-ro-sep" aria-hidden="true"></i>`)}
       ${show('select', tool('select', 'select', 'Select'))}
       ${show('slide', `<button class="tb-btn tb-toggle ${t.slide ? 'on' : ''}" data-act="slide" title="Slide mode — move the board while you write" aria-pressed="${t.slide}">${icon('pan', 22)}</button>`)}
       ${show('pen', tool('pen', 'pk_' + t.penStyle, 'Pen', `<span class="swatch-dot" style="background:${dot}"></span>`))}
@@ -474,11 +478,23 @@ export class App {
       <button class="tb-btn ${this.popFor === 'menu' || this.popFor === 'tbedit' ? 'open' : ''}" data-pop="menu" title="Menu">${icon('menu', 22)}</button>`;
     this.renderHex();
     this.updateUndo();
+    this.markReadOnly();
     this.moveIndicator(left);
     this.syncA11y();
     if (this.popover) {
       const anchor = this.toolbar.querySelector(`${this.popFromHex ? '.hexdock ' : ''}[data-tool="${this.popFor}"],${this.popFromHex ? '.hexdock ' : ''}[data-pop="${this.popFor}"]`) as HTMLElement | null;
       if (anchor) this.positionPopover(anchor);
+    }
+  }
+
+  /** Read only on/off: the writing tools fade away and the button opens into a "Read only" pill (CSS, #app.ro). */
+  private markReadOnly(): void {
+    const ro = store.readOnly;
+    this.root.classList.toggle('ro', ro);
+    const b = this.toolbar.querySelector<HTMLElement>('.tb-ro');
+    if (b) {
+      b.classList.toggle('on', ro);
+      b.setAttribute('aria-pressed', String(ro));
     }
   }
 
@@ -1241,6 +1257,9 @@ export class App {
         this.closePopover();
         this.pages.toggle();
         return;
+      case 'readonly':
+        this.closePopover();
+        return store.setReadOnly(!store.readOnly);
       case 'slide': {
         const on = !store.tool.slide;
         store.setTool({ slide: on });
@@ -1994,6 +2013,11 @@ export class App {
       if ((e.target as HTMLElement).closest('input, textarea')) return;
       const ctrl = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
+      // Read only: no key changes the page (undo, paste, delete, duplicate, tool keys).
+      if (store.readOnly && ((ctrl && 'zyvd'.includes(k) && k.length === 1) || (!ctrl && (e.key === 'Delete' || e.key === 'Backspace' || ('vpest'.includes(k) && k.length === 1))))) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === ' ' && !this.board.spaceDown) {
         this.board.spaceDown = true;
         this.board.updateCursor();
@@ -2023,7 +2047,7 @@ export class App {
       }
     });
     window.addEventListener('paste', async (e) => {
-      if ((e.target as HTMLElement).closest('input, textarea')) return;
+      if ((e.target as HTMLElement).closest('input, textarea') || store.readOnly) return;
       const img = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith('image/'));
       const file = img?.getAsFile();
       if (file) {
@@ -2069,6 +2093,7 @@ export class App {
       e.preventDefault();
       depth = 0;
       hint.hidden = true;
+      if (store.readOnly) return toast('Read only is on: tap Read only to change the page');
       const pg = e.dataTransfer?.getData(PAGE_DRAG);
       if (pg) return this.dropPage(Number(pg), e.clientX, e.clientY);
       const files = [...(e.dataTransfer?.files ?? [])];
