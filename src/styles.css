@@ -10540,3 +10540,75 @@ button,
 @media (prefers-reduced-motion: reduce) {
   #app .toolbar .tb-ro.ro-gulp, #app .toolbar .tb-ro.ro-glow::after, #app .toolbar .tb-ro.ro-glow .icon { animation: none; }
 }
+
+/* ---------- All pages (Expand): opens softly; slimmer bars; teal action bar and Done; smaller numbers; rounder pages ---------- */
+#app .pgs,
+#app[data-board] .pgs {
+  --pg-accent: #14b8a6;
+  animation: pgs-in 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes pgs-in {
+  from { opacity: 0; scale: 0.97; translate: 0 12px; }
+}
+#app .pgs.leaving {
+  scale: 0.98;
+  translate: 0 10px;
+  transition: opacity 0.26s ease, scale 0.26s ease, translate 0.26s ease !important;
+}
+#app[data-board] .pgs .pgs-top {
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 14px 8px;
+  gap: 8px;
+}
+#app[data-board] .pgs .pgs-round { width: 36px; height: 36px; }
+#app[data-board] .pgs .pgs-hist { padding: 2px; gap: 2px; }
+#app[data-board] .pgs .pgs-title { font-size: 18px; }
+#app[data-board] .pgs .pgs-pill {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 15px;
+  transition: background-color 0.25s ease, color 0.25s ease, transform 0.15s ease;
+}
+#app[data-board] .pgs .pgs-pill.on {
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
+}
+/* the action row: teal, slimmer buttons */
+#app[data-board] .pgs .pgs-bar {
+  background: linear-gradient(180deg, #0f9f90, #0d8f82);
+  box-shadow: none;
+  padding: 4px 10px;
+  gap: 0;
+}
+#app[data-board] .pgs .pgs-act {
+  min-height: 36px;
+  padding: 4px 11px;
+  gap: 7px;
+  font-size: 14.5px;
+  border-radius: 10px;
+}
+#app[data-board] .pgs .pgs-act,
+#app[data-board] .pgs .pgs-act svg,
+#app[data-board] .pgs .pgs-act.danger,
+#app[data-board] .pgs .pgs-act.danger svg { color: #ffffff; }
+#app[data-board] .pgs .pgs-act:disabled,
+#app[data-board] .pgs .pgs-act:disabled svg { color: rgba(255, 255, 255, 0.45); }
+#app[data-board] .pgs .pgs-act:active:not(:disabled) { background: rgba(255, 255, 255, 0.18); }
+@media (hover: hover) {
+  #app[data-board] .pgs .pgs-act:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+}
+#app[data-board] .pgs .pgs-grid { padding-top: 14px; }
+/* pages: rounder corners, teal frame for the chosen one, smaller numbers */
+#app[data-board] .pgs .pgs-card,
+#app[data-board] .pgs .pgs-card img { border-radius: 10px; }
+#app[data-board] .pgs .pgs-card { overflow: hidden; }
+#app[data-board] .pgs .pgs-card.sel { box-shadow: 0 0 0 3px #14b8a6, 0 6px 16px rgba(20, 184, 166, 0.3); }
+#app[data-board] .pgs .pgs-zoom,
+#app[data-board] .pgs .pgs-check { background: #0d9488; color: #ffffff; }
+#app[data-board] .pgs .pgs-n,
+#app[data-board] .pgs .pgs-n.cur { font-size: 14px; }
+#app[data-board] .pgs .pgs-n.cur { color: #2dd4bf; font-weight: 700; }
+.pgs-item.over .pgs-card { outline-color: #14b8a6; }
+@media (prefers-reduced-motion: reduce) {
+  #app .pgs { animation: none; }
+}
