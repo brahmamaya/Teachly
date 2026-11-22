@@ -370,9 +370,19 @@ export class Board {
     this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
     // While a lesson video is recorded, draw at the video's size (up to 4K) so it is sharp.
     if (this.recordPixels) this.dpr = Math.min(4, Math.max(this.dpr, Math.sqrt(this.recordPixels / area)));
+    // Same size as before (a toolbar change asked for a resize): leave the canvases alone. Setting a canvas's size wipes
+    // it even when the size does not change, and a frame drawn before the redraw flashed the empty board (white on phones).
+    const cw = Math.round(r.width * this.dpr), ch = Math.round(r.height * this.dpr);
+    const same = this.ink.width === cw && this.ink.height === ch && this.ink.style.width === `${r.width}px` && this.ink.style.height === `${r.height}px`;
+    if (same) {
+      setPageSize(this.w, this.h);
+      if (this.w && this.h) this.ensureCam();
+      this.invalidate('bg', 'ink', 'overlay');
+      return;
+    }
     for (const c of [this.bg, this.ink, this.wet, this.overlay]) {
-      c.width = Math.round(r.width * this.dpr);
-      c.height = Math.round(r.height * this.dpr);
+      c.width = cw;
+      c.height = ch;
       c.style.width = `${r.width}px`;
       c.style.height = `${r.height}px`;
     }

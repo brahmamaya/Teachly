@@ -222,6 +222,21 @@ function addRecentColor(c: string): void {
  */
 let roLayout = false;
 
+/** A CSS cubic-bezier easing as a function of time 0..1 (so JavaScript can move things on exactly the CSS curve). */
+function bezier(x1: number, y1: number, x2: number, y2: number): (t: number) => number {
+  const f = (a: number, b: number, t: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
+  return (x) => {
+    if (x <= 0 || x >= 1) return Math.min(1, Math.max(0, x));
+    let lo = 0, hi = 1, t = x;
+    for (let i = 0; i < 24; i++) {
+      t = (lo + hi) / 2;
+      if (f(x1, x2, t) < x) lo = t;
+      else hi = t;
+    }
+    return f(y1, y2, t);
+  };
+}
+
 /** The edge the toolbar touches: bottom (default) or top. */
 function tbEdge(): 'bottom' | 'top' {
   if (roLayout) return 'top';
@@ -557,13 +572,23 @@ export class App {
     const rectOf = (el: Element) => {
       const r = el.getBoundingClientRect();
       const he = el as HTMLElement;
-      // k: how much the element's bar is scaled; rad: its corners (a joined half has only its outer ones rounded)
-      return { x: r.left, y: r.top, w: r.width, h: r.height, k: r.width / (he.offsetWidth || 1) || 1, rad: getComputedStyle(el).borderRadius };
+      // k: how much the element's BAR is scaled (measured on the bar: a button pressed under the finger is shrunk a
+      // little, and measuring that made the Read only pill fly past its bar on phones); rad: its corners
+      const bar = (he.closest('.toolbar') as HTMLElement | null) ?? he;
+      return { x: r.left, y: r.top, w: r.width, h: r.height, k: bar.getBoundingClientRect().width / (bar.offsetWidth || 1) || 1, rad: getComputedStyle(el).borderRadius };
     };
     type R = ReturnType<typeof rectOf>;
     const STAY = '.tb-ro, .tb-ind, [data-act=shot], [data-act=pages]';
     const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
     const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')].filter((e) => e.offsetWidth > 0 || !!e.closest('.toolbar'));
+    // the tapped button is still pressed (a little smaller): measure every button at its real size
+    for (const el of stays) {
+      el.classList.remove('pressed');
+      el.style.transition = 'none';
+      // a layer of its own from the start, so its first move shows in the same frame as the bar's (no one-frame lag)
+      el.style.willChange = 'transform';
+    }
+    void left.offsetWidth;
     // Slow enough to be enjoyed (the owner asked for a calmer, longer glide), still one movement.
     const MS = 820;
     // The toolbar is already one bar in the middle of the top edge: Read only squeezes it right where it is, keeping its
@@ -573,9 +598,32 @@ export class App {
     const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
     // How a button gets from where it is (a) to where it will be (b): its left edge and middle line move there and it
     // takes the other bar's scale (so the Read only pill is exactly its final size on the way, never bigger).
-    const flip = (_el: HTMLElement, a: R, b: R) => `translate(${(b.x - a.x) / a.k}px, ${(b.y + b.h / 2 - (a.y + a.h / 2)) / a.k}px) scale(${b.k / a.k})`;
+    // (the scale comes from the buttons' real heights: a phone dock has smaller buttons than the Read only bar)
+    const flip = (a: R, b: R) => ({ x: (b.x - a.x) / a.k, y: (b.y + b.h / 2 - (a.y + a.h / 2)) / a.k, s: b.h / (a.h || 1) });
+    type F = ReturnType<typeof flip>;
+    const at = (f: F, e: number) => `translate(${f.x * e}px, ${f.y * e}px) scale(${1 + (f.s - 1) * e})`;
+    // ONE clock for everything that moves (the white bar and the buttons that stay). Before, the buttons slid as CSS
+    // transitions (run by the graphics thread) and the bar by the page itself: on a busy phone the page fell behind, so
+    // the Read only pill raced ahead of its bar and they looked torn apart. Now both are set in the same frame.
+    const curve = bezier(0.22, 1, 0.36, 1);
+    const run = (step: (e: number) => void, done: () => void) => {
+      const t0 = performance.now();
+      const f = () => {
+        const t = Math.min(1, (performance.now() - t0) / MS);
+        step(curve(t));
+        if (t < 1) requestAnimationFrame(f);
+        else done();
+      };
+      step(0);
+      requestAnimationFrame(f);
+    };
     // The bars' backgrounds glide from where they are to where they will be: ONE copy when the toolbar is one shape
     // (one bar in the middle, or a phone's two-row dock), else one per bar (the two halves in their corners).
+    // the white bar's copy at a point of the way (e: 0 = start, 1 = end)
+    const place = (g: HTMLElement, a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }, e: number) => {
+      const l = (p: number, q: number) => `${p + (q - p) * e}px`;
+      Object.assign(g.style, { left: l(a.x, b.x), top: l(a.y, b.y), width: l(a.w, b.w), height: l(a.h, b.h) });
+    };
     const ghosts = (from: R[], to: R[]) => {
       const one = this.root.hasAttribute('data-tbjoin') || this.root.classList.contains('tb-stacked');
       if (one) {
@@ -598,12 +646,15 @@ export class App {
         const a = u(from), b2 = u(to);
         // Read only on: from the bar as it is now to the small round bar; off: the other way
         const [ra, rb] = keep ? [here, here] : on ? [here, '22px'] : ['22px', here];
-        const fr = (r: ReturnType<typeof u>, rad: string) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: rad });
-        g.animate([fr(a, ra), fr(b2, rb)], { duration: MS, easing: EASE, fill: 'forwards' });
+        g.style.borderRadius = ra;
+        if (rb !== ra) requestAnimationFrame(() => Object.assign(g.style, { transition: `border-radius ${MS}ms ${EASE}`, borderRadius: rb }));
         this.root.classList.add('tb-morphing');
-        return () => {
-          g.remove();
-          this.root.classList.remove('tb-morphing');
+        return {
+          set: (e: number) => place(g, a, b2, e),
+          end: () => {
+            g.remove();
+            this.root.classList.remove('tb-morphing');
+          },
         };
       }
       const made = bars.map((bar, i) => {
@@ -614,25 +665,51 @@ export class App {
         Object.assign(g.style, {
           backgroundImage: look.backgroundImage !== 'none' ? look.backgroundImage : getComputedStyle(this.root).getPropertyValue('--bar'),
           backgroundColor: look.backgroundColor,
-          borderRadius: from[i].rad,
           boxShadow: '0 4px 14px rgba(15, 23, 42, 0.18)',
           border: `1px solid ${look.borderBottomColor}`,
         });
         this.toolbar.appendChild(g);
-        const fr = (r: R) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: r.rad === '0px' && joined ? '22px' : r.rad });
-        g.animate([fr(from[i]), fr(to[i])], { duration: MS, easing: EASE, fill: 'forwards' });
+        const rad = (r: R) => (r.rad === '0px' && joined ? '22px' : r.rad);
+        g.style.borderRadius = rad(from[i]);
+        if (rad(to[i]) !== rad(from[i])) requestAnimationFrame(() => Object.assign(g.style, { transition: `border-radius ${MS}ms ${EASE}`, borderRadius: rad(to[i]) }));
         return g;
       });
       this.root.classList.add('tb-morphing');
-      return () => {
-        made.forEach((g) => g.remove());
-        this.root.classList.remove('tb-morphing');
+      return {
+        set: (e: number) => made.forEach((g, i) => place(g, from[i], to[i], e)),
+        end: () => {
+          made.forEach((g) => g.remove());
+          this.root.classList.remove('tb-morphing');
+        },
       };
+    };
+    // The teal pill of the Read only button, sized for the way (its own width is fixed in CSS, but the button is scaled
+    // on the way): it opens (or closes) from the button to exactly the pill's final width, frame by frame on the same
+    // clock, so it never grows over Screenshot and never jumps at the end. `a`: where the button is laid out now,
+    // `big`: the button in the Read only bar.
+    const ro = stays.find((e) => e.classList.contains('tb-ro')) ?? null;
+    const pill = ro?.querySelector('.tb-ro-pill') as HTMLElement | null;
+    const label = ro?.querySelector('.tb-ro-label') as HTMLElement | null;
+    const pillWay = (a: R, big: R) => {
+      if (!pill) return (_open: number) => {};
+      const L = a.k * (big.h / (a.h || 1)); // css px → screen px for the button on the way
+      const W = big.w / L, btn = a.w / a.k;
+      Object.assign(pill.style, { transition: 'opacity 0.2s ease', width: `${W}px`, opacity: '1' });
+      if (label) Object.assign(label.style, { transition: 'opacity 0.12s ease', opacity: '0' });
+      return (open: number) => (pill.style.clipPath = `inset(0px ${Math.max(0, (W - btn) * (1 - open))}px 0px 0px round 18px)`);
+    };
+    const pillDone = () => {
+      for (const el of [pill, label]) if (el) el.style.transition = el.style.width = el.style.clipPath = el.style.opacity = '';
+      // the words come in softly right away (not after the CSS delay meant for the old way)
+      if (label && on) {
+        label.style.transition = 'opacity 0.25s ease, transform 0.3s ease';
+        window.setTimeout(() => (label.style.transition = ''), 320);
+      }
     };
     const clear = (els: HTMLElement[]) =>
       els.forEach((el) => {
         el.style.transition = 'none';
-        el.style.transform = el.style.opacity = el.style.transformOrigin = '';
+        el.style.transform = el.style.opacity = el.style.transformOrigin = el.style.willChange = '';
       });
     if (on) {
       const from = bars.map(rectOf);
@@ -640,6 +717,9 @@ export class App {
       const list = tools();
       // where everything ends: lay the bar out the Read only way for a moment, measure, and put it back
       // (no frame is drawn in between, nothing is seen)
+      // (the bars' own size change is a CSS transition: switched off while measuring, or the end would be measured at
+      // the old size; on phones the Read only bar is smaller than the dock, and the pill overshot)
+      for (const bar of bars) bar.style.transition = 'none';
       roLayout = true;
       this.root.classList.add('ro-compact');
       this.applyScale(true);
@@ -648,10 +728,12 @@ export class App {
       roLayout = false;
       this.root.classList.remove('ro-compact');
       this.applyScale(true);
-      const end = ghosts(from, to);
+      void left.offsetWidth;
+      for (const bar of bars) bar.style.transition = '';
+      const gh = ghosts(from, to);
       (left.querySelector('.tb-ro') as HTMLElement | null)?.classList.add('on'); // the pill opens on the way
       if (ind) {
-        ind.style.transition = 'opacity 0.1s ease';
+        ind.style.transition = 'opacity 0.08s ease';
         ind.style.opacity = '0';
       }
       // the tools fade and shrink together with the white bar, on the same curve and over the same time (one movement)
@@ -660,38 +742,53 @@ export class App {
         el.style.opacity = '0';
         el.style.transform = 'scale(0.7)';
       });
-      stays.forEach((el, i) => {
+      const fl = stays.map((_, i) => flip(was[i], will[i]));
+      stays.forEach((el) => {
         el.style.transformOrigin = 'left center';
-        el.style.transition = `transform ${MS}ms ${EASE}`;
-        el.style.transform = flip(el, was[i], will[i]);
+        el.style.transition = 'none';
       });
-      window.setTimeout(() => {
+      const ri = ro ? stays.indexOf(ro) : -1;
+      const pw = ri >= 0 ? pillWay(was[ri], will[ri]) : () => {};
+      run((e) => {
+        gh.set(e);
+        stays.forEach((el, i) => (el.style.transform = at(fl[i], e)));
+        pw(e);
+      }, () => {
+        pillDone();
+        // the real Read only bar takes over exactly where the copies ended (no size change animating after it)
+        for (const bar of bars) bar.style.transition = 'none';
         roLayout = true;
         store.setReadOnly(true);
         this.root.classList.add('ro-compact');
         this.applyScale(true);
         clear([...list, ...stays]);
+        void left.offsetWidth;
+        for (const bar of bars) bar.style.transition = '';
         if (ind) {
           ind.style.transition = '';
           ind.style.opacity = '';
         }
-        end();
-      }, MS);
+        gh.end();
+      });
     } else {
       const from = bars.map(rectOf);
       const was = stays.map(rectOf);
+      for (const bar of bars) bar.style.transition = 'none';
       roLayout = false;
       this.root.classList.remove('ro-compact');
       store.setReadOnly(false);
       this.applyScale(true);
       const to = bars.map(rectOf);
       const now = stays.map(rectOf);
+      void left.offsetWidth;
+      for (const bar of bars) bar.style.transition = '';
       const list = tools();
       // the buttons that stay glide back from the top; the tools come in together with the white bar (no wait)
+      const fl = stays.map((_, i) => flip(now[i], was[i]));
       stays.forEach((el, i) => {
         el.style.transformOrigin = 'left center';
         el.style.transition = 'none';
-        el.style.transform = flip(el, now[i], was[i]);
+        el.style.transform = at(fl[i], 1);
       });
       list.forEach((el) => {
         el.style.transition = 'none';
@@ -703,19 +800,24 @@ export class App {
         ind.style.opacity = '0';
       }
       void left.offsetWidth;
-      const end = ghosts(from, to);
-      stays.forEach((el) => {
-        el.style.transition = `transform ${MS}ms ${EASE}`;
-        el.style.transform = '';
-      });
+      const gh = ghosts(from, to);
+      gh.set(0);
+      const ri = ro ? stays.indexOf(ro) : -1;
+      const pw = ri >= 0 ? pillWay(now[ri], was[ri]) : () => {};
+      pw(1);
       // same curve and time as the white bar opening out, starting with it: background and icons arrive as one
       list.forEach((el) => {
         el.style.transition = `opacity ${MS}ms ${EASE}, transform ${MS}ms ${EASE}`;
         el.style.opacity = '';
         el.style.transform = '';
       });
-      window.setTimeout(() => {
-        end();
+      run((e) => {
+        gh.set(e);
+        stays.forEach((el, i) => (el.style.transform = at(fl[i], 1 - e)));
+        pw(1 - e);
+      }, () => {
+        pillDone();
+        gh.end();
         this.root.classList.remove('ro-keep');
         clear(stays);
         if (ind) {
@@ -723,7 +825,7 @@ export class App {
           ind.style.opacity = '';
           this.moveIndicator(left);
         }
-      }, MS);
+      });
       window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), MS + 40);
     }
   }
