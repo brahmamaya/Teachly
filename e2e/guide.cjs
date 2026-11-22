@@ -1,0 +1,43 @@
+// Guide (the i in the Menu) and the first-open welcome.
+const { chromium } = require('playwright');
+const { check, finish } = require('./lib.cjs');
+(async () => {
+  const b = await chromium.launch();
+  const ctx = await b.newContext({ viewport: { width: 412, height: 915 }, hasTouch: true });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(e.message));
+  await page.addInitScript(() => { window.__teachlyWelcome = true; });
+  await page.goto(process.env.URL || 'http://localhost:5173/');
+  await page.waitForTimeout(1800);
+  check('first open: the welcome shows', !!(await page.$('.welcome .wl-card')));
+  check('the first card has faint subject pictures behind it', (await page.$$('.wl-card.first .wl-bg i')).length >= 20);
+  for (let i = 0; i < 3; i++) { await page.click('[data-wl=next]'); await page.waitForTimeout(250); }
+  check('the last card has the start button', (await page.textContent('[data-wl=next]')) === 'Let’s start');
+  await page.click('[data-wl=next]');
+  await page.waitForTimeout(400);
+  check('it closes and is remembered', !(await page.$('.welcome')) && (await page.evaluate(() => window.__teachly.store.settings.welcomeDone)) === true);
+  await page.reload();
+  await page.waitForTimeout(1600);
+  check('it does not show again', !(await page.$('.welcome')));
+  await page.click('[data-pop=menu]');
+  await page.waitForTimeout(300);
+  await page.click('[data-act=guide]');
+  await page.waitForTimeout(700);
+  const n = (await page.$$('.gd-item')).length;
+  check('the i opens the guide with every feature and its icon', n >= 40 && (await page.$$('.gd-item .gd-ic svg')).length === n, String(n));
+  check('the guide page is white', (await page.evaluate(() => getComputedStyle(document.querySelector('.guide')).backgroundColor)) === 'rgb(255, 255, 255)');
+  await page.fill('.gd-search input', 'tape');
+  await page.waitForTimeout(200);
+  const shown = await page.$$eval('.gd-item', (els) => els.filter((e) => !e.hidden).map((e) => e.querySelector('h3').textContent));
+  check('search finds a button by its name', shown.length === 1 && shown[0] === 'Tape', shown.join(','));
+  await page.fill('.gd-search input', 'zzzz');
+  await page.waitForTimeout(200);
+  check('no match says so', await page.isVisible('.gd-none'));
+  await page.click('[data-gd=close]');
+  await page.waitForTimeout(400);
+  check('close removes the guide', !(await page.$('.guide')));
+  check('no page errors', errs.length === 0, errs.join('|'));
+  await b.close();
+  finish();
+})();

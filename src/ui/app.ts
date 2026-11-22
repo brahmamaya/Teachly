@@ -336,6 +336,10 @@ export class App {
     this.updateBoardTone();
     this.fixInk();
     this.startClock();
+    // First open: a short welcome (not during automated browser tests, which set navigator.webdriver).
+    if (!store.settings.welcomeDone && (!navigator.webdriver || (window as unknown as { __teachlyWelcome?: boolean }).__teachlyWelcome)) {
+      void import('./guide').then((m) => m.showWelcome(this.root, () => store.setSettings({ welcomeDone: true })));
+    }
     this.applyScale();
     // Re-fit the toolbars whenever the screen size really changes. iPad
     // Safari reports the new size late (split view, rotation, tab bar), so
@@ -939,6 +943,7 @@ export class App {
         pop.className = 'popover pop-menu';
         pop.innerHTML = `
           <div class="mt-row">
+            <button class="mt-info" data-act="guide" title="Guide: how to use Teachly" aria-label="Guide: how to use Teachly">${icon('info', 22)}</button>
             <div class="board-palette">${BOARDS.map((c) => `<button class="swatch ${p.bg === c ? 'on' : ''}" style="background:${c}" data-bg="${c}" aria-label="Board colour ${c}"></button>`).join('')}
               <label class="swatch custom" title="Any colour"><input type="color" id="board-color" value="${p.bg}" data-bgpick aria-label="Pick any board colour"></label></div>
           </div>
@@ -1403,6 +1408,10 @@ export class App {
         return;
       case 'export-png':
         void exportPng(b).then(() => toast(`Picture of page ${store.index + 1} saved`));
+        return;
+      case 'guide':
+        this.closePopover();
+        void import('./guide').then((m) => m.openGuide(this.root));
         return;
       case 'privacy':
       case 'terms':
