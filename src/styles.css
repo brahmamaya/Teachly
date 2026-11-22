@@ -10353,3 +10353,93 @@ button,
 }
 /* room under the last row, so the round + never covers a notebook */
 #app .library .lib-grid { padding-bottom: 112px; }
+
+/* ---------- First-open tour: a teal ring around the real button, a small card beside it ---------- */
+.tour-ring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9000;
+  border-radius: 20px;
+  box-shadow: 0 0 0 3px #0d9488, 0 0 0 7px rgba(13, 148, 136, 0.22);
+  pointer-events: none;
+  transition: transform 0.42s var(--spring, cubic-bezier(0.2, 0.8, 0.2, 1)), width 0.42s var(--spring, ease), height 0.42s var(--spring, ease);
+  animation: tour-in 0.3s var(--ease) both;
+}
+.tour-ring::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 24px;
+  border: 2px solid rgba(13, 148, 136, 0.55);
+  animation: tour-pulse 1.8s ease-out infinite;
+}
+@keyframes tour-pulse {
+  from { opacity: 0.9; transform: scale(0.96); }
+  to { opacity: 0; transform: scale(1.14); }
+}
+.tour-card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9001;
+  width: min(340px, calc(100vw - 24px));
+  padding: 16px 18px 14px;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08), 0 18px 40px rgba(15, 23, 42, 0.22);
+  font-family: 'Figtree', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  transition: transform 0.42s var(--spring, cubic-bezier(0.2, 0.8, 0.2, 1));
+  animation: tour-in 0.3s var(--ease) both;
+}
+.tour-ring.no-glide,
+.tour-card.no-glide { transition: none; }
+@keyframes tour-in { from { opacity: 0; } }
+.tour-card .tc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-card .tc-sec { font-size: 12.5px; font-weight: 700; color: #0d9488; }
+.tour-card .tc-dots { display: flex; gap: 5px; }
+.tour-card .tc-dots i { width: 6px; height: 6px; border-radius: 50%; background: #d7dee7; transition: background 0.25s var(--ease), transform 0.25s var(--ease); }
+.tour-card .tc-dots i.on { background: #0d9488; transform: scale(1.25); }
+.tour-card h3 { margin: 10px 0 4px; font-size: 18px; font-weight: 700; }
+.tour-card p { margin: 0; font-size: 14.5px; line-height: 1.45; color: #475569; }
+.tour-card.turn h3,
+.tour-card.turn p { animation: tc-text 0.28s var(--ease) both; }
+@keyframes tc-text { from { opacity: 0; transform: translateX(6px); } }
+.tour-card .tc-btns { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.tour-card .tc-btns > span { flex: 1; }
+.tour-card button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 11px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease), background 0.18s var(--ease);
+}
+.tour-card button:active { transform: scale(0.95); }
+.tour-card .tc-end { background: none; color: #64748b; padding: 0 6px; }
+.tour-card .tc-next { background: linear-gradient(135deg, #14b8a6, #0d9488); color: #fff; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3); }
+.gd-tour {
+  margin-left: auto;
+  margin-right: 10px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease);
+}
+.gd-tour:active { transform: scale(0.95); }
+@media (prefers-reduced-motion: reduce) {
+  .tour-ring, .tour-card, .tour-ring::after, .tour-card.turn h3, .tour-card.turn p { animation: none !important; transition: none !important; }
+}
+.tour-card button:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
