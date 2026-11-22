@@ -10492,7 +10492,8 @@ button,
 
 /* ---------- Toolbar: the teal highlight glides softly from button to button; the chosen icon grows a little ---------- */
 #app .toolbar .tb-ind {
-  transition: transform 0.46s cubic-bezier(0.22, 1, 0.36, 1), width 0.46s cubic-bezier(0.22, 1, 0.36, 1), height 0.46s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  /* a soft glide from button to button: slow, easing out, no bounce */
+  transition: transform 0.56s cubic-bezier(0.25, 1, 0.5, 1), width 0.56s cubic-bezier(0.25, 1, 0.5, 1), height 0.56s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease;
 }
 #app .toolbar .tb-btn .icon {
   transition: transform 0.34s cubic-bezier(0.34, 1.4, 0.64, 1), color 0.25s ease;

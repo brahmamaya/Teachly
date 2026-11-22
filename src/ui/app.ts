@@ -740,16 +740,20 @@ export class App {
       return;
     }
     const to = { x: btn.offsetLeft, y: btn.offsetTop, w: btn.offsetWidth, h: btn.offsetHeight };
-    const from = this.indAt ?? to;
     const place = (r: typeof to) => {
       ind.style.width = `${r.w}px`;
       ind.style.height = `${r.h}px`;
       ind.style.transform = `translate(${r.x}px, ${r.y}px)`;
     };
-    ind.style.transition = 'none';
-    place(from);
-    void ind.offsetWidth;
-    ind.style.transition = '';
+    // The same marker already on screen: just give it the new place, so it glides on from wherever it is right now
+    // (quick taps used to make it jump back to the last button first). A new toolbar: start at the last place.
+    if (!(this.indAt && ind.dataset.placed)) {
+      ind.style.transition = 'none';
+      place(this.indAt ?? to);
+      void ind.offsetWidth;
+      ind.style.transition = '';
+      ind.dataset.placed = '1';
+    }
     place(to);
     this.indAt = to;
   }
