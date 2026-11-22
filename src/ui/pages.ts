@@ -14,6 +14,9 @@ export const PAGE_DRAG = 'application/x-teachly-page';
 
 let copied: Page | null = null;
 
+/** From this many pages on, the list shows only the pages near the view (it stays instant with thousands). */
+const PAGES_WINDOW_FROM = 80;
+
 export class PagesPanel {
   private el: HTMLElement | null = null;
   private unsub: (() => void) | null = null;
@@ -82,15 +85,14 @@ export class PagesPanel {
     const i = store.index;
     const list = el.querySelector('.pages-list');
     const scroll = list?.scrollTop ?? 0;
+    // A big notebook (hundreds or thousands of pages): only the pages near the view are made (see fillWindow).
+    const big = pages.length > PAGES_WINDOW_FROM;
+    const thumb = (k: number) => `<button class="page-thumb ${k === i ? 'on' : ''}" data-pg="go" data-i="${k}" aria-label="Page ${k + 1}">
+            <img alt="" draggable="false"><span>${k + 1}</span></button>`;
     el.innerHTML = `
       <button class="pages-expand" data-pg="expand" title="Show all pages full screen" aria-label="Expand: show all pages full screen">${icon('expand', 18)}<span>Expand</span></button>
       <header class="pages-head"><b>Pages</b><span>${pages.length}</span><button class="icon-btn small" data-pg="close" aria-label="Close">${icon('close', 20)}</button></header>
-      <div class="pages-list">${pages
-        .map(
-          (_p, k) => `<button class="page-thumb ${k === i ? 'on' : ''}" data-pg="go" data-i="${k}" aria-label="Page ${k + 1}">
-            <img alt="" draggable="false"><span>${k + 1}</span></button>`,
-        )
-        .join('')}</div>
+      <div class="pages-list ${big ? 'windowed' : ''}">${big ? '<i class="pv-pad top"></i><div class="pv-items"></div><i class="pv-pad bottom"></i>' : pages.map((_p, k) => thumb(k)).join('')}</div>
       <div class="pages-actions">
         <button data-pg="up" ${i === 0 ? 'disabled' : ''}>${icon('up', 20)}<span>Up</span></button>
         <button data-pg="down" ${i === pages.length - 1 ? 'disabled' : ''}>${icon('down', 20)}<span>Down</span></button>
@@ -100,11 +102,73 @@ export class PagesPanel {
       </div>
       <button class="btn primary wide" data-pg="add">${icon('plus', 20)} New page</button>`;
     const newList = el.querySelector('.pages-list') as HTMLElement;
+    if (big) return this.fillWindow(newList, scroll, thumb, true);
     newList.scrollTop = scroll;
     this.stopThumbs?.();
     this.stopThumbs = lazyThumbs(newList, '.page-thumb', (c) => store.doc.pages[Number(c.dataset.i)]);
     // Keep the open page in view.
     (newList.querySelector('.page-thumb.on') as HTMLElement | null)?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /** Height of one page in the list plus the gap (measured once a page is shown). */
+  private step = 0;
+  private winFrom = -1;
+  private winTo = -1;
+
+  /**
+   * Big notebooks: the list holds only the pages around what is on screen (about 30), with empty space above and below
+   * standing in for the rest, and moves this window as the list scrolls. So opening, closing and turning pages stay
+   * instant even with thousands of pages (the full list took seconds to build and lay out). Moving a page by holding it
+   * works within the window; the window does not move while a page is held.
+   */
+  private fillWindow(list: HTMLElement, scroll: number, thumb: (k: number) => string, fresh: boolean): void {
+    const n = store.doc.pages.length, i = store.index;
+    const items = list.querySelector('.pv-items') as HTMLElement;
+    const top = list.querySelector('.pv-pad.top') as HTMLElement, bottom = list.querySelector('.pv-pad.bottom') as HTMLElement;
+    const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+    const paint = (from: number, to: number) => {
+      if (from === this.winFrom && to === this.winTo && !fresh) return;
+      this.winFrom = from;
+      this.winTo = to;
+      items.innerHTML = Array.from({ length: to - from }, (_, k) => thumb(from + k)).join('');
+      const s = this.step || 160;
+      top.style.height = `${Math.max(0, from * s - gap)}px`;
+      bottom.style.height = `${Math.max(0, (n - to) * s - gap)}px`;
+      this.stopThumbs?.();
+      this.stopThumbs = lazyThumbs(list, '.page-thumb', (c) => store.doc.pages[Number(c.dataset.i)]);
+    };
+    const range = () => {
+      const s = this.step || 160, h = list.clientHeight || 600;
+      const a = Math.max(0, Math.floor(list.scrollTop / s) - 10);
+      return [a, Math.min(n, Math.ceil((list.scrollTop + h) / s) + 10)] as const;
+    };
+    if (fresh) {
+      this.winFrom = this.winTo = -1;
+      // first a few pages around the open one, to learn the height of one page
+      paint(Math.max(0, i - 2), Math.min(n, i + 3));
+      const one = items.querySelector('.page-thumb') as HTMLElement | null;
+      if (one) this.step = one.getBoundingClientRect().height + gap;
+      const want = scroll || Math.max(0, i * this.step - (list.clientHeight - this.step) / 2);
+      fresh = true;
+      this.winFrom = -1;
+      const s = this.step || 160, h = list.clientHeight || 600;
+      paint(Math.max(0, Math.floor(want / s) - 10), Math.min(n, Math.ceil((want + h) / s) + 10));
+      fresh = false;
+      list.scrollTop = want;
+      if (!list.dataset.win) {
+        list.dataset.win = '1';
+        let raf = 0;
+        list.addEventListener('scroll', () => {
+          if (raf || list.classList.contains('sorting')) return;
+          raf = requestAnimationFrame(() => {
+            raf = 0;
+            const [a, b] = range();
+            if (a < this.winFrom || b > this.winTo) paint(a, b);
+          });
+        });
+      }
+      return;
+    }
   }
 
   /** A drag just ended: the click that follows it must not open a page. */

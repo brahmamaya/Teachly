@@ -426,12 +426,17 @@ export class App {
 
   private toolbarKey(): string {
     const t = store.tool;
-    return JSON.stringify([store.settings.tbHidden, store.settings.tbShown, store.settings.hexItems, t.penStyle, t.color, t.hlColor, t.fillColor, t.tapeColor, isRecording(), this.popFor, this.pages.open, store.index, store.doc.pages.length, store.settings.subject, this.subject.open]);
+    return JSON.stringify([store.settings.tbHidden, store.settings.tbShown, store.settings.hexItems, t.penStyle, t.color, t.hlColor, t.fillColor, t.tapeColor, isRecording(), store.index, store.doc.pages.length, store.settings.subject, this.subject.open]);
   }
 
   /** Quick path: only mark the active tool and the slide switch (no markup rebuild, a few class changes). */
   private markActive(): void {
     const t = store.tool;
+    // which menu / panel is open: only a class changes (the whole toolbar used to be rebuilt each time a menu opened)
+    this.toolbar.querySelectorAll<HTMLElement>('.tb-left [data-pop], .tb-right [data-pop]').forEach((b) =>
+      b.classList.toggle('open', this.popFor === b.dataset.pop || (b.dataset.pop === 'menu' && this.popFor === 'tbedit')),
+    );
+    this.toolbar.querySelector('.tb-right [data-act=pages]')?.classList.toggle('open', this.pages.open);
     this.markReadOnly();
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     left.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.classList.toggle('active', b.dataset.tool === t.tool));

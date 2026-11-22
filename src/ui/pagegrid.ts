@@ -225,6 +225,8 @@ export class PagesGrid {
     if (!this.sel.size) this.sel.add(store.page.id);
     const grid = el.querySelector('.pgs-grid') as HTMLElement | null;
     const scroll = grid?.scrollTop ?? 0;
+    // Thousands of pages: only the rows near the view are made (see fillWindow), so it opens and closes at once.
+    const big = pages.length > 120;
     el.innerHTML = `
       <header class="pgs-top">
         <button class="pgs-round" data-pg="close" title="Close" aria-label="Close">${icon('close', 18)}</button>
@@ -238,9 +240,23 @@ export class PagesGrid {
       <nav class="pgs-bar" aria-label="Page actions">
         ${this.act('insert', 'plus', 'Insert')}${this.act('cut', 'scissors', 'Cut')}${this.act('copy', 'copy', 'Copy')}${this.act('paste', 'paste', 'Paste')}${this.act('rotate', 'rotate', 'Rotate')}${this.act('tag', 'tag', 'Tag')}${this.act('delete', 'trash', 'Delete', true)}${this.act('extract', 'extract', 'Extract')}${this.act('share', 'share', 'Share')}
       </nav>
-      <div class="pgs-grid ${this.fresh ? 'fresh' : ''}">${pages
-        .map(
-          (p, k) => `<div class="pgs-item" data-i="${k}" draggable="true" style="--n:${k}">
+      <div class="pgs-grid ${this.fresh ? 'fresh' : ''}">${big ? '<i class="pv-pad top"></i><i class="pv-pad bottom"></i>' : pages.map((_p, k) => this.item(k)).join('')}</div>`;
+    this.fresh = false;
+    const g = el.querySelector('.pgs-grid') as HTMLElement;
+    // every card has the page's shape from the start (a picture arriving later never changes the layout)
+    g.style.setProperty('--pg-ar', `${PAGE.w} / ${PAGE.h}`);
+    if (big) return this.fillWindow(g, scroll);
+    g.scrollTop = scroll;
+    this.stopThumbs?.();
+    this.stopThumbs = lazyThumbs(g, '.pgs-card', (c) => store.doc.pages[Number(c.dataset.i)]);
+    this.paint();
+    if (!scroll) (g.querySelector('.pgs-card.sel') as HTMLElement | null)?.scrollIntoView({ block: 'center' });
+  }
+
+  /** One page in the grid. */
+  private item(k: number): string {
+    const p = store.doc.pages[k];
+    return `<div class="pgs-item" data-i="${k}" draggable="true" style="--n:${k}">
             <div class="pgs-card" role="button" tabindex="0" data-pg="card" data-i="${k}" data-id="${p.id}" aria-label="Page ${k + 1}">
               <img alt="" draggable="false">
               <button class="pgs-zoom" data-pg="open" data-i="${k}" title="Open page ${k + 1}" aria-label="Open page ${k + 1}">${icon('magnifier', 18)}</button>
@@ -248,16 +264,56 @@ export class PagesGrid {
               <i class="pgs-check">${icon('check', 14)}</i>
             </div>
             <span class="pgs-n ${p.id === store.page.id ? 'cur' : ''}">${k + 1}</span>
-          </div>`,
-        )
-        .join('')}</div>`;
-    this.fresh = false;
-    const g = el.querySelector('.pgs-grid') as HTMLElement;
-    g.scrollTop = scroll;
-    this.stopThumbs?.();
-    this.stopThumbs = lazyThumbs(g, '.pgs-card', (c) => store.doc.pages[Number(c.dataset.i)]);
-    this.paint();
-    if (!scroll) (g.querySelector('.pgs-card.sel') as HTMLElement | null)?.scrollIntoView({ block: 'center' });
+          </div>`;
+  }
+
+  /**
+   * Big notebooks: the grid holds only the rows around the view (empty space stands in for the rest above and below)
+   * and moves this window as it scrolls. Selection is kept by page, so it survives the window moving.
+   */
+  private fillWindow(g: HTMLElement, scroll: number): void {
+    const n = store.doc.pages.length;
+    const top = g.querySelector('.pv-pad.top') as HTMLElement, bottom = g.querySelector('.pv-pad.bottom') as HTMLElement;
+    const gap = parseFloat(getComputedStyle(g).rowGap) || 0;
+    let cols = 1, rowH = 180, from = -1, to = -1;
+    const paint = (a: number, b: number) => {
+      if (a === from && b === to) return;
+      from = a;
+      to = b;
+      g.querySelectorAll('.pgs-item').forEach((x) => x.remove());
+      top.insertAdjacentHTML('afterend', Array.from({ length: b - a }, (_, k) => this.item(a + k)).join(''));
+      top.style.height = `${Math.max(0, (a / cols) * rowH - gap)}px`;
+      bottom.style.height = `${Math.max(0, (Math.ceil(n / cols) - b / cols) * rowH - gap)}px`;
+      this.stopThumbs?.();
+      this.stopThumbs = lazyThumbs(g, '.pgs-card', (c) => store.doc.pages[Number(c.dataset.i)]);
+      this.paint();
+    };
+    // learn the columns and the row height from the first rows
+    paint(0, Math.min(n, 30));
+    const its = [...g.querySelectorAll<HTMLElement>('.pgs-item')];
+    const y0 = its[0]?.offsetTop ?? 0;
+    cols = Math.max(1, its.filter((x) => x.offsetTop === y0).length);
+    const second = its.find((x) => x.offsetTop > y0);
+    rowH = second ? second.offsetTop - y0 : (its[0]?.offsetHeight ?? 160) + gap;
+    const range = (s: number) => {
+      const h = g.clientHeight || 600;
+      const r0 = Math.max(0, Math.floor(s / rowH) - 4), r1 = Math.ceil((s + h) / rowH) + 4;
+      return [r0 * cols, Math.min(n, r1 * cols)] as const;
+    };
+    const cur = store.index;
+    const want = scroll || Math.max(0, Math.floor(cur / cols) * rowH - (g.clientHeight - rowH) / 2);
+    from = -1;
+    paint(...range(want));
+    g.scrollTop = want;
+    let raf = 0;
+    g.addEventListener('scroll', () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const [a, b] = range(g.scrollTop);
+        if (a < from || b > to) paint(a, b);
+      });
+    });
   }
 
   private act(id: string, ic: string, label: string, danger = false): string {
