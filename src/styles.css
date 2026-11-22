@@ -10748,3 +10748,30 @@ button,
 .lite #app .hx { outline: none; }
 .lite #app .hx:not(.hx-move):not(.active):not(:active) { background: linear-gradient(180deg, #f8fafc, #e2e8f0); }
 @media (prefers-reduced-motion: reduce) { #app .hx, #app .hx .hx-btn { transition: none; } }
+
+/* ---------- Every toolbar button shows the teal when touched (owner, 22 Nov) ----------
+   Left bar too: a pressed button, a button whose menu is open (e.g. Eraser), and a switched-on button (Hand) get the
+   same teal as the chosen tool, with a white icon. The chosen tool itself keeps the gliding teal marker. */
+#app .toolbar.tb-left .tb-btn:not(.tb-ro),
+#app .toolbar.tb-left .icon-btn {
+  border-radius: 18px;
+  transition: background-color 0.22s var(--ease), color 0.22s var(--ease), box-shadow 0.22s var(--ease), transform 0.18s var(--ease);
+}
+#app .toolbar.tb-left .tb-btn:not(.tb-ro):not(.active).open,
+#app .toolbar.tb-left .tb-btn:not(.tb-ro):not(.active):active,
+#app .toolbar.tb-left .tb-btn:not(.tb-ro):not(.active).pressed,
+#app .toolbar.tb-right .tb-btn.pressed,
+#app .toolbar .tb-btn.tb-toggle.on,
+#app:not([data-board='dark']) .toolbar .tb-btn.tb-toggle.on {
+  background: #0f9f90;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
+  --eye: #fff;
+}
+#app .toolbar .tb-btn.tb-toggle.on .icon { color: #fff; }
+#app .toolbar.tb-left .tb-btn:not(.tb-ro):not(.active):active,
+#app .toolbar .tb-btn.pressed { transition-duration: 0s; }
+/* iPad Safari does not show :active on a touch: the app's own "pressed" class gives the same teal */
+@media (prefers-reduced-motion: reduce) {
+  #app .toolbar.tb-left .tb-btn, #app .toolbar.tb-left .icon-btn { transition: none; }
+}
