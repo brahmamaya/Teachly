@@ -16,7 +16,7 @@ import { fadeOut, toast } from './panel';
 // drag a page to move it. Thumbnails are drawn only when they scroll into
 // view and are kept, so even a 300-page book opens at once.
 
-/** Copied / cut pages, kept while Teachly is open (also usable in another notebook). */
+/** Copied / cut pages, kept while Physica Notes is open (also usable in another notebook). */
 let clipboard: Page[] = [];
 
 const thumbs = new WeakMap<Page, string>();

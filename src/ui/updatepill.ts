@@ -1,6 +1,6 @@
 import { saveNow } from '../io/autosave';
 
-// "New version ready": shown when a new version of Teachly was installed in the background while the app stayed open
+// "New version ready": shown when a new version of Physica Notes was installed in the background while the app stayed open
 // (a classroom board is often never put away). It never reloads by itself in the middle of a lesson: the teacher
 // taps it, the notebook is written first, and only when that worked does the page reload.
 

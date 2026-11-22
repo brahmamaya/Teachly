@@ -17,7 +17,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 window.addEventListener('appinstalled', () => {
   deferred = null;
-  toast('Teachly is installed — open it from your home screen');
+  toast('Physica Notes is installed — open it from your home screen');
 });
 
 /** Already running as an installed app? */
@@ -33,53 +33,53 @@ export function isAppleTouch(): boolean {
 }
 
 export async function installApp(host: HTMLElement): Promise<void> {
-  if (isInstalled()) return toast('Teachly is already installed on this device');
+  if (isInstalled()) return toast('Physica Notes is already installed on this device');
   if (deferred) {
     await deferred.prompt();
     deferred = null;
     return;
   }
   const apple = isAppleTouch();
-  const body = floatingPanel(host, { id: 'install', title: 'Install Teachly', iconName: 'download', width: 380 }, false);
+  const body = floatingPanel(host, { id: 'install', title: 'Install Physica Notes', iconName: 'download', width: 380 }, false);
   if (!body) return;
   body.innerHTML = apple
     ? `<ol class="install-steps">
         <li>Open this page in <b>Safari</b>.</li>
         <li>Tap the <b>Share</b> button <span class="install-ico">${shareIcon}</span> at the top of the screen.</li>
         <li>Choose <b>Add to Home Screen</b> <span class="install-ico">${icon('plus', 18)}</span>, then tap <b>Add</b>.</li>
-        <li>Open <b>Teachly</b> from the home screen — it runs full screen and works without internet.</li>
+        <li>Open <b>Physica Notes</b> from the home screen — it runs full screen and works without internet.</li>
       </ol>`
     : `<ol class="install-steps">
         <li>Open this page in <b>Chrome</b> or <b>Edge</b>.</li>
         <li>Open the browser menu (⋮) and choose <b>Install app</b> or <b>Add to Home screen</b>.</li>
-        <li>Open <b>Teachly</b> from the desktop or home screen — it works without internet.</li>
+        <li>Open <b>Physica Notes</b> from the desktop or home screen — it works without internet.</li>
       </ol>`;
 }
 
 const shareIcon =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
 
-/** Where teachers get Teachly: physica.in → For teachers → Download Teachly / For iPad. */
+/** Where teachers get Physica Notes: physica.in → For teachers → Download Physica Notes / For iPad. */
 export const DOWNLOAD_URL = 'https://physica.in/';
 
 /** Share the download page: native share sheet when available, else copy. */
 export async function shareApp(): Promise<void> {
   if (navigator.share) {
-    const text = 'Teachly by Physica: smooth interactive whiteboard for teachers. Open physica.in → For teachers → Download Teachly.';
+    const text = 'Physica Notes: smooth interactive whiteboard for teachers. Open physica.in → For teachers → Download Physica Notes.';
     try {
-      // With the Teachly logo where the app allows a picture (e.g. WhatsApp).
+      // With the Physica Notes logo where the app allows a picture (e.g. WhatsApp).
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
       const blob = await (await fetch('./icon-512.png')).blob();
-      const logo = new File([blob], 'Teachly.png', { type: 'image/png' });
+      const logo = new File([blob], 'Physica-Notes.png', { type: 'image/png' });
       if (nav.canShare?.({ files: [logo] })) {
-        await navigator.share({ title: 'Teachly by Physica', text: `${text} ${DOWNLOAD_URL}`, files: [logo] });
+        await navigator.share({ title: 'Physica Notes', text: `${text} ${DOWNLOAD_URL}`, files: [logo] });
         return;
       }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return;
     }
     try {
-      await navigator.share({ title: 'Teachly by Physica', text, url: DOWNLOAD_URL });
+      await navigator.share({ title: 'Physica Notes', text, url: DOWNLOAD_URL });
       return;
     } catch {
       /* cancelled — fall back to copying */

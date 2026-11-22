@@ -10,60 +10,60 @@ const UPDATED = '22 November 2026';
 
 const PRIVACY = `
 <h1>Privacy policy</h1>
-<p class="lg-date">Teachly by Physica · Last updated ${UPDATED}</p>
+<p class="lg-date">Physica Notes · Last updated ${UPDATED}</p>
 <div class="lg-short"><b>In short</b>
   <ul>
     <li>No account, no sign-in, no ads, no tracking, no analytics.</li>
     <li>Your lessons, notebooks and recordings stay on your own device. We never receive them.</li>
-    <li>The Google Play version of the Android app has no internet permission at all. The website version uses the internet only to load Teachly's own files.</li>
+    <li>The Google Play version of the Android app has no internet permission at all. The website version uses the internet only to load Physica Notes' own files.</li>
   </ul>
 </div>
 
 <h2>1. What stays on your device</h2>
-<p>Everything you make in Teachly is saved only on the device you are using, in the storage of your browser or of the Teachly Android app:</p>
+<p>Everything you make in Physica Notes is saved only on the device you are using, in the storage of your browser or of the Physica Notes Android app:</p>
 <ul>
   <li>notebooks, pages, writing, shapes, graphs, text, folders and the Trash;</li>
-  <li>PDF files, PowerPoint files and pictures you open in Teachly (they are read on your device and are not uploaded);</li>
-  <li>each picture on a page is kept on your device as a separate file, and when Teachly updates an older notebook to the newest format it keeps an untouched copy of the old version on your device; both are removed when the notebook is deleted for good;</li>
+  <li>PDF files, PowerPoint files and pictures you open in Physica Notes (they are read on your device and are not uploaded);</li>
+  <li>each picture on a page is kept on your device as a separate file, and when Physica Notes updates an older notebook to the newest format it keeps an untouched copy of the old version on your device; both are removed when the notebook is deleted for good;</li>
   <li>a copy of each PDF file you open, and pictures of its pages made when you look at them, kept with the notebook so that big books open fast and <b>Save as PDF</b> can reuse the real pages (small and sharp); they are removed when the notebooks using them are deleted for good;</li>
   <li>while you record a lesson, the video is written to your device piece by piece (so long lessons do not fill the memory, and a recording cut off by the app closing can still be saved next time); the pieces are deleted shortly after the video is saved, or when you delete an unfinished recording;</li>
-  <li>your settings (for example pen colours, recent colours, board colour, graph settings, recording quality) and the place where you stopped, so Teachly can open where you left off;</li>
+  <li>your settings (for example pen colours, recent colours, board colour, graph settings, recording quality) and the place where you stopped, so Physica Notes can open where you left off;</li>
   <li>names you type into the name picker, and team names and scores in the scoreboard.</li>
 </ul>
 <p>None of this is sent to us or to anyone else.</p>
 
 <h2>2. What we do not collect</h2>
-<p>Teachly does not ask for or collect your name, email, phone number, contacts, location, photos from your gallery (only a file you choose yourself is opened), or any information about your students. Teachly has no advertising, no analytics and no tracking cookies, and we do not sell or share any data, because we do not have any.</p>
+<p>Physica Notes does not ask for or collect your name, email, phone number, contacts, location, photos from your gallery (only a file you choose yourself is opened), or any information about your students. Physica Notes has no advertising, no analytics and no tracking cookies, and we do not sell or share any data, because we do not have any.</p>
 
-<h2>3. When Teachly uses the internet</h2>
+<h2>3. When Physica Notes uses the internet</h2>
 <ul>
-  <li><b>No other websites.</b> Teachly's fonts, pictures and code are part of Teachly itself. The app never asks Google, a content network or any other site for anything while you use it, and it tells the browser not to pass on where you came from. So no other website learns your device's address or anything about your use.</li>
-  <li><b>Website version:</b> your browser downloads Teachly's files from the website host. Like every website host, it receives the technical details needed to send the files (such as your IP address, browser type and time) and may keep them in its own logs under its own privacy policy. Teachly adds nothing to this. After the first visit Teachly also works without internet.</li>
+  <li><b>No other websites.</b> Physica Notes' fonts, pictures and code are part of Physica Notes itself. The app never asks Google, a content network or any other site for anything while you use it, and it tells the browser not to pass on where you came from. So no other website learns your device's address or anything about your use.</li>
+  <li><b>Website version:</b> your browser downloads Physica Notes' files from the website host. Like every website host, it receives the technical details needed to send the files (such as your IP address, browser type and time) and may keep them in its own logs under its own privacy policy. Physica Notes adds nothing to this. After the first visit Physica Notes also works without internet.</li>
   <li><b>Android app from Google Play:</b> the app does not use the internet. It contains all its files, and Google Play delivers updates. (Only a copy of the app installed outside Google Play may check the website for newer app files; nothing about you or your lessons is sent.)</li>
-  <li><b>Share Teachly:</b> only when you tap it, your device's share menu opens with a link to physica.in.</li>
-  <li><b>Links:</b> a web link you open from Teachly opens in your browser.</li>
+  <li><b>Share Physica Notes:</b> only when you tap it, your device's share menu opens with a link to physica.in.</li>
+  <li><b>Links:</b> a web link you open from Physica Notes opens in your browser.</li>
 </ul>
 
 <h2>4. Microphone</h2>
 <p>The microphone is used only for <b>Record lesson</b>, only after you start a recording and allow it. The sound goes into the video that is saved on your device. It is not sent anywhere.</p>
-<p>Teachly does not use the camera at all. The Android app from Google Play asks for one permission only: microphone, and only when you tap the lesson-recording feature. You can refuse the microphone, or take it back at any time in your device settings; the rest of Teachly keeps working.</p>
+<p>Physica Notes does not use the camera at all. The Android app from Google Play asks for one permission only: microphone, and only when you tap the lesson-recording feature. You can refuse the microphone, or take it back at any time in your device settings; the rest of Physica Notes keeps working.</p>
 
 <h2>5. Files you save</h2>
-<p>PDFs, videos and pictures you save from Teachly are saved on your device (on Android in Downloads / Teachly; on iPad through the share menu, for example Save to Files). What happens to them after that is up to you.</p>
+<p>PDFs, videos and pictures you save from Physica Notes are saved on your device (on Android in Downloads / Physica Notes; on iPad through the share menu, for example Save to Files). What happens to them after that is up to you.</p>
 
 <h2>6. Keeping and deleting your data</h2>
 <ul>
   <li>Deleted notebooks go to the Trash; <b>Empty trash</b> removes them for good.</li>
-  <li>Uninstalling the Android app, or clearing this website's data in your browser, deletes everything Teachly saved on that device. The Android app keeps its data out of Android's cloud backup, so there is no copy elsewhere.</li>
-  <li>Safari on iPad and iPhone may remove the data of websites that have not been used for some time. Adding Teachly to the Home Screen avoids this. Save important lessons as PDF as well.</li>
+  <li>Uninstalling the Android app, or clearing this website's data in your browser, deletes everything Physica Notes saved on that device. The Android app keeps its data out of Android's cloud backup, so there is no copy elsewhere.</li>
+  <li>Safari on iPad and iPhone may remove the data of websites that have not been used for some time. Adding Physica Notes to the Home Screen avoids this. Save important lessons as PDF as well.</li>
   <li>Because we never receive your data, we cannot recover it for you.</li>
 </ul>
 
 <h2>7. Security</h2>
-<p>Your lessons are protected by your device's own security, such as its screen lock. Anyone who can use your device can open Teachly and see your notebooks.</p>
+<p>Your lessons are protected by your device's own security, such as its screen lock. Anyone who can use your device can open Physica Notes and see your notebooks.</p>
 
 <h2>8. Children</h2>
-<p>Teachly is made for teachers. It collects no personal data from anyone, including students. Student names typed into the name picker or scoreboard stay only on that device.</p>
+<p>Physica Notes is made for teachers. It collects no personal data from anyone, including students. Student names typed into the name picker or scoreboard stay only on that device.</p>
 
 <h2>9. Changes to this policy</h2>
 <p>If this policy changes, the new version will be shown here with a new date.</p>
@@ -74,37 +74,37 @@ const PRIVACY = `
 
 const TERMS = `
 <h1>Terms of use</h1>
-<p class="lg-date">Teachly by Physica · Last updated ${UPDATED}</p>
+<p class="lg-date">Physica Notes · Last updated ${UPDATED}</p>
 <div class="lg-short"><b>In short</b>
   <ul>
-    <li>Teachly is free to use for teaching and learning.</li>
+    <li>Physica Notes is free to use for teaching and learning.</li>
     <li>What you make is yours, and it stays on your device, so keep your own copies.</li>
     <li>Use it fairly and lawfully.</li>
   </ul>
 </div>
 
-<h2>1. Using Teachly</h2>
-<p>Teachly is an interactive whiteboard made by Physica. Teachers, students and schools may use it free of charge to teach and learn. Using Teachly means you accept these terms.</p>
+<h2>1. Using Physica Notes</h2>
+<p>Physica Notes (earlier called Teachly) is an interactive whiteboard made by Physica. Teachers, students and schools may use it free of charge to teach and learn. Using Physica Notes means you accept these terms.</p>
 
 <h2>2. Your content</h2>
 <ul>
   <li>Your notebooks, writing and recordings belong to you.</li>
-  <li>You are responsible for what you put into Teachly. Only open, show or record PDFs, slides, pictures and other material you are allowed to use.</li>
-  <li>Do not use Teachly for anything unlawful, harmful or abusive.</li>
+  <li>You are responsible for what you put into Physica Notes. Only open, show or record PDFs, slides, pictures and other material you are allowed to use.</li>
+  <li>Do not use Physica Notes for anything unlawful, harmful or abusive.</li>
   <li>Before recording a lesson, make sure the people who can be heard are fine with being recorded, where this is required.</li>
 </ul>
 
 <h2>3. Your data is kept by you</h2>
-<p>Teachly saves everything only on your device (see the Privacy policy). We do not keep a copy, so we cannot restore lost or deleted notebooks. Please keep your own copies of important lessons, for example as PDF.</p>
+<p>Physica Notes saves everything only on your device (see the Privacy policy). We do not keep a copy, so we cannot restore lost or deleted notebooks. Please keep your own copies of important lessons, for example as PDF.</p>
 
 <h2>4. Updates</h2>
 <p>The website version updates when your device is online; the Google Play version is updated by Google Play. Features may be added, changed or removed over time.</p>
 
-<h2>5. Teachly's name and design</h2>
-<p>The Teachly and Physica names, logos and design belong to Physica. Please do not sell Teachly or present it as your own.</p>
+<h2>5. Physica Notes' name and design</h2>
+<p>The Physica Notes and Physica names, logos and design belong to Physica. Please do not sell Physica Notes or present it as your own.</p>
 
 <h2>6. No guarantee</h2>
-<p>Teachly is provided "as is". We work to make it reliable, but we cannot promise that it will always work without errors on every device. As far as the law allows, Physica is not responsible for any loss, including lost lessons or data, that comes from using Teachly.</p>
+<p>Physica Notes is provided "as is". We work to make it reliable, but we cannot promise that it will always work without errors on every device. As far as the law allows, Physica is not responsible for any loss, including lost lessons or data, that comes from using Physica Notes.</p>
 
 <h2>7. Changes to these terms</h2>
 <p>If these terms change, the new version will be shown here with a new date.</p>

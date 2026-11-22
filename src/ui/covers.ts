@@ -188,7 +188,7 @@ function ensureDrawing(key: string): void {
 export function coverHTML(c: Cover, title: string, portrait: boolean): string {
   if (c.sub) ensureDrawing(c.sub.drawing);
   const look = c.sub ? `data-m="1" data-a="${c.sub.drawing}" data-p="${c.sub.pair}" data-s="${c.sub.style}"` : `data-c="${c.id}"`;
-  return `<span class="nbc" ${look} data-o="${portrait ? 'p' : 'l'}"><span class="nbc-art"></span><span class="nbc-brand">Teachly</span><span class="nbc-tw"><i class="nbc-rule"></i><span class="nbc-t">${esc(title)}</span></span></span>`;
+  return `<span class="nbc" ${look} data-o="${portrait ? 'p' : 'l'}"><span class="nbc-art"></span><span class="nbc-brand">Physica Notes</span><span class="nbc-tw"><i class="nbc-rule"></i><span class="nbc-t">${esc(title)}</span></span></span>`;
 }
 
 /** The subject tabs above the covers (the tab `active` is highlighted). */

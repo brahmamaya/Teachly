@@ -17,10 +17,15 @@ const { check, finish } = require('./lib.cjs');
   const press = (x, y) => cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1, pointerType: 'pen' });
   const move = (x, y) => cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left', buttons: 1, pointerType: 'pen' });
   const up = (x, y) => cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1, pointerType: 'pen' });
-  // pixels painted on the overlay layer in a strip just ahead of the pen
+  // pixels painted on the overlay layer (and the small pen-tip canvas over it) in a strip just ahead of the pen
   const ahead = () => page.evaluate(() => {
-    const c = window.teachly.board.overlay, g = c.getContext('2d'), k = c.width / c.getBoundingClientRect().width;
-    const r = c.getBoundingClientRect();
+    const b = window.teachly.board, ov = b.overlay, k = ov.width / ov.getBoundingClientRect().width;
+    const c = document.createElement('canvas');
+    c.width = ov.width; c.height = ov.height;
+    const g = c.getContext('2d');
+    g.drawImage(ov, 0, 0);
+    if (b.tipPlace) g.drawImage(b.tip, b.tipPlace.x * k, b.tipPlace.y * k);
+    const r = ov.getBoundingClientRect();
     const x = Math.round((500 + 15 - r.left) * k), y = Math.round((300 - r.top) * k);
     const d = g.getImageData(x - 3, y - 6, 6, 12).data;
     let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 40) n++;
@@ -33,7 +38,7 @@ const { check, finish } = require('./lib.cjs');
     for (let x = 410; x <= 500; x += 10) await move(x, 300);
     await page.waitForTimeout(120);
     const n = await ahead();
-    if (on) check('on: a guessed bit is drawn ahead of the pen on the overlay', n > 5, `${n} px`);
+    if (on) check('on: a guessed bit is drawn ahead of the pen (overlay / tip canvas, never the stroke)', n > 5, `${n} px`);
     else check('off (default): nothing is drawn ahead of the pen', n === 0, `${n} px`);
     await up(500, 300);
     await page.waitForTimeout(150);

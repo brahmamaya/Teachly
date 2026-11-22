@@ -33,7 +33,7 @@ export function readAsDataURL(blob: Blob): Promise<string> {
   });
 }
 
-/** The Teachly Android app (APK) passes files to the device through this bridge. */
+/** The Physica Notes Android app (APK) passes files to the device through this bridge. */
 interface AndroidBridge {
   saveFile(base64: string, name: string, mime: string): void;
   /** App version 2+: a big file in pieces (a long lesson video never has to fit in memory at once). */
@@ -71,7 +71,7 @@ export function androidApp(): AndroidBridge | null {
 export function download(blob: Blob, name: string): void {
   const app = androidApp();
   if (app) {
-    // In the Android app: save straight into Downloads/Teachly (big files in pieces when the app can take them).
+    // In the Android app: save straight into Downloads/Physica Notes (big files in pieces when the app can take them).
     if (app.saveBegin && blob.size > 8 * 1024 * 1024) {
       void saveInPieces(app, blob, name, blob.type || 'application/octet-stream').then((ok) => ok || toast('Could not save the file'));
       return;
@@ -348,7 +348,7 @@ export async function openFile(file?: File): Promise<void> {
   if (!file) return;
   try {
     const raw = JSON.parse(await file.text()) as Doc;
-    if (!Array.isArray(raw.pages)) throw new Error('Not a Teachly file');
+    if (!Array.isArray(raw.pages)) throw new Error('Not a Physica Notes file');
     // A file made by an older version is brought up to the current format the same safe way.
     const { doc } = migrateDoc({ ...raw, pages: raw.pages.length ? raw.pages : [newPage()] });
     store.loadDoc({ version: 1, schema: doc.schema, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages, ...(doc.orient === 'portrait' ? { orient: 'portrait' as const } : {}), ...(doc.shape ? { shape: doc.shape } : {}) });

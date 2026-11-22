@@ -1,7 +1,7 @@
 {
-  "name": "Teachly",
-  "short_name": "Teachly",
-  "description": "Teachly by Physica \u2014 a smooth interactive whiteboard for classrooms. Works offline.",
+  "name": "Physica Notes",
+  "short_name": "Physica Notes",
+  "description": "Physica Notes \u2014 a smooth interactive whiteboard for classrooms. Works offline.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

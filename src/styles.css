@@ -130,8 +130,17 @@ button:focus-visible {
 
 .layer.bg,
 .layer.ink,
-.layer.wet {
+.layer.wet,
+.layer.tip {
   pointer-events: none;
+}
+
+/* the small canvas that follows the pen tip (moved with transform only) */
+.layer.tip {
+  inset: auto;
+  left: 0;
+  top: 0;
+  will-change: transform;
 }
 
 .board.panning .overlay {
@@ -10025,7 +10034,7 @@ button,
   box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
   clip-path: inset(0 calc(100% - 46px) 0 0 round 18px);
   opacity: 0;
-  transition: clip-path 0.38s var(--spring), opacity 0.2s var(--ease);
+  transition: clip-path 0.62s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s var(--ease);
   pointer-events: none;
 }
 .tb-ro-label {
@@ -10038,7 +10047,7 @@ button,
   white-space: nowrap;
   opacity: 0;
   transform: translate(-8px, -50%);
-  transition: opacity 0.22s var(--ease), transform 0.32s var(--spring);
+  transition: opacity 0.35s var(--ease), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 #app .toolbar .tb-ro.on { color: #fff; --eye: #fff; --eye-in: #0d9488; }
@@ -10483,7 +10492,8 @@ button,
 
 /* ---------- Toolbar: the teal highlight glides softly from button to button; the chosen icon grows a little ---------- */
 #app .toolbar .tb-ind {
-  transition: transform 0.46s cubic-bezier(0.22, 1, 0.36, 1), width 0.46s cubic-bezier(0.22, 1, 0.36, 1), height 0.46s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  /* a soft glide from button to button: slow, easing out, no bounce */
+  transition: transform 0.56s cubic-bezier(0.25, 1, 0.5, 1), width 0.56s cubic-bezier(0.25, 1, 0.5, 1), height 0.56s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease;
 }
 #app .toolbar .tb-btn .icon {
   transition: transform 0.34s cubic-bezier(0.34, 1.4, 0.64, 1), color 0.25s ease;
@@ -10680,14 +10690,14 @@ button,
   box-shadow: none !important;
 }
 /* Read only: the small bar floats a little below the top edge, round on every side (phone, tablet, laptop, board) */
-#app.ro-compact .toolbar.tb-left,
-#app.ro-compact .toolbar.tb-right {
+#app.ro-compact:not(.ro-keep) .toolbar.tb-left,
+#app.ro-compact:not(.ro-keep) .toolbar.tb-right {
   top: calc(12px + env(safe-area-inset-top, 0px)) !important;
   bottom: auto !important;
   border-width: 1px !important;
 }
-#app.ro-compact .toolbar.tb-left { border-radius: 22px 0 0 22px !important; }
-#app.ro-compact .toolbar.tb-right { border-radius: 0 22px 22px 0 !important; }
+#app.ro-compact:not(.ro-keep) .toolbar.tb-left { border-radius: 22px 0 0 22px !important; }
+#app.ro-compact:not(.ro-keep) .toolbar.tb-right { border-radius: 0 22px 22px 0 !important; }
 /* phone docks: the small buttons have no side padding, so the icon sits exactly in the middle (under the teal circle) */
 #app.tb-stacked .toolbar .tb-btn { padding: 0; }
 
@@ -10702,3 +10712,11 @@ button,
 .pgs-grid .pgs-card { aspect-ratio: var(--pg-ar, 16 / 9); min-height: 0; }
 .pgs-grid .pgs-card img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .pages-list, .pgs-grid { overflow-anchor: none; }
+
+/* Panels moved by touching anywhere (calculator): no text selection while dragging, a soft lift while held */
+.panel.panel-grab { user-select: none; -webkit-user-select: none; }
+/* the whole calculator is the handle: its scrolling body must not take the finger for a scroll (which cancelled the drag) */
+.panel.panel-grab .panel-body, .panel.panel-grab .panel-body * { touch-action: none; }
+.panel.panel-grab .calc-expr { touch-action: manipulation; }
+.panel.panel-grab .calc-expr { user-select: text; -webkit-user-select: text; }
+.panel.dragging { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45); transition: box-shadow 0.2s ease; }

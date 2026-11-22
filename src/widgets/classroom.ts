@@ -187,7 +187,7 @@ const FUNCS: [string, string, string, string][] = [
 ];
 
 export function openCalculator(host: HTMLElement, board: Board): void {
-  const body = floatingPanel(host, { id: 'calc', title: 'Calculator', iconName: 'calc', width: 340 });
+  const body = floatingPanel(host, { id: 'calc', title: 'Calculator', iconName: 'calc', width: 340, dragAnywhere: true, className: 'panel-grab' });
   if (!body) return;
   let deg = true;
   let inv = false;

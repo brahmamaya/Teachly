@@ -10,6 +10,20 @@ export interface PanelOpts {
   y?: number;
   onClose?: () => void;
   className?: string;
+  /** Drag the panel by touching it anywhere (buttons still work with a tap); for small widgets with no scrolling. */
+  dragAnywhere?: boolean;
+}
+
+/** The part of the screen not covered by the toolbars (a panel's title must never hide under them). */
+function room(): { top: number; bottom: number } {
+  let top = 8, bottom = window.innerHeight - 8;
+  for (const b of document.querySelectorAll<HTMLElement>('.toolbars .toolbar')) {
+    const r = b.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    if (r.top < window.innerHeight / 2) top = Math.max(top, r.bottom + 8);
+    else bottom = Math.min(bottom, r.top - 8);
+  }
+  return { top, bottom };
 }
 
 const open = new Map<string, HTMLElement>();
@@ -49,7 +63,9 @@ export function floatingPanel(host: HTMLElement, opts: PanelOpts, toggle = true)
     const W = el.offsetWidth * ui(), H = el.offsetHeight * ui();
     // Keep clear of the bottom toolbar where possible.
     const x = opts.x ?? Math.max(12, Math.min(window.innerWidth - W - 12, window.innerWidth / 2 - W / 2 + n * 28));
-    const y = opts.y ?? Math.max(12, Math.min(window.innerHeight - H - 96, 72 + n * 28, window.innerHeight - H - 12));
+    // Below a toolbar at the top and above one at the bottom; a panel taller than that room starts just below the top bar.
+    const rm = room();
+    const y = opts.y ?? Math.max(rm.top, Math.min(rm.bottom - H, rm.top + 16 + n * 28));
     el.style.left = `${Math.max(0, x)}px`;
     el.style.top = `${y}px`;
     el.style.visibility = '';
@@ -59,7 +75,7 @@ export function floatingPanel(host: HTMLElement, opts: PanelOpts, toggle = true)
 
   el.querySelector('.panel-head button')!.addEventListener('click', () => closePanel(opts.id));
   el.addEventListener('pointerdown', () => (el.style.zIndex = String(nextZ())));
-  makeDraggable(el, el.querySelector('.panel-head') as HTMLElement);
+  makeDraggable(el, opts.dragAnywhere ? el : (el.querySelector('.panel-head') as HTMLElement));
   return el.querySelector('.panel-body') as HTMLElement;
 }
 
@@ -75,21 +91,42 @@ export function isPanelOpen(id: string): boolean {
   return open.has(id);
 }
 
+/**
+ * Move `el` by dragging `handle`. A drag starts only after the finger has moved a little, so a tap on a button inside
+ * the handle still presses that button (and the tap that ended a drag never presses one). Text boxes and sliders keep
+ * their own touch. The title can never be dragged under a toolbar at the top.
+ */
 export function makeDraggable(el: HTMLElement, handle: HTMLElement): void {
   handle.style.touchAction = 'none';
   handle.addEventListener('pointerdown', (e) => {
-    if ((e.target as HTMLElement).closest('button,input,select,textarea')) return;
-    e.preventDefault();
-    handle.setPointerCapture(e.pointerId);
-    const sx = e.clientX - el.offsetLeft, sy = e.clientY - el.offsetTop;
+    const t = e.target as HTMLElement;
+    if (t.closest('input,select,textarea')) return;
+    const sx = e.clientX - el.offsetLeft, sy = e.clientY - el.offsetTop, x0 = e.clientX, y0 = e.clientY;
+    let dragging = false;
     const move = (ev: PointerEvent) => {
+      if (!dragging) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 8) return;
+        dragging = true;
+        handle.setPointerCapture(ev.pointerId);
+        el.classList.add('dragging');
+      }
+      const top = room().top;
       el.style.left = `${Math.max(-el.offsetWidth + 60, Math.min(window.innerWidth - 60, ev.clientX - sx))}px`;
-      el.style.top = `${Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - sy))}px`;
+      el.style.top = `${Math.max(top, Math.min(window.innerHeight - 40, ev.clientY - sy))}px`;
     };
     const up = () => {
       handle.removeEventListener('pointermove', move);
       handle.removeEventListener('pointerup', up);
       handle.removeEventListener('pointercancel', up);
+      if (!dragging) return;
+      el.classList.remove('dragging');
+      // the click that follows a drag must not press the button the drag started on
+      const stop = (ce: Event) => {
+        ce.stopPropagation();
+        ce.preventDefault();
+      };
+      el.addEventListener('click', stop, { capture: true, once: true });
+      window.setTimeout(() => el.removeEventListener('click', stop, { capture: true }), 0);
     };
     handle.addEventListener('pointermove', move);
     handle.addEventListener('pointerup', up);

@@ -139,6 +139,9 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
     ctx.drawImage(board.bg, 0, 0, out.width, out.height);
     ctx.drawImage(board.ink, 0, 0, out.width, out.height);
     ctx.drawImage(board.wet, 0, 0, out.width, out.height);
+    // the last bit of the line being written (the small canvas at the pen tip)
+    const tp = board.tipPlace, kx = out.width / board.w;
+    if (tp) ctx.drawImage(board.tip, tp.x * kx, tp.y * kx, tp.s * kx, tp.s * kx);
     ctx.drawImage(board.overlay, 0, 0, out.width, out.height);
     ui?.draw(ctx);
     touches.draw(ctx);
@@ -251,7 +254,7 @@ async function save(r: Rec): Promise<void> {
 /** Save (or share) a finished lesson video. */
 function offerVideo(blob: Blob, type: string, d: Date): void {
   const ext = type.includes('mp4') ? 'mp4' : 'webm';
-  const name = `Teachly lesson ${d.toISOString().slice(0, 10)} ${d.getHours()}-${String(d.getMinutes()).padStart(2, '0')}.${ext}`;
+  const name = `Physica Notes lesson ${d.toISOString().slice(0, 10)} ${d.getHours()}-${String(d.getMinutes()).padStart(2, '0')}.${ext}`;
   const file = new File([blob], name, { type: blob.type });
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
   const mobile = /iPad|iPhone|Android|Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1;

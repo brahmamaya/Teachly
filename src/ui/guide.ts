@@ -2,9 +2,9 @@ import { icon } from './icons';
 import { fadeOut } from './panel';
 import { startTour } from './tour';
 
-// The Teachly guide (the "i" button in the Menu): every feature in plain English, with steps and a tip, on a calm
+// The Physica Notes guide (the "i" button in the Menu): every feature in plain English, with steps and a tip, on a calm
 // white page that scrolls; a search box finds a button by its name. And the short welcome shown the first time
-// Teachly opens. Loaded only when needed (nothing of this runs while the teacher writes).
+// Physica Notes opens. Loaded only when needed (nothing of this runs while the teacher writes).
 
 interface Entry {
   name: string;
@@ -25,7 +25,7 @@ const GUIDE: Section[] = [
     items: [
       { name: 'Toolbar', keys: 'bar buttons bottom top', what: 'All your tools sit in the bar at the edge of the screen.', steps: ['Tap a tool to use it.', 'Tap the same tool again to see its options.'], tip: 'Hide buttons you never use: Menu ▸ Edit toolbar. You can also move the bar to the top.' },
       { name: 'Notebooks', keys: 'library folder cover favourite trash', what: 'Every topic lives in a notebook, like a real copy.', steps: ['Menu ▸ Notebooks.', 'Tap New, give it a name and pick a cover.', 'Star a notebook to keep it in Favourites; make folders for each subject or class.'], tip: 'One notebook per chapter keeps a whole year easy to find. Deleted notebooks wait in Trash until you empty it.' },
-      { name: 'Saving', keys: 'autosave saved backup', what: 'Teachly saves by itself while you work. Nothing leaves your device.', steps: ['Just write: the small “Saved” sign shows it is done.'], tip: 'For a backup, Menu ▸ Save notebook makes a file you can keep anywhere and open later with Open file.' },
+      { name: 'Saving', keys: 'autosave saved backup', what: 'Physica Notes saves by itself while you work. Nothing leaves your device.', steps: ['Just write: the small “Saved” sign shows it is done.'], tip: 'For a backup, Menu ▸ Save notebook makes a file you can keep anywhere and open later with Open file.' },
     ],
   },
   {
@@ -102,7 +102,7 @@ const GUIDE: Section[] = [
       { name: 'Read only', keys: 'lock view look protect safe', what: 'Look at the notes without changing them by mistake.', steps: ['Tap the page with the eye.', 'Slide, pinch and double tap to zoom; nothing is written or erased.', 'Tap Read only again to write.'], tip: 'Good for showing finished notes to the class.' },
       { name: 'Slide mode (hand)', keys: 'move pan zoom pinch', what: 'Move and zoom the board.', steps: ['Tap the hand.', 'Drag to move, pinch to zoom, double tap to zoom in or out.'], tip: 'Tap the frame button to see the whole page again.' },
       { name: 'Screenshot', keys: 'capture picture area', what: 'Saves a picture of part of the board.', steps: ['Tap the camera-frame button and drag over an area.'], tip: 'Save a key diagram to revise later or share with friends.' },
-      { name: 'Full screen', keys: 'big hide browser', what: 'Hides everything except Teachly.', steps: ['Menu ▸ Full screen.'], tip: 'Use it on boards and projectors for a clean view.' },
+      { name: 'Full screen', keys: 'big hide browser', what: 'Hides everything except Physica Notes.', steps: ['Menu ▸ Full screen.'], tip: 'Use it on boards and projectors for a clean view.' },
     ],
   },
   {
@@ -112,7 +112,7 @@ const GUIDE: Section[] = [
       { name: 'List or covers', keys: 'my notebooks rows grid view', what: 'See your notebooks as covers or as a list.', steps: ['My notebooks ▸ tap the list button at the top.'], tip: 'The list shows long names in full.' },
       { name: 'Save PDF', keys: 'export download print', what: 'Your notes as a sharp PDF.', steps: ['Menu ▸ Save PDF.', 'Choose this page, all pages or a range.'], tip: 'Print your notes or share them as a PDF.' },
       { name: 'Save picture', keys: 'png image export', what: 'The page as a picture.', steps: ['Menu ▸ Save picture.'], tip: 'Good for a single diagram or a homework question.' },
-      { name: 'Share Teachly', keys: 'link friend teacher', what: 'Tell friends and teachers about Teachly.', steps: ['Menu ▸ Share.'], tip: 'Teachly is free for everyone.' },
+      { name: 'Share Physica Notes', keys: 'link friend teacher', what: 'Tell friends and teachers about Physica Notes.', steps: ['Menu ▸ Share.'], tip: 'Physica Notes is free for everyone.' },
     ],
   },
   {
@@ -134,7 +134,7 @@ const ICON: Record<string, string> = {
   PowerPoint: 'slides', 'Picture and Crop': 'crop', 'Laser pointer': 'laser', Tape: 'tape', 'Spotlight and Screen cover': 'spotlight',
   Magnifier: 'magnifier', 'Ruler, Protractor, Compass': 'ruler', Graph: 'graph', Calculator: 'calc', Timer: 'timer', 'Subject helpers': 'atom',
   'Poll A B C D': 'poll', 'Random picker': 'dice', Scoreboard: 'score', 'Record lesson': 'record', 'Slide mode (hand)': 'pan', 'Read only': 'readonly',
-  Screenshot: 'shot', 'Full screen': 'fullscreen', 'Import files': 'download', 'List or covers': 'list', 'Save PDF': 'download', 'Save picture': 'image', 'Share Teachly': 'share',
+  Screenshot: 'shot', 'Full screen': 'fullscreen', 'Import files': 'download', 'List or covers': 'list', 'Save PDF': 'download', 'Save picture': 'image', 'Share Physica Notes': 'share',
   'Edit toolbar': 'settings', 'Large buttons': 'bigger', 'Your privacy': 'shield',
 };
 
@@ -147,14 +147,14 @@ export function openGuide(host: HTMLElement): void {
   const el = document.createElement('section');
   el.className = 'guide';
   el.setAttribute('role', 'dialog');
-  el.setAttribute('aria-label', 'Teachly guide');
+  el.setAttribute('aria-label', 'Physica Notes guide');
   el.innerHTML = `
     <header class="gd-top">
       <div class="gd-bar"><h1>Guide</h1><button class="gd-tour" data-gd="tour">Take the tour</button><button class="gd-x" data-gd="close" aria-label="Close the guide">✕</button></div>
       <label class="gd-search"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input type="search" placeholder="Search a button, e.g. pen, PDF, tape" aria-label="Search the guide"></label>
     </header>
     <div class="gd-body">
-      <p class="gd-intro">Everything Teachly can do, with the quickest way to do it.</p>
+      <p class="gd-intro">Everything Physica Notes can do, with the quickest way to do it.</p>
       ${GUIDE.map((s, si) => `<div class="gd-sec" data-s="${si}"><h2>${esc(s.title)}</h2>${s.items
         .map((e, i) => `<article class="gd-item" data-k="${esc(words(e))}" data-i="${si}-${i}"><h3><span class="gd-ic" aria-hidden="true">${icon(ICON[e.name] ?? 'help', 20)}</span>${esc(e.name)}</h3><p>${esc(e.what)}</p><ol>${e.steps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol><p class="gd-tip"><b>Tip</b> ${esc(e.tip)}</p></article>`)
         .join('')}</div>`).join('')}
@@ -219,12 +219,12 @@ const BG: [string, number, number, number, number][] = [
   ['calc', 78, 88, -16, 38], ['"€"', 68, 66, 12, 32], ['"P & L"', 30, 72, -6, 24],
 ];
 
-/** The short welcome shown the first time Teachly opens: four calm cards, then the full guide (Skip goes straight to it). */
+/** The short welcome shown the first time Physica Notes opens: four calm cards, then the full guide (Skip goes straight to it). */
 export function showWelcome(host: HTMLElement, done: () => void): void {
   const back = document.createElement('div');
   back.className = 'welcome';
   const bg = BG.map(([n, x, y, r, z]) => `<i style="left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${r}deg);font-size:${z}px">${n.startsWith('"') ? esc(n.slice(1, -1)) : icon(n, z)}</i>`).join('');
-  back.innerHTML = `<div class="wl-card" role="dialog" aria-label="Welcome to Teachly"><div class="wl-bg" aria-hidden="true">${bg}</div><div class="wl-ic" aria-hidden="true"></div><h2></h2><p></p><div class="wl-dots">${CARDS.map(() => '<i></i>').join('')}</div><div class="wl-btns"><button class="wl-skip" data-wl="skip">Skip</button><button class="wl-next" data-wl="next">Next</button></div></div>`;
+  back.innerHTML = `<div class="wl-card" role="dialog" aria-label="Welcome to Physica Notes"><div class="wl-bg" aria-hidden="true">${bg}</div><div class="wl-ic" aria-hidden="true"></div><h2></h2><p></p><div class="wl-dots">${CARDS.map(() => '<i></i>').join('')}</div><div class="wl-btns"><button class="wl-skip" data-wl="skip">Skip</button><button class="wl-next" data-wl="next">Next</button></div></div>`;
   host.appendChild(back);
   let i = 0;
   const card = back.querySelector('.wl-card') as HTMLElement;

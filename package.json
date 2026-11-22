@@ -2,7 +2,7 @@
   "name": "teachly",
   "private": true,
   "version": "1.0.0",
-  "description": "Teachly — a smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
+  "description": "Physica Notes — a smooth, feature-rich interactive whiteboard for smart boards and classrooms.",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

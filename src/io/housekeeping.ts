@@ -5,7 +5,7 @@ import { saveNow } from './autosave';
 import { dropUnusedSources, recoverOrphans } from './library';
 import { saveSession } from './session';
 
-// Housekeeping, so Teachly stays light and fast however many days it runs:
+// Housekeeping, so Physica Notes stays light and fast however many days it runs:
 // - asks the device to keep the notebooks (never cleared on its own)
 // - puts back into the library any saved notebook missing from its list
 //   (never deletes a notebook), and removes old website caches

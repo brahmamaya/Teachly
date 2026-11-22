@@ -276,12 +276,12 @@ export class App {
     this.root = root;
     // The whole teaching surface is one landmark (the canvas has no text for a screen reader; see docs/redesign/DESIGN-SPEC.md).
     root.setAttribute('role', 'main');
-    root.setAttribute('aria-label', 'Teachly whiteboard');
+    root.setAttribute('aria-label', 'Physica Notes whiteboard');
     root.innerHTML = `
       <div class="board" id="board"></div>
       <div class="corner" aria-hidden="true">
         <div class="clock"><b data-time></b></div>
-        <div class="brand"><b>Teachly</b></div>
+        <div class="brand"><b>Physica Notes</b></div>
       </div>
       <button class="zoom-pill" data-act="zoom-reset" title="Reset zoom" hidden></button>
       <div class="toolbars"><nav class="toolbar tb-left" aria-label="Drawing tools"></nav><nav class="toolbar tb-right" aria-label="Actions"></nav><div class="hexdock" hidden></div></div>
@@ -564,7 +564,12 @@ export class App {
     const STAY = '.tb-ro, .tb-ind, [data-act=shot], [data-act=pages]';
     const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
     const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')].filter((e) => e.offsetWidth > 0 || !!e.closest('.toolbar'));
-    const MS = 520;
+    // Slow enough to be enjoyed (the owner asked for a calmer, longer glide), still one movement.
+    const MS = 760;
+    // The toolbar is already one bar in the middle of the top edge: Read only squeezes it right where it is, keeping its
+    // shape (the calm squeeze from before). Anywhere else it glides up to the middle of the top edge.
+    if (on) this.root.classList.toggle('ro-keep', !this.root.classList.contains('tb-stacked') && this.root.hasAttribute('data-tbjoin') && tbEdge() === 'top' && !tbFree());
+    const keep = this.root.classList.contains('ro-keep');
     const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
     // How a button gets from where it is (a) to where it will be (b): its left edge and middle line move there and it
     // takes the other bar's scale (so the Read only pill is exactly its final size on the way, never bigger).
@@ -592,7 +597,7 @@ export class App {
         this.toolbar.appendChild(g);
         const a = u(from), b2 = u(to);
         // Read only on: from the bar as it is now to the small round bar; off: the other way
-        const [ra, rb] = on ? [here, '22px'] : ['22px', here];
+        const [ra, rb] = keep ? [here, here] : on ? [here, '22px'] : ['22px', here];
         const fr = (r: ReturnType<typeof u>, rad: string) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: rad });
         g.animate([fr(a, ra), fr(b2, rb)], { duration: MS, easing: EASE, fill: 'forwards' });
         this.root.classList.add('tb-morphing');
@@ -650,8 +655,8 @@ export class App {
         ind.style.opacity = '0';
       }
       list.forEach((el, i) => {
-        const d = Math.min(i, 12) * 4;
-        el.style.transition = `opacity 0.14s ease ${d}ms, transform 0.24s ${EASE} ${d}ms`;
+        const d = Math.min(i, 12) * 6;
+        el.style.transition = `opacity 0.2s ease ${d}ms, transform 0.32s ${EASE} ${d}ms`;
         el.style.opacity = '0';
         el.style.transform = 'scale(0.7)';
       });
@@ -704,13 +709,14 @@ export class App {
         el.style.transform = '';
       });
       list.forEach((el, i) => {
-        const d = 180 + Math.min(i, 12) * 12;
-        el.style.transition = `opacity 0.3s ease ${d}ms, transform 0.36s ${EASE} ${d}ms`;
+        const d = 280 + Math.min(i, 12) * 16;
+        el.style.transition = `opacity 0.4s ease ${d}ms, transform 0.5s ${EASE} ${d}ms`;
         el.style.opacity = '';
         el.style.transform = '';
       });
       window.setTimeout(() => {
         end();
+        this.root.classList.remove('ro-keep');
         clear(stays);
         if (ind) {
           ind.style.transition = '';
@@ -718,7 +724,7 @@ export class App {
           this.moveIndicator(left);
         }
       }, MS);
-      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 180 + 12 * 12 + 400);
+      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 280 + 12 * 16 + 560);
     }
   }
 
@@ -734,16 +740,20 @@ export class App {
       return;
     }
     const to = { x: btn.offsetLeft, y: btn.offsetTop, w: btn.offsetWidth, h: btn.offsetHeight };
-    const from = this.indAt ?? to;
     const place = (r: typeof to) => {
       ind.style.width = `${r.w}px`;
       ind.style.height = `${r.h}px`;
       ind.style.transform = `translate(${r.x}px, ${r.y}px)`;
     };
-    ind.style.transition = 'none';
-    place(from);
-    void ind.offsetWidth;
-    ind.style.transition = '';
+    // The same marker already on screen: just give it the new place, so it glides on from wherever it is right now
+    // (quick taps used to make it jump back to the last button first). A new toolbar: start at the last place.
+    if (!(this.indAt && ind.dataset.placed)) {
+      ind.style.transition = 'none';
+      place(this.indAt ?? to);
+      void ind.offsetWidth;
+      ind.style.transition = '';
+      ind.dataset.placed = '1';
+    }
     place(to);
     this.indAt = to;
   }
@@ -1202,7 +1212,7 @@ export class App {
         pop.className = 'popover pop-menu';
         pop.innerHTML = `
           <div class="mt-row">
-            <button class="mt-info" data-act="guide" title="Guide: how to use Teachly" aria-label="Guide: how to use Teachly">${icon('info', 22)}</button>
+            <button class="mt-info" data-act="guide" title="Guide: how to use Physica Notes" aria-label="Guide: how to use Physica Notes">${icon('info', 22)}</button>
             <div class="board-palette">${BOARDS.map((c) => `<button class="swatch ${p.bg === c ? 'on' : ''}" style="background:${c}" data-bg="${c}" aria-label="Board colour ${c}"></button>`).join('')}
               <label class="swatch custom" title="Any colour"><input type="color" id="board-color" value="${p.bg}" data-bgpick aria-label="Pick any board colour"></label></div>
           </div>
@@ -1701,7 +1711,7 @@ export class App {
 
   /**
    * My notebooks ▸ + ▸ Import files: every file becomes its own notebook. A PDF or a picture gives the pages its own
-   * shape (an A4 PDF makes A4 pages); slides open as a notebook too; a Teachly file opens as it was saved.
+   * shape (an A4 PDF makes A4 pages); slides open as a notebook too; a Physica Notes file opens as it was saved.
    * The last one stays open behind My notebooks. False if nothing could be opened.
    */
   async importAsNotebooks(files: File[]): Promise<boolean> {
@@ -1710,7 +1720,7 @@ export class App {
       const name = f.name.replace(/\.\w+$/, '') || 'Notebook';
       const kind = f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'pdf' : f.type.startsWith('image/') ? 'img' : /\.pptx?$/i.test(f.name) ? 'pptx' : /\.(teachly|json)$/i.test(f.name) ? 'nb' : '';
       if (!kind) {
-        toast(`"${f.name}" cannot be opened here (PDF, pictures, PowerPoint and Teachly files can)`, 4500);
+        toast(`"${f.name}" cannot be opened here (PDF, pictures, PowerPoint and Physica Notes files can)`, 4500);
         continue;
       }
       await saveNow();
@@ -1753,7 +1763,7 @@ export class App {
     try {
       await fn((d, t) => (el.textContent = `${label}… ${d}/${t}`));
     } catch (e) {
-      // Teachly was updated while this page stayed open: the part that opens
+      // Physica Notes was updated while this page stayed open: the part that opens
       // PDF / PowerPoint / files is a newer file now. Save, reload once (the
       // lesson comes back as it was), then ask to open the file again.
       if (isStaleCode(e) && reloadForUpdate()) return;
@@ -2245,13 +2255,14 @@ export class App {
       right.style.left = `${Math.max(0, (W - right.offsetWidth * k) / 2)}px`;
       right.style.right = 'auto';
     }
-    else for (const bar of [left, right]) bar.style.top = bar.style.bottom = '';
+    // Stuck to an edge: the CSS places the bars (only a freely placed bar keeps the height set above).
+    if (!free) for (const bar of [left, right]) bar.style.top = bar.style.bottom = '';
     // Toolbar at the bottom: the page fills the whole screen and the bars
     // float over it. Toolbar on top: the page starts just below the bar (it
-    // is never covered), and "Teachly by Physica" stays in the top right,
+    // is never covered), and "Physica Notes" stays in the top right,
     // moving under the bar only when the bar reaches that corner.
     let barBottom = 0;
-    if (pos === 'top' && !free && !roLayout) {
+    if (pos === 'top' && !free && (!roLayout || this.root.classList.contains('ro-keep'))) {
       // The bar touches the top edge when it stays clear of the status bar's
       // time (left) and battery (right) on iPad / iPhone; otherwise it sits
       // just below the status bar.
@@ -2496,7 +2507,7 @@ function reloadForUpdate(): boolean {
   } catch {
     return false;
   }
-  toast('Teachly was updated: reloading…', 3000);
+  toast('Physica Notes was updated: reloading…', 3000);
   // Save first (not on idle), then reload.
   void saveNow()
     .catch(() => {
