@@ -10443,3 +10443,39 @@ button,
   .tour-ring, .tour-card, .tour-ring::after, .tour-card.turn h3, .tour-card.turn p { animation: none !important; transition: none !important; }
 }
 .tour-card button:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
+
+/* ---------- Menus and the Pages panel open softly out of their button (and close the same way) ---------- */
+.popover {
+  animation: pop-soft 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes pop-soft {
+  from {
+    opacity: 0;
+    scale: 0.94;
+    translate: 0 var(--pop-dy, 8px);
+  }
+}
+.pop-arrow { animation: pop-arrow-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes pop-arrow-in { from { opacity: 0; } }
+.popover.leaving {
+  scale: 0.96;
+  translate: 0 calc(var(--pop-dy, 8px) * 0.6);
+  transition: opacity 0.2s ease, scale 0.2s ease, translate 0.2s ease !important;
+}
+.pop-arrow.leaving { transition: opacity 0.18s ease !important; }
+.pages-panel {
+  animation: pages-in 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes pages-in {
+  from {
+    opacity: 0;
+    translate: 36px 0;
+  }
+}
+.pages-panel.leaving {
+  translate: 36px 0;
+  transition: opacity 0.24s ease, translate 0.24s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover, .pop-arrow, .pages-panel { animation: none !important; }
+}

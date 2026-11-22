@@ -38,7 +38,7 @@ export class PagesPanel {
 
   close(): void {
     if (!this.el) return;
-    fadeOut(this.el);
+    fadeOut(this.el, 240);
     this.el = null;
     this.stopThumbs?.();
     this.stopThumbs = null;
