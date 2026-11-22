@@ -9933,7 +9933,8 @@ button,
 
 /* ---------- Guide: a calm white page, plain text, search on top ---------- */
 .mt-row { display: flex; align-items: center; gap: 10px; }
-.mt-info { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(127, 127, 127, 0.14); color: inherit; cursor: pointer; }
+/* the guide button (i): the app's teal */
+.mt-info { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: linear-gradient(135deg, #14b8a6, #0d9488); color: #fff; box-shadow: 0 3px 8px rgba(13, 148, 136, 0.35); cursor: pointer; transition: transform 0.15s var(--ease); }
 .mt-info:active { transform: scale(0.92); }
 .guide {
   position: fixed;
