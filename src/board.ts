@@ -61,6 +61,9 @@ const FINGER_TOOLS = new Set<ToolId>(['select', 'text', 'fill', 'tape']);
  */
 export function liteDevice(): boolean {
   const nav = navigator as Navigator & { deviceMemory?: number };
+  // iPad / iPhone are fast, but Safari reports a small, rounded core count: never take them for a classroom board.
+  const apple = /iPad|iPhone/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  if (apple) return false;
   const modest = (navigator.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory ?? 8) <= 3;
   const android = /Android/i.test(navigator.userAgent);
   const bigScreen = Math.min(screen.width, screen.height) >= 700;
