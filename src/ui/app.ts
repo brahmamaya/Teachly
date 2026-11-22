@@ -363,6 +363,10 @@ export class App {
       window.setTimeout(relayout, 900);
     });
     new ResizeObserver(relayout).observe(root);
+    // A half that changes width (page "9 / 9" → "10 / 10", a button shown or hidden) keeps the shared background matching.
+    const halves = ['.tb-left', '.tb-right'].map((q) => this.toolbar.querySelector(q) as HTMLElement);
+    const rejoin = new ResizeObserver(() => this.root.hasAttribute('data-tbjoin') && this.joinBars(halves[0], halves[1], true));
+    halves.forEach((h) => rejoin.observe(h));
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && window.setTimeout(relayout, 200));
     window.setTimeout(relayout, 600);
     // Only a new button size needs a re-layout (other settings keep the menu open).
@@ -1859,6 +1863,24 @@ export class App {
     if (label) label.textContent = `${store.index + 1} / ${store.doc.pages.length}`;
   }
 
+  /** "Middle" on one line: ONE background is drawn behind both halves (the left half's ::before, as wide as both), so
+   *  no seam or colour step shows where they meet (an iPad drew the two scaled backgrounds side by side with a hairline). */
+  private joinBars(left: HTMLElement, right: HTMLElement, on: boolean): void {
+    this.root.toggleAttribute('data-tbjoin', false);
+    if (!on) return;
+    const cs = getComputedStyle(left), rs = getComputedStyle(right);
+    const v: Record<string, string> = {
+      '--tbj-w': `${left.offsetWidth + right.offsetWidth}px`,
+      '--tbj-rad': `${cs.borderTopLeftRadius} ${rs.borderTopRightRadius} ${rs.borderBottomRightRadius} ${cs.borderBottomLeftRadius}`,
+      '--tbj-bw': `${cs.borderTopWidth} ${rs.borderRightWidth} ${cs.borderBottomWidth} ${cs.borderLeftWidth}`,
+      '--tbj-bt': cs.borderTopWidth,
+      '--tbj-bl': cs.borderLeftWidth,
+      '--tbj-shadow': cs.boxShadow,
+    };
+    for (const k in v) left.style.setProperty(k, v[k]);
+    this.root.toggleAttribute('data-tbjoin', true);
+  }
+
   /** Size the toolbar and panels for this screen (phone → 86" panel). */
   private applyScale(keepPopover = false): void {
     // The toolbar touches the bottom edge, or the top edge if chosen in Edit toolbar.
@@ -1927,6 +1949,7 @@ export class App {
       this.root.style.removeProperty('--bar-end');
       this.root.style.removeProperty('--board-top');
     }
+    this.joinBars(left, right, mid && !stacked && !vertical);
     this.board.setInsets({ top: Math.round(barBottom), right: 0, bottom: 0, left: 0 });
     this.board.resize();
     if (!keepPopover) this.closePopover();

@@ -10074,3 +10074,45 @@ button,
 @media (prefers-reduced-motion: reduce) {
   .tb-ro-pill, .tb-ro-label, #app .tb-left > *, #app .tb-right > *, #app .hexdock { transition: none !important; }
 }
+
+/* ---------- "Middle" toolbar on one line: one background behind both halves (no seam where they meet) ---------- */
+#app[data-tbjoin] .toolbar.tb-left,
+#app[data-tbjoin] .toolbar.tb-right {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+#app[data-tbjoin][data-tbalign]:not(.tb-stacked) .toolbar.tb-left { clip-path: none; }
+#app[data-tbjoin] .toolbar.tb-left::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: calc(-1 * var(--tbj-bl));
+  top: calc(-1 * var(--tbj-bt));
+  width: var(--tbj-w);
+  height: calc(100% + var(--tbj-bt) * 2);
+  box-sizing: border-box;
+  background: var(--bar);
+  border: solid var(--bar-border);
+  border-width: var(--tbj-bw);
+  border-radius: var(--tbj-rad);
+  box-shadow: var(--tbj-shadow);
+  pointer-events: none;
+}
+
+/* ---------- Right-side buttons: a tap (and an open menu or panel) shows the same teal as the chosen tool ---------- */
+#app .toolbar.tb-right .tb-btn,
+#app .toolbar.tb-right .icon-btn {
+  border-radius: 18px;
+  transition: background-color 0.22s var(--ease), color 0.22s var(--ease), box-shadow 0.22s var(--ease), transform 0.18s var(--ease);
+}
+#app .toolbar.tb-right .tb-btn.open,
+#app .toolbar.tb-right .tb-btn:active,
+#app .toolbar.tb-right .icon-btn:active {
+  background: #0f9f90;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
+  --eye: #fff;
+}
+#app .toolbar.tb-right .tb-btn:active,
+#app .toolbar.tb-right .icon-btn:active { transition-duration: 0s; }
