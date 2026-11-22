@@ -37,6 +37,24 @@ const { check, finish } = require('./lib.cjs');
   const made = await page.$$eval('.pages-list .page-thumb', (n) => n.length);
   check('3000 pages: the Pages panel opens without a freeze (4x slower CPU)', g1 < 250, `longest frame ${g1} ms`);
   check('…only the pages near the view are made', made > 5 && made < 80, `${made} made`);
+  // a finger slides the list down a long way (past the made pages): it keeps moving the whole way
+  {
+    const r = await (await page.$('.pages-list')).boundingBox();
+    const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+    const x = r.x + r.width / 2;
+    let total = 0;
+    for (let round = 0; round < 6; round++) {
+      const y = r.y + r.height * 0.85;
+      await tp('touchStart', x, y);
+      for (let i = 1; i <= 12; i++) await tp('touchMove', x, y - i * 30);
+      await tp('touchEnd');
+      await page.waitForTimeout(150);
+    }
+    total = await page.evaluate(() => document.querySelector('.pages-list').scrollTop);
+    const shown = await page.$$eval('.pages-list .page-thumb', (n) => n.map((e) => Number(e.dataset.i)));
+    check('a finger slides the list a long way down (not stuck, no sorting started)', total > 1500 && !(await page.$('.pages-list.sorting')), `scrolled ${Math.round(total)} px`);
+    check('…and the pages there are made', shown.length > 5 && Math.min(...shown) > 5, `${Math.min(...shown)}–${Math.max(...shown)}`);
+  }
   await page.evaluate(() => {
     const l = document.querySelector('.pages-list');
     l.scrollTop = l.scrollHeight;

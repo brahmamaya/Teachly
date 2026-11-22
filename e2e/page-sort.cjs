@@ -30,7 +30,7 @@ const SHOT = process.env.SHOT;
   const a = await thumb(9);
   const x = a.x + a.width / 2, y0 = a.y + a.height / 2;
   await tp('touchStart', x, y0);
-  await page.waitForTimeout(420); // long press
+  await page.waitForTimeout(600); // long press (a hold of 0.45 s picks a page up)
   check('holding a page lifts it (a copy follows the finger)', !!(await page.$('.page-ghost')));
   const step = (await thumb(9)).y - (await thumb(8)).y;
   const target = y0 - step * 2;
@@ -74,7 +74,7 @@ const SHOT = process.env.SHOT;
   const q = await thumb(2); // page "4" sits at place 3 now
   const qx = q.x + q.width / 2, qy = q.y + q.height / 2;
   await tp('touchStart', qx, qy);
-  await page.waitForTimeout(420);
+  await page.waitForTimeout(600); // hold (0.45 s picks a page up)
   for (let i = 1; i <= 12; i++) await tp('touchMove', qx - (qx - 400) * (i / 12), qy + (400 - qy) * (i / 12));
   await page.waitForTimeout(250);
   check('over the board the page shrinks and says where it goes', !!(await page.$('.page-ghost.out')));

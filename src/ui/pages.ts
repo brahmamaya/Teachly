@@ -128,9 +128,18 @@ export class PagesPanel {
     const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
     const paint = (from: number, to: number) => {
       if (from === this.winFrom && to === this.winTo && !fresh) return;
+      // Keep the pages that stay (above all the one under the finger: a touch whose page is removed stops scrolling
+      // on iPad / phones); only the pages entering are made and the ones far away removed.
+      const have = new Map([...items.children].map((c) => [Number((c as HTMLElement).dataset.i), c as HTMLElement]));
+      for (const [k, c] of have) if (k < from || k >= to) c.remove();
+      const keptFrom = Math.max(from, this.winFrom), keptTo = Math.min(to, this.winTo);
+      const overlap = !fresh && this.winFrom >= 0 && keptFrom < keptTo;
+      if (overlap) {
+        if (from < keptFrom) items.insertAdjacentHTML('afterbegin', Array.from({ length: keptFrom - from }, (_, k) => thumb(from + k)).join(''));
+        if (to > keptTo) items.insertAdjacentHTML('beforeend', Array.from({ length: to - keptTo }, (_, k) => thumb(keptTo + k)).join(''));
+      } else items.innerHTML = Array.from({ length: to - from }, (_, k) => thumb(from + k)).join('');
       this.winFrom = from;
       this.winTo = to;
-      items.innerHTML = Array.from({ length: to - from }, (_, k) => thumb(from + k)).join('');
       const s = this.step || 160;
       top.style.height = `${Math.max(0, from * s - gap)}px`;
       bottom.style.height = `${Math.max(0, (n - to) * s - gap)}px`;
@@ -359,7 +368,8 @@ export class PagesPanel {
       sy = e.clientY;
       pid = e.pointerId;
       clearTimeout(press);
-      if (e.pointerType !== 'mouse') press = window.setTimeout(() => cand && begin(cand, sy, sx), 260);
+      // a real hold (not the moment before a finger starts to scroll) picks the page up
+      if (e.pointerType !== 'mouse') press = window.setTimeout(() => cand && begin(cand, sy, sx), 450);
     });
     panel.addEventListener('pointermove', (e) => {
       if (d) {
@@ -377,7 +387,7 @@ export class PagesPanel {
           (d as Drag).y = e.clientY;
           place();
         }
-      } else if (moved > 10) {
+      } else if (moved > 8) {
         // a swipe before the press was long enough: the list scrolls as usual
         clearTimeout(press);
         cand = null;

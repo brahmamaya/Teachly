@@ -64,10 +64,17 @@ export function lazyThumbs(root: HTMLElement, cards: string, pageOf: (card: HTML
   const queue: HTMLElement[] = [];
   let busy = false;
   let alive = true;
+  // While the list is being scrolled no picture is drawn (drawing a book page takes a moment and would make the
+  // scrolling stutter); they come right after it stops.
+  let movedAt = 0;
+  const onScroll = () => (movedAt = performance.now());
+  root.addEventListener('scroll', onScroll, { passive: true });
   const pump = async () => {
     if (busy) return;
     busy = true;
     while (queue.length && alive) {
+      while (alive && performance.now() - movedAt < 160) await new Promise((r) => setTimeout(r, 80));
+      if (!alive || !queue.length) break;
       const card = queue.shift()!;
       const p = pageOf(card);
       if (!p || !card.isConnected) continue;
@@ -102,6 +109,7 @@ export function lazyThumbs(root: HTMLElement, cards: string, pageOf: (card: HTML
   return () => {
     alive = false;
     io.disconnect();
+    root.removeEventListener('scroll', onScroll);
     queue.length = 0;
   };
 }
@@ -278,10 +286,19 @@ export class PagesGrid {
     let cols = 1, rowH = 180, from = -1, to = -1;
     const paint = (a: number, b: number) => {
       if (a === from && b === to) return;
+      // keep the cards that stay (the one under the finger above all); add the ones coming in, drop the far ones
+      const have = [...g.querySelectorAll<HTMLElement>('.pgs-item')];
+      for (const c of have) {
+        const k = Number(c.dataset.i);
+        if (k < a || k >= b) c.remove();
+      }
+      const kf = Math.max(a, from), kt = Math.min(b, to);
+      if (from >= 0 && kf < kt) {
+        if (a < kf) top.insertAdjacentHTML('afterend', Array.from({ length: kf - a }, (_, k) => this.item(a + k)).join(''));
+        if (b > kt) bottom.insertAdjacentHTML('beforebegin', Array.from({ length: b - kt }, (_, k) => this.item(kt + k)).join(''));
+      } else top.insertAdjacentHTML('afterend', Array.from({ length: b - a }, (_, k) => this.item(a + k)).join(''));
       from = a;
       to = b;
-      g.querySelectorAll('.pgs-item').forEach((x) => x.remove());
-      top.insertAdjacentHTML('afterend', Array.from({ length: b - a }, (_, k) => this.item(a + k)).join(''));
       top.style.height = `${Math.max(0, (a / cols) * rowH - gap)}px`;
       bottom.style.height = `${Math.max(0, (Math.ceil(n / cols) - b / cols) * rowH - gap)}px`;
       this.stopThumbs?.();
