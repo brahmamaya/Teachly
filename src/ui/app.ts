@@ -691,7 +691,7 @@ export class App {
 
   private closePopover(): void {
     if (!this.popover) return;
-    fadeOut(this.popover, 200);
+    fadeOut(this.popover, 260);
     this.popover = null;
     this.root.classList.remove('pop-open');
     if (this.popArrow) fadeOut(this.popArrow);

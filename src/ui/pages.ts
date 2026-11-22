@@ -38,7 +38,7 @@ export class PagesPanel {
 
   close(): void {
     if (!this.el) return;
-    fadeOut(this.el, 240);
+    fadeOut(this.el, 330);
     this.el = null;
     this.stopThumbs?.();
     this.stopThumbs = null;
@@ -55,6 +55,7 @@ export class PagesPanel {
     this.el = el;
     el.addEventListener('click', (e) => this.onClick(e));
     this.wireSort(el);
+    this.wireSwipe(el);
     // Drag a page onto the board: it carries the page itself (sharp, editable
     // lines), not the small preview picture.
     el.addEventListener('dragstart', (e) => {
@@ -114,6 +115,74 @@ export class PagesPanel {
    * the finger, the other pages slide aside to make room, the list scrolls by itself near its edges, and on release
    * the page glides into its new place (one undo step). Instant on classroom boards and with reduced motion.
    */
+  /**
+   * Swipe the panel to the right to close it: it follows the finger, and once let go it slides away (a long or quick
+   * swipe) or springs back. Vertical moves still scroll the list, and a held page still starts sorting.
+   */
+  private wireSwipe(panel: HTMLElement): void {
+    let id = -1, x0 = 0, y0 = 0, dx = 0, on = false, decided = false;
+    let last: { x: number; t: number }[] = [];
+    const reset = () => {
+      id = -1;
+      on = decided = false;
+      last = [];
+    };
+    panel.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' || id !== -1) return;
+      id = e.pointerId;
+      x0 = e.clientX;
+      y0 = e.clientY;
+      dx = 0;
+      last = [{ x: e.clientX, t: e.timeStamp }];
+    });
+    panel.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== id) return;
+      if (panel.querySelector('.pages-list.sorting')) return reset(); // a page is being moved
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!decided) {
+        if (Math.hypot(mx, my) < 10) return;
+        decided = true;
+        on = mx > 0 && mx > Math.abs(my) * 1.2;
+        if (!on) return;
+        try {
+          panel.setPointerCapture(id);
+        } catch {
+          /* gone */
+        }
+        panel.style.transition = 'none';
+      }
+      if (!on) return;
+      dx = Math.max(0, mx);
+      const w = panel.offsetWidth;
+      panel.style.translate = `${dx}px 0`;
+      panel.style.opacity = String(1 - Math.min(0.7, (dx / w) * 0.7));
+      last.push({ x: e.clientX, t: e.timeStamp });
+      if (last.length > 5) last.shift();
+    });
+    const end = () => {
+      if (!on) return reset();
+      const w = panel.offsetWidth;
+      const a = last[0], b = last[last.length - 1];
+      const v = a && b && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0; // px per ms
+      reset();
+      if (dx > w * 0.33 || v > 0.5) {
+        panel.style.transition = 'translate 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.28s ease';
+        panel.style.translate = `${w + 40}px 0`;
+        panel.style.opacity = '0';
+        if (this.el === panel) this.close();
+      } else {
+        panel.style.transition = 'translate 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.32s ease';
+        panel.style.translate = '0px 0';
+        panel.style.opacity = '1';
+        window.setTimeout(() => {
+          panel.style.transition = panel.style.translate = panel.style.opacity = '';
+        }, 340);
+      }
+    };
+    panel.addEventListener('pointerup', end);
+    panel.addEventListener('pointercancel', end);
+  }
+
   private wireSort(panel: HTMLElement): void {
     const smooth = !document.documentElement.classList.contains('lite') && !matchMedia('(prefers-reduced-motion: reduce)').matches;
     type Drag = { list: HTMLElement; items: HTMLElement[]; from: number; to: number; tops: number[]; h: number; step: number; grab: number; grabX: number; s0: number; ghost: HTMLElement; x: number; y: number; out: boolean; raf: number };
