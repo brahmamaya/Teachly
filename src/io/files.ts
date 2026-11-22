@@ -126,6 +126,17 @@ export async function insertImageSrc(board: Board, dataUrl: string, at?: { x: nu
   return el;
 }
 
+/** A picture opened as its own notebook: the page takes the picture's shape and the picture fills it (locked, to write on). */
+export async function importImagePage(board: Board, file: File): Promise<void> {
+  const { src, w, h } = await normalizeImage(await readAsDataURL(file));
+  store.setShape(h / w);
+  const img: ImageEl = { id: uid(), type: 'image', src, ...fitInPage(w, h), rot: 0, locked: true };
+  const p = newPage(store.page.bg, 'none');
+  p.els = [img];
+  store.commit([p], 0);
+  board.fitPage();
+}
+
 export async function insertImages(board: Board, files?: File[]): Promise<void> {
   files ??= await pickFiles('image/*', true);
   const ids: string[] = [];
@@ -144,7 +155,7 @@ export async function insertImages(board: Board, files?: File[]): Promise<void> 
 
 /** Import every PDF page as a new board page with the page locked as background. */
 /** `at`: put the PDF's pages at this page position (0 = start, page count = end); left out: after this page. */
-export async function importPdf(board: Board, file?: File, onProgress?: (done: number, total: number) => void, at?: number): Promise<void> {
+export async function importPdf(board: Board, file?: File, onProgress?: (done: number, total: number) => void, at?: number, fitShape = false): Promise<void> {
   file ??= (await pickFiles('application/pdf'))[0];
   if (!file) return;
   // Keep the original file on this device. Its pages are drawn only when
@@ -154,17 +165,37 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   if (source) {
     const { openSource, pageSrc } = await import('./pdfpages');
     const pdf = await openSource(source, file);
-    if (await relinkBook(pdf, source)) return;
-    const pages: Page[] = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const base = page.getViewport({ scale: 1 });
-      page.cleanup();
-      const img: ImageEl = { id: uid(), type: 'image', src: pageSrc(source, i - 1), ...fitInPage(base.width, base.height), rot: 0, locked: true, pdf: { src: source, page: i - 1 } };
-      const p = newPage(store.page.bg, 'none');
-      p.els = [img];
-      pages.push(p);
-      if (i % 10 === 0 || i === pdf.numPages) onProgress?.(i, pdf.numPages);
+    if (!fitShape && (await relinkBook(pdf, source))) return;
+    // A new notebook made from this file: its pages take the shape of the file's first page.
+    if (fitShape) {
+      const first = await pdf.getPage(1);
+      const v = first.getViewport({ scale: 1 });
+      store.setShape(v.height / v.width);
+    }
+    // Only each page's size is read now (no drawing), many at a time, giving the screen a moment between batches:
+    // a book of thousands of pages is added in seconds without freezing the app. Pages are drawn when shown.
+    const n = pdf.numPages;
+    const pages: Page[] = new Array(n);
+    const BATCH = 48;
+    for (let s = 1; s <= n; s += BATCH) {
+      const nums = Array.from({ length: Math.min(BATCH, n - s + 1) }, (_, k) => s + k);
+      const sizes = await Promise.all(
+        nums.map(async (i) => {
+          const page = await pdf.getPage(i);
+          const base = page.getViewport({ scale: 1 });
+          page.cleanup();
+          return base;
+        }),
+      );
+      sizes.forEach((base, k) => {
+        const i = nums[k];
+        const img: ImageEl = { id: uid(), type: 'image', src: pageSrc(source, i - 1), ...fitInPage(base.width, base.height), rot: 0, locked: true, pdf: { src: source, page: i - 1 } };
+        const p = newPage(store.page.bg, 'none');
+        p.els = [img];
+        pages[i - 1] = p;
+      });
+      onProgress?.(nums[nums.length - 1], n);
+      await new Promise((r) => setTimeout(r, 0));
     }
     return addPdfPages(board, pages, at);
   }
@@ -172,6 +203,15 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   const { pdfjs } = await import('./pdfpages');
   const task = (await pdfjs()).getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
   const pdf = await task.promise;
+  // Without room to keep the file every page must be drawn now: too slow and too big for a long book.
+  if (pdf.numPages > 300) {
+    await task.destroy();
+    throw new Error(`no room on this device to keep a ${pdf.numPages}-page PDF; free some space and try again`);
+  }
+  if (fitShape) {
+    const v = (await pdf.getPage(1)).getViewport({ scale: 1 });
+    store.setShape(v.height / v.width);
+  }
   const pages: Page[] = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -280,7 +320,7 @@ export async function openFile(file?: File): Promise<void> {
     if (!Array.isArray(raw.pages)) throw new Error('Not a Teachly file');
     // A file made by an older version is brought up to the current format the same safe way.
     const { doc } = migrateDoc({ ...raw, pages: raw.pages.length ? raw.pages : [newPage()] });
-    store.loadDoc({ version: 1, schema: doc.schema, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages, ...(doc.orient === 'portrait' ? { orient: 'portrait' as const } : {}) });
+    store.loadDoc({ version: 1, schema: doc.schema, title: doc.title || file.name.replace(/\.\w+$/, ''), pages: doc.pages, ...(doc.orient === 'portrait' ? { orient: 'portrait' as const } : {}), ...(doc.shape ? { shape: doc.shape } : {}) });
   } catch (e) {
     alert(`Could not open file: ${(e as Error).message}`);
   }

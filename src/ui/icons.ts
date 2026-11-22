@@ -39,6 +39,8 @@ const P: Record<string, string> = {
   // All pages: four page thumbnails, each with a few lines of writing.
   readonly: '<path d="M8.5 9.2V5a1.5 1.5 0 0 1 1.5-1.5h6.3l4.2 4.3V19a1.5 1.5 0 0 1-1.5 1.5H10A1.5 1.5 0 0 1 8.5 19v-1.4"/><path d="M16.2 3.7V7a1 1 0 0 0 1 1h3.2"/><path d="M1.8 13.4C3.5 10.6 5.8 9.2 8.4 9.2s4.9 1.4 6.6 4.2c-1.7 2.8-4 4.2-6.6 4.2s-4.9-1.4-6.6-4.2z" style="stroke:var(--eye,#0d9488)"/><circle cx="8.4" cy="13.4" r="2.3" style="fill:var(--eye,#0d9488)" stroke="none"/><circle cx="7.6" cy="12.6" r=".7" style="fill:var(--eye-in,#fff)" stroke="none"/>',
   pages: '<rect x="2.5" y="3.5" width="14" height="10.5" rx="1.2"/><path d="M19.2 6v11H5"/><path d="M21.8 8.6v11.2H7.6"/>',
+  list: '<path d="M8.5 6h12M8.5 12h12M8.5 18h12"/><circle cx="4.4" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.4" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.4" cy="18" r="1.2" fill="currentColor" stroke="none"/>',
+  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>',
   sidebar: '<rect x="2.8" y="4.6" width="18.4" height="14.8" rx="3.2"/><path d="M9.6 4.6v14.8"/><path d="M5.6 8.6h1.6M5.6 11.6h1.6M5.6 14.6h1.6"/>',
   crop: '<path d="M6.5 2.5v13a2 2 0 0 0 2 2h13"/><path d="M17.5 21.5v-13a2 2 0 0 0-2-2h-13"/>',
   // a friendlier bin: round lid with a knob, soft body, a small smile

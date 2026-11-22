@@ -30,6 +30,8 @@ const { check, finish } = require('./lib.cjs');
   await page.click('.mt-tile[data-act=library]');
   await page.waitForTimeout(700);
   await page.click('.nb-new');
+  await page.waitForTimeout(300);
+  await page.click('.lib-addmenu [data-lib=new]'); // + opens a small menu: New notebook / Import files
   await page.waitForTimeout(700);
   check('the new-notebook dialog has a tab for every subject', (await page.$$('.cv-tab')).length === 13);
   await page.click('.cv-tab[data-cg="zoo"]');

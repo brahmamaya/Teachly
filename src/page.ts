@@ -27,8 +27,9 @@ export function setPageSize(screenW: number, screenH: number): void {
 export function setPageShape(ratio: number | null): void {
   fixedShape = ratio;
   if (ratio) {
-    PAGE.w = 900;
-    PAGE.h = Math.round(900 * ratio);
+    // tall pages are 900 wide, wide ones (an imported landscape file) 1600, so ink looks the same size
+    PAGE.w = ratio >= 1 ? 900 : 1600;
+    PAGE.h = Math.round(PAGE.w * ratio);
   } else {
     PAGE.w = 1600;
     PAGE.h = Math.round(PAGE.w * screenShape);

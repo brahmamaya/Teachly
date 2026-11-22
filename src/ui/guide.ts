@@ -107,6 +107,8 @@ const GUIDE: Section[] = [
   {
     title: 'Save and share',
     items: [
+      { name: 'Import files', keys: 'pdf picture photo powerpoint open book notebook', what: 'Turn a PDF, a picture or slides into a notebook.', steps: ['My notebooks ▸ + ▸ Import files.', 'Pick one or more files: each becomes its own notebook.'], tip: 'The pages take the file\'s shape, and even a book of thousands of pages opens in seconds.' },
+      { name: 'List or covers', keys: 'my notebooks rows grid view', what: 'See your notebooks as covers or as a list.', steps: ['My notebooks ▸ tap the list button at the top.'], tip: 'The list shows long names in full.' },
       { name: 'Save PDF', keys: 'export download print', what: 'Your notes as a sharp PDF.', steps: ['Menu ▸ Save PDF.', 'Choose this page, all pages or a range.'], tip: 'Print your notes or share them as a PDF.' },
       { name: 'Save picture', keys: 'png image export', what: 'The page as a picture.', steps: ['Menu ▸ Save picture.'], tip: 'Good for a single diagram or a homework question.' },
       { name: 'Share Teachly', keys: 'link friend teacher', what: 'Tell friends and teachers about Teachly.', steps: ['Menu ▸ Share.'], tip: 'Teachly is free for everyone.' },
@@ -131,7 +133,7 @@ const ICON: Record<string, string> = {
   PowerPoint: 'slides', 'Picture and Crop': 'crop', 'Laser pointer': 'laser', Tape: 'tape', 'Spotlight and Screen cover': 'spotlight',
   Magnifier: 'magnifier', 'Ruler, Protractor, Compass': 'ruler', Graph: 'graph', Calculator: 'calc', Timer: 'timer', 'Subject helpers': 'atom',
   'Poll A B C D': 'poll', 'Random picker': 'dice', Scoreboard: 'score', 'Record lesson': 'record', 'Slide mode (hand)': 'pan', 'Read only': 'readonly',
-  Screenshot: 'shot', 'Full screen': 'fullscreen', 'Save PDF': 'download', 'Save picture': 'image', 'Share Teachly': 'share',
+  Screenshot: 'shot', 'Full screen': 'fullscreen', 'Import files': 'download', 'List or covers': 'list', 'Save PDF': 'download', 'Save picture': 'image', 'Share Teachly': 'share',
   'Edit toolbar': 'settings', 'Large buttons': 'bigger', 'Your privacy': 'shield',
 };
 

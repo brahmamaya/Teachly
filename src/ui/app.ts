@@ -11,6 +11,7 @@ import {
   exportPng,
   exportScreenshot,
   importPdf,
+  importImagePage,
   insertImages,
   insertImageSrc,
   openFile,
@@ -300,7 +301,7 @@ export class App {
     this.grid = new PagesGrid(root, () => this.renderToolbar());
     this.pages = new PagesPanel(root, () => { this.renderToolbar(); requestAnimationFrame(() => this.positionProps()); }, () => this.grid.toggle(), (i, x, y) => this.dropPage(i, x, y));
     this.subject = new SubjectPanel(root, this.board, () => this.renderToolbar());
-    this.library = new Library(root);
+    this.library = new Library(root, (files) => this.importAsNotebooks(files));
     new QuickBar(root);
     this.pasteChip();
     this.props = root.querySelector('.props') as HTMLElement;
@@ -1472,6 +1473,34 @@ export class App {
         else void document.documentElement.requestFullscreen?.().catch(() => toast('Full screen is not available here'));
         return;
     }
+  }
+
+  /**
+   * My notebooks ▸ + ▸ Import files: every file becomes its own notebook. A PDF or a picture gives the pages its own
+   * shape (an A4 PDF makes A4 pages); slides open as a notebook too; a Teachly file opens as it was saved.
+   * The last one stays open behind My notebooks. False if nothing could be opened.
+   */
+  async importAsNotebooks(files: File[]): Promise<boolean> {
+    let opened = false;
+    for (const f of files) {
+      const name = f.name.replace(/\.\w+$/, '') || 'Notebook';
+      const kind = f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'pdf' : f.type.startsWith('image/') ? 'img' : /\.pptx?$/i.test(f.name) ? 'pptx' : /\.(teachly|json)$/i.test(f.name) ? 'nb' : '';
+      if (!kind) {
+        toast(`"${f.name}" cannot be opened here (PDF, pictures, PowerPoint and Teachly files can)`, 4500);
+        continue;
+      }
+      await saveNow();
+      if (kind === 'nb') await openFile(f);
+      else {
+        store.loadDoc(await saveNotebook(blankNotebook(name, '#ffffff')));
+        if (kind === 'pdf') await this.withProgress(`Opening ${name}`, (p) => importPdf(this.board, f, p, undefined, true));
+        else if (kind === 'img') await importImagePage(this.board, f);
+        else await this.openSlides(f);
+      }
+      await saveNow();
+      opened = true;
+    }
+    return opened;
   }
 
   private openSlides(f: File): Promise<void> {

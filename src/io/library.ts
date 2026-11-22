@@ -66,7 +66,10 @@ async function coverThumb(doc: Doc): Promise<string> {
   try {
     // Pictures come from the device when first drawn: wait for them, or the cover would be blank.
     const ready = await imagesReady(first, 2500);
-    const img = renderRegion(first, pageRegion(first.els), 240, 135).toDataURL('image/jpeg', 0.7);
+    // In the page's own shape (a tall A4 notebook gets a tall cover), at most 240 × 180.
+    const r = pageRegion(first.els);
+    const k = Math.min(240 / r.w, 180 / r.h);
+    const img = renderRegion(first, r, Math.max(1, Math.round(r.w * k)), Math.max(1, Math.round(r.h * k))).toDataURL('image/jpeg', 0.7);
     if (ready) covers.set(first, img);
     return img;
   } catch {
@@ -271,6 +274,7 @@ export async function duplicateNotebook(id: string): Promise<void> {
 /** Put a notebook into a folder ('' = out of every folder). Its pages are not touched. */
 /** A vertical notebook: its first page is a tall book page, or the screen is held upright. */
 export function isPortrait(doc: Doc): boolean {
+  if (doc.shape) return doc.shape > 1.1;
   if (doc.orient === 'portrait') return true;
   const first = doc.pages[0];
   const book = first?.els.find((e): e is ImageEl => e.type === 'image' && !!e.locked);
