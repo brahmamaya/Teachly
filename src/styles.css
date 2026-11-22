@@ -7733,8 +7733,8 @@ button,
 }
 
 /* ---- Phones (two-row toolbar): one tidy dock, both rows full width, buttons spread evenly ---- */
-#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-left,
-#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-right {
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar.tb-left,
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar.tb-right {
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
@@ -7749,27 +7749,27 @@ button,
   box-shadow: none;
   background: var(--bar);
 }
-#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-left {
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar.tb-left {
   bottom: 0 !important;
   padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   border-radius: 0;
   border-top: 1px solid var(--bar-border);
 }
-#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-right {
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar.tb-right {
   bottom: calc(45px + env(safe-area-inset-bottom, 0px)) !important;
   border-radius: 24px 24px 0 0;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
 }
-#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar .tb-btn {
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar .tb-btn {
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
   min-width: 0;
 }
-#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar .tb-pagenav {
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar .tb-pagenav {
   flex: 0 0 auto;
 }
-#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .quickbar {
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .quickbar {
   bottom: calc(100px + env(safe-area-inset-bottom, 0px) + 12px);
   scale: 1;
 }
@@ -7841,14 +7841,14 @@ button,
 
 /* Phones: the dock keeps the same small buttons as before (about 28 px). */
 @media (max-width: 480px) {
-  #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar .tb-btn {
+  #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar .tb-btn {
     width: 28px;
     height: 28px;
   }
-  #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .toolbar.tb-right {
+  #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar.tb-right {
     bottom: calc(39px + env(safe-area-inset-bottom, 0px)) !important;
   }
-  #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']) .quickbar {
+  #app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .quickbar {
     bottom: calc(86px + env(safe-area-inset-bottom, 0px) + 12px);
   }
 }
@@ -10612,3 +10612,79 @@ button,
 @media (prefers-reduced-motion: reduce) {
   #app .pgs { animation: none; }
 }
+
+/* ---------- Phones (two-row toolbar) ----------
+   Bottom: the tools row on top, the actions row (undo, pages, menu) at the very bottom edge.
+   Top: the same dock mirrored at the top edge (full width, no empty strip around it).
+   Placed freely with the Height slider: both rows float in the middle, rounded, one above the other. */
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar.tb-right {
+  bottom: 0 !important;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  border-radius: 0;
+  border-top: 1px solid var(--bar-border);
+  box-shadow: none;
+}
+#app.tb-stacked:not([data-tb='top']):not([data-tb='left']):not([data-tb='right']):not([data-tbfree]) .toolbar.tb-left {
+  bottom: var(--tb-row, 45px) !important;
+  padding-bottom: 5px;
+  border-top: 0;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
+}
+#app.tb-stacked[data-tb='top']:not([data-tbfree]) .toolbar.tb-left,
+#app.tb-stacked[data-tb='top']:not([data-tbfree]) .toolbar.tb-right {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  transform: none !important;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 0;
+  padding: 5px 6px;
+  border-width: 0;
+  background: var(--bar);
+}
+#app.tb-stacked[data-tb='top']:not([data-tbfree]) .toolbar.tb-left {
+  top: 0 !important;
+  padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  border-radius: 0;
+  border-bottom: 1px solid var(--bar-border);
+  box-shadow: none;
+}
+#app.tb-stacked[data-tb='top']:not([data-tbfree]) .toolbar.tb-right {
+  top: var(--tb-row-top, 45px) !important;
+  border-radius: 0 0 24px 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+#app.tb-stacked[data-tb='top']:not([data-tbfree]) .toolbar .tb-btn { flex: 0 0 auto; width: 34px; height: 34px; min-width: 0; }
+#app.tb-stacked[data-tb='top']:not([data-tbfree]) .toolbar .tb-pagenav { flex: 0 0 auto; }
+@media (max-width: 480px) {
+  #app.tb-stacked[data-tb='top']:not([data-tbfree]) .toolbar .tb-btn { width: 28px; height: 28px; }
+}
+#app.tb-stacked[data-tbfree] .toolbar.tb-left,
+#app.tb-stacked[data-tbfree] .toolbar.tb-right {
+  right: auto;
+  transform-origin: 0 0 !important;
+  border: 1px solid var(--bar-border);
+  border-radius: 22px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+/* while the bars glide (Read only on / off), copies of their backgrounds move; the bars themselves show only buttons */
+#app.tb-morphing .toolbar.tb-left,
+#app.tb-morphing .toolbar.tb-right {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+/* Read only: the small bar floats a little below the top edge, round on every side (phone, tablet, laptop, board) */
+#app.ro-compact .toolbar.tb-left,
+#app.ro-compact .toolbar.tb-right {
+  top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+  bottom: auto !important;
+  border-width: 1px !important;
+}
+#app.ro-compact .toolbar.tb-left { border-radius: 22px 0 0 22px !important; }
+#app.ro-compact .toolbar.tb-right { border-radius: 0 22px 22px 0 !important; }

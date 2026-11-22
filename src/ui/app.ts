@@ -216,8 +216,15 @@ function addRecentColor(c: string): void {
   }
 }
 
+/**
+ * Read only: wherever the toolbar normally sits (bottom, top, free, two rows on a phone), the small Read only bar is
+ * one bar in the middle of the top edge, floating over the page (the page does not move).
+ */
+let roLayout = false;
+
 /** The edge the toolbar touches: bottom (default) or top. */
 function tbEdge(): 'bottom' | 'top' {
+  if (roLayout) return 'top';
   // Placed freely: the nearer half decides which way menus open.
   if (tbFree()) return (store.settings.tbY as number) < 0.5 ? 'top' : 'bottom';
   return store.settings.tbPos === 'top' ? 'top' : 'bottom';
@@ -225,12 +232,14 @@ function tbEdge(): 'bottom' | 'top' {
 
 /** Is the toolbar placed anywhere with the Height slider (not stuck to an edge)? */
 function tbFree(): boolean {
+  if (roLayout) return false;
   const y = store.settings.tbY;
   return typeof y === 'number' && y >= 0 && y <= 1;
 }
 
 /** Toolbar halves together in the middle? (Edit toolbar > Buttons; default: middle on top, sides at the bottom.) */
 function tbMiddle(): boolean {
+  if (roLayout) return true;
   const a = store.settings.tbAlign;
   return a ? a === 'middle' : tbEdge() === 'top';
 }
@@ -512,13 +521,15 @@ export class App {
     if (this.root.classList.contains('tb-swap')) return; // a second tap while the bar is changing
     const on = !store.readOnly;
     const swap = () => {
+      roLayout = on;
       store.setReadOnly(on);
       this.root.classList.toggle('ro-compact', on);
       this.applyScale(true);
     };
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return swap();
     // One bar in the middle: it squeezes smoothly into the small Read only bar (and opens out again).
-    if (this.root.hasAttribute('data-tbjoin') && !this.root.classList.contains('tb-morphing')) return this.morphReadOnly(on);
+    // Wherever the toolbar is, it glides into the small Read only bar at the top (and back).
+    if (!this.root.classList.contains('tb-morphing')) return this.morphReadOnly(on);
     this.root.classList.add('tb-swap');
     window.setTimeout(() => {
       swap();
@@ -537,64 +548,72 @@ export class App {
     const left = this.toolbar.querySelector('.tb-left') as HTMLElement;
     const right = this.toolbar.querySelector('.tb-right') as HTMLElement;
     const ind = left.querySelector('.tb-ind') as HTMLElement | null;
-    const box = () => {
-      const a = left.getBoundingClientRect(), b = right.getBoundingClientRect();
-      return { x: Math.min(a.left, b.left), y: Math.min(a.top, b.top), w: Math.max(a.right, b.right) - Math.min(a.left, b.left), h: Math.max(a.bottom, b.bottom) - Math.min(a.top, b.top) };
+    const bars = [left, right];
+    const rectOf = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      const he = el as HTMLElement;
+      // k: how much the element's bar is scaled; rad: its corners (a joined half has only its outer ones rounded)
+      return { x: r.left, y: r.top, w: r.width, h: r.height, k: r.width / (he.offsetWidth || 1) || 1, rad: getComputedStyle(el).borderRadius };
     };
+    type R = ReturnType<typeof rectOf>;
     const STAY = '.tb-ro, .tb-ind, [data-act=shot], [data-act=pages]';
     const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
-    const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')];
-    const lefts = () => stays.map((el) => el.getBoundingClientRect().left);
-    const scaleOf = (el: HTMLElement) => el.getBoundingClientRect().width / (el.offsetWidth || 1) || 1;
-    const MS = 480;
+    const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')].filter((e) => e.offsetWidth > 0 || !!e.closest('.toolbar'));
+    const MS = 520;
     const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
-    // One calm movement: the bar's background, the buttons that stay and the tools all move at the same time.
-    const ghostBar = (from: ReturnType<typeof box>, to: ReturnType<typeof box>) => {
-      const look = getComputedStyle(left, '::before');
-      const ghost = document.createElement('div');
-      ghost.className = 'tb-morph';
-      Object.assign(ghost.style, {
-        backgroundImage: look.backgroundImage,
-        backgroundColor: look.backgroundColor,
-        borderRadius: look.borderTopLeftRadius === '0px' ? look.borderBottomLeftRadius : look.borderTopLeftRadius,
-        boxShadow: look.boxShadow,
-        border: `${look.borderBottomWidth} solid ${look.borderBottomColor}`,
+    // How a button gets from where it is (a) to where it will be (b): its left edge and middle line move there and it
+    // takes the other bar's scale (so the Read only pill is exactly its final size on the way, never bigger).
+    const flip = (_el: HTMLElement, a: R, b: R) => `translate(${(b.x - a.x) / a.k}px, ${(b.y + b.h / 2 - (a.y + a.h / 2)) / a.k}px) scale(${b.k / a.k})`;
+    // The bars' backgrounds: one copy per bar glides from where that bar is to where it will be.
+    const ghosts = (from: R[], to: R[]) => {
+      const made = bars.map((bar, i) => {
+        const joined = this.root.hasAttribute('data-tbjoin');
+        const look = getComputedStyle(joined ? left : bar, joined ? '::before' : undefined);
+        const g = document.createElement('div');
+        g.className = 'tb-morph';
+        Object.assign(g.style, {
+          backgroundImage: look.backgroundImage !== 'none' ? look.backgroundImage : getComputedStyle(this.root).getPropertyValue('--bar'),
+          backgroundColor: look.backgroundColor,
+          borderRadius: from[i].rad,
+          boxShadow: '0 4px 14px rgba(15, 23, 42, 0.18)',
+          border: `1px solid ${look.borderBottomColor}`,
+        });
+        this.toolbar.appendChild(g);
+        const fr = (r: R) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: r.rad === '0px' && joined ? '22px' : r.rad });
+        g.animate([fr(from[i]), fr(to[i])], { duration: MS, easing: EASE, fill: 'forwards' });
+        return g;
       });
-      this.toolbar.appendChild(ghost);
       this.root.classList.add('tb-morphing');
-      const frame = (r: typeof from) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
-      const anim = ghost.animate([frame(from), frame(to)], { duration: MS, easing: EASE, fill: 'forwards' });
       return () => {
-        anim.cancel();
-        ghost.remove();
+        made.forEach((g) => g.remove());
         this.root.classList.remove('tb-morphing');
       };
     };
     const clear = (els: HTMLElement[]) =>
       els.forEach((el) => {
         el.style.transition = 'none';
-        el.style.transform = el.style.opacity = '';
+        el.style.transform = el.style.opacity = el.style.transformOrigin = '';
       });
     if (on) {
-      const from = box();
+      const from = bars.map(rectOf);
+      const was = stays.map(rectOf);
       const list = tools();
-      const was = lefts();
       // where everything ends: lay the bar out the Read only way for a moment, measure, and put it back
       // (no frame is drawn in between, nothing is seen)
-      const rb = left.querySelector('.tb-ro') as HTMLElement | null;
+      roLayout = true;
       this.root.classList.add('ro-compact');
       this.applyScale(true);
-      const to = box();
-      const will = lefts();
+      const to = bars.map(rectOf);
+      const will = stays.map(rectOf);
+      roLayout = false;
       this.root.classList.remove('ro-compact');
       this.applyScale(true);
-      const end = ghostBar(from, to);
-      rb?.classList.add('on'); // the pill opens while everything moves
+      const end = ghosts(from, to);
+      (left.querySelector('.tb-ro') as HTMLElement | null)?.classList.add('on'); // the pill opens on the way
       if (ind) {
         ind.style.transition = 'opacity 0.1s ease';
         ind.style.opacity = '0';
       }
-      // the leaving tools are gone before the bar's edge reaches them (never seen outside the bar)
       list.forEach((el, i) => {
         const d = Math.min(i, 12) * 4;
         el.style.transition = `opacity 0.14s ease ${d}ms, transform 0.24s ${EASE} ${d}ms`;
@@ -602,10 +621,12 @@ export class App {
         el.style.transform = 'scale(0.7)';
       });
       stays.forEach((el, i) => {
+        el.style.transformOrigin = 'left center';
         el.style.transition = `transform ${MS}ms ${EASE}`;
-        el.style.transform = `translateX(${(will[i] - was[i]) / scaleOf(el)}px)`;
+        el.style.transform = flip(el, was[i], will[i]);
       });
       window.setTimeout(() => {
+        roLayout = true;
         store.setReadOnly(true);
         this.root.classList.add('ro-compact');
         this.applyScale(true);
@@ -617,17 +638,20 @@ export class App {
         end();
       }, MS);
     } else {
-      const from = box();
-      const was = lefts();
+      const from = bars.map(rectOf);
+      const was = stays.map(rectOf);
+      roLayout = false;
       this.root.classList.remove('ro-compact');
       store.setReadOnly(false);
       this.applyScale(true);
-      const to = box();
+      const to = bars.map(rectOf);
+      const now = stays.map(rectOf);
       const list = tools();
-      // the buttons that stay glide from where they were; the tools fade in a moment after the bar starts opening
+      // the buttons that stay glide back from the top; the tools fade in a moment after the bars start moving
       stays.forEach((el, i) => {
+        el.style.transformOrigin = 'left center';
         el.style.transition = 'none';
-        el.style.transform = `translateX(${(was[i] - el.getBoundingClientRect().left) / scaleOf(el)}px)`;
+        el.style.transform = flip(el, now[i], was[i]);
       });
       list.forEach((el) => {
         el.style.transition = 'none';
@@ -639,26 +663,27 @@ export class App {
         ind.style.opacity = '0';
       }
       void left.offsetWidth;
-      const end = ghostBar(from, to);
+      const end = ghosts(from, to);
       stays.forEach((el) => {
         el.style.transition = `transform ${MS}ms ${EASE}`;
         el.style.transform = '';
       });
       list.forEach((el, i) => {
-        const d = 140 + Math.min(i, 12) * 12;
+        const d = 180 + Math.min(i, 12) * 12;
         el.style.transition = `opacity 0.3s ease ${d}ms, transform 0.36s ${EASE} ${d}ms`;
         el.style.opacity = '';
         el.style.transform = '';
       });
       window.setTimeout(() => {
         end();
+        clear(stays);
         if (ind) {
           ind.style.transition = '';
           ind.style.opacity = '';
           this.moveIndicator(left);
         }
       }, MS);
-      window.setTimeout(() => list.concat(stays).forEach((el) => (el.style.transition = '')), 140 + 12 * 12 + 380);
+      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 180 + 12 * 12 + 400);
     }
   }
 
@@ -784,8 +809,12 @@ export class App {
     this.toolbar.querySelectorAll('.open').forEach((x) => x.classList.remove('open'));
   }
 
+  /** When the menu opened: the click a phone sends right after the finger lifts must not press what now lies under it. */
+  private popOpenedAt = 0;
+
   private togglePopover(kind: string, anchor: HTMLElement): void {
     if (this.popFor === kind) return this.closePopover();
+    this.popOpenedAt = performance.now();
     this.closePopover();
     // (A hexagon button may already be redrawn, and so detached, when we get here: its class tells.)
     this.popFromHex = !!anchor.closest('.hexdock') || anchor.classList.contains('hx-btn');
@@ -837,8 +866,15 @@ export class App {
     scaleFloating(pop);
     const k = ui();
     const r = anchor.getBoundingClientRect();
-    const pw = pop.offsetWidth * k, ph = pop.offsetHeight * k;
     const W = window.innerWidth, H = window.innerHeight, gap = 12 * k;
+    // Never taller than the room between the toolbar and the far edge of the screen: a long menu scrolls (phones).
+    pop.style.maxHeight = '';
+    const room = tbEdge() === 'bottom' ? r.top - gap - 8 : tbEdge() === 'top' ? H - r.bottom - gap - 8 : H - 16;
+    if (pop.offsetHeight * k > room && room > 120) {
+      pop.style.maxHeight = `${room / k}px`;
+      pop.style.overflowY = 'auto';
+    }
+    const pw = pop.offsetWidth * k, ph = pop.offsetHeight * k;
     const cx = Math.max(8, Math.min(W - pw - 8, r.left + r.width / 2 - pw / 2));
     const cy = Math.max(8, Math.min(H - ph - 8, r.top + r.height / 2 - ph / 2));
     // Open away from the edge the toolbar sits on.
@@ -864,8 +900,8 @@ export class App {
     arrow.style.left = `${ax - s / 2}px`;
     arrow.style.top = `${edge === 'bottom' ? top + ph - s / 2 - 1 : top - s / 2 + 1}px`;
     arrow.dataset.dir = edge === 'bottom' ? 'down' : 'up';
-    // It opens out of its button: grows from the arrow's point and slides in from the toolbar's side.
-    pop.style.transformOrigin = `${ax - left}px ${edge === 'bottom' ? ph : 0}px`;
+    // It opens out of its button, sliding in from the toolbar's side. (Its transform origin stays at 0 0: the menu is
+    // scaled for the screen from its top-left corner; moving the origin pushed it off the screen on phones.)
     pop.style.setProperty('--pop-dy', edge === 'bottom' ? '10px' : edge === 'top' ? '-10px' : '0px');
   }
 
@@ -1270,6 +1306,8 @@ export class App {
 
   private onPopoverClick(e: MouseEvent): void {
     if (performance.now() - this.flowerPickedAt < 450) return; // the finger just picked on the flower
+    // the phone's late click from the tap that opened this menu (it opened under the finger): not a choice
+    if (e.isTrusted && performance.now() - this.popOpenedAt < 350 && e.detail <= 1 && (e as PointerEvent).pointerType !== 'mouse') return;
     const petal = (e.target as Element).closest('[data-wc]') as SVGElement | null;
     if (petal) {
       const c = petal.dataset.wc!;
@@ -2163,13 +2201,22 @@ export class App {
     const free = tbFree();
     this.root.toggleAttribute('data-tbfree', free);
     if (free) this.placeBars(left, right, stacked);
+    // Phones, two rows: the dock rows sit exactly on each other (their real heights); placed freely, both are centred.
+    this.root.style.setProperty('--tb-row', `${right.offsetHeight}px`);
+    this.root.style.setProperty('--tb-row-top', `${left.offsetHeight}px`);
+    if (stacked && free) {
+      const k = ui(), W = window.innerWidth;
+      left.style.left = `${Math.max(0, (W - left.offsetWidth * k) / 2)}px`;
+      right.style.left = `${Math.max(0, (W - right.offsetWidth * k) / 2)}px`;
+      right.style.right = 'auto';
+    }
     else for (const bar of [left, right]) bar.style.top = bar.style.bottom = '';
     // Toolbar at the bottom: the page fills the whole screen and the bars
     // float over it. Toolbar on top: the page starts just below the bar (it
     // is never covered), and "Teachly by Physica" stays in the top right,
     // moving under the bar only when the bar reaches that corner.
     let barBottom = 0;
-    if (pos === 'top' && !free) {
+    if (pos === 'top' && !free && !roLayout) {
       // The bar touches the top edge when it stays clear of the status bar's
       // time (left) and battery (right) on iPad / iPhone; otherwise it sits
       // just below the status bar.
@@ -2206,11 +2253,11 @@ export class App {
   private placeBars(left: HTMLElement, right: HTMLElement, stacked: boolean): void {
     const k = ui(), H = window.innerHeight;
     const lh = left.offsetHeight * k, rh = right.offsetHeight * k;
-    const total = stacked ? lh + rh : Math.max(lh, rh);
+    const total = stacked ? lh + rh + 6 : Math.max(lh, rh);
     const y = Math.round((store.settings.tbY ?? 0) * Math.max(0, H - total));
     left.style.bottom = right.style.bottom = 'auto';
     left.style.top = `${y}px`;
-    right.style.top = `${stacked ? y + lh : y}px`;
+    right.style.top = `${stacked ? y + lh + 6 : y}px`; // two rows: a small gap between them
   }
 
   /** Put the toolbars on another edge (they glide in there). */

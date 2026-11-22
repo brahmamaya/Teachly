@@ -24,6 +24,11 @@ const { check, finish } = require('./lib.cjs');
   check('the Read only button is on the tool bar', !!(await page.$('.tb-left [data-act=readonly]')));
   await page.click('[data-act=readonly]');
   await page.waitForTimeout(1300); // the toolbar's Read only animation takes about a second
+  const pos = await page.evaluate(() => {
+    const a = document.querySelector('.tb-left').getBoundingClientRect(), b = document.querySelector('.tb-right').getBoundingClientRect();
+    return { gap: Math.abs(a.left - (innerWidth - b.right)), top: Math.min(a.top, b.top) };
+  });
+  check('on: wherever the toolbar was, the small bar sits in the middle of the top edge', pos.gap < 3 && pos.top < 40, JSON.stringify(pos));
   check('on: the button says "Read only"', (await page.evaluate(() => getComputedStyle(document.querySelector('.tb-ro-label')).opacity)) === '1');
   const left = await page.evaluate(() => [...document.querySelectorAll('.tb-left > *, .tb-right > *')].filter((e) => getComputedStyle(e).display !== 'none' && e.offsetWidth).map((e) => e.dataset.act).join(','));
   check('on: only Read only, Screenshot and Pages stay on the bar (no empty gap)', left === 'readonly,shot,pages', left);
