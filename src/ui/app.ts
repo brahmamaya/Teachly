@@ -564,7 +564,8 @@ export class App {
     const STAY = '.tb-ro, .tb-ind, [data-act=shot], [data-act=pages]';
     const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
     const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')].filter((e) => e.offsetWidth > 0 || !!e.closest('.toolbar'));
-    const MS = 480;
+    // Slow enough to be enjoyed (the owner asked for a calmer, longer glide), still one movement.
+    const MS = 760;
     // The toolbar is already one bar in the middle of the top edge: Read only squeezes it right where it is, keeping its
     // shape (the calm squeeze from before). Anywhere else it glides up to the middle of the top edge.
     if (on) this.root.classList.toggle('ro-keep', !this.root.classList.contains('tb-stacked') && this.root.hasAttribute('data-tbjoin') && tbEdge() === 'top' && !tbFree());
@@ -654,8 +655,8 @@ export class App {
         ind.style.opacity = '0';
       }
       list.forEach((el, i) => {
-        const d = Math.min(i, 12) * 4;
-        el.style.transition = `opacity 0.14s ease ${d}ms, transform 0.24s ${EASE} ${d}ms`;
+        const d = Math.min(i, 12) * 6;
+        el.style.transition = `opacity 0.2s ease ${d}ms, transform 0.32s ${EASE} ${d}ms`;
         el.style.opacity = '0';
         el.style.transform = 'scale(0.7)';
       });
@@ -708,8 +709,8 @@ export class App {
         el.style.transform = '';
       });
       list.forEach((el, i) => {
-        const d = 180 + Math.min(i, 12) * 12;
-        el.style.transition = `opacity 0.3s ease ${d}ms, transform 0.36s ${EASE} ${d}ms`;
+        const d = 280 + Math.min(i, 12) * 16;
+        el.style.transition = `opacity 0.4s ease ${d}ms, transform 0.5s ${EASE} ${d}ms`;
         el.style.opacity = '';
         el.style.transform = '';
       });
@@ -723,7 +724,7 @@ export class App {
           this.moveIndicator(left);
         }
       }, MS);
-      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 180 + 12 * 12 + 400);
+      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 280 + 12 * 16 + 560);
     }
   }
 

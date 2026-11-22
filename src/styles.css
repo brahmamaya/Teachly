@@ -10025,7 +10025,7 @@ button,
   box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
   clip-path: inset(0 calc(100% - 46px) 0 0 round 18px);
   opacity: 0;
-  transition: clip-path 0.38s var(--spring), opacity 0.2s var(--ease);
+  transition: clip-path 0.62s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s var(--ease);
   pointer-events: none;
 }
 .tb-ro-label {
@@ -10038,7 +10038,7 @@ button,
   white-space: nowrap;
   opacity: 0;
   transform: translate(-8px, -50%);
-  transition: opacity 0.22s var(--ease), transform 0.32s var(--spring);
+  transition: opacity 0.35s var(--ease), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 #app .toolbar .tb-ro.on { color: #fff; --eye: #fff; --eye-in: #0d9488; }
