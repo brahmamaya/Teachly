@@ -1,5 +1,6 @@
 // Minimal stroke icon set (24×24, currentColor).
 const P: Record<string, string> = {
+  info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r="1.1" fill="currentColor" stroke="none"/>',
   pk_highlighter: '<path d="M14 5l5 5"/><path d="M16 2.5l5.5 5.5-9 9-5.5-5.5z"/><path d="M7 11.5l5.5 5.5-2.5 2.5H6l-2-2v-3.5z" style="fill:var(--tip,currentColor)"/><path d="M2.5 21.5h9" style="stroke:var(--tip,currentColor)"/>',
   pk_calligraphy: '<path d="M15 3l6 6"/><path d="M17.5 1.5l5 5"/><path d="M16.5 4.5l3 3-7 7L4 21l2.5-8.5z"/><path d="M4 21l5-5"/><path d="M6.5 12.5l5 5-7.5 3.5z" style="fill:var(--tip,currentColor)"/>',
   pk_brush: '<path d="M19.5 2.5l2 2-8.5 8.5-2-2z"/><path d="M11 11l2 2"/><path d="M11 11c-2.8-.3-5.2 1.6-5.5 4.2-.2 1.3-.9 2.4-2.5 3.3 2.8 2.2 7.8 1.6 9.2-1.4.6-1.3.5-2.6-.2-3.6z" style="fill:var(--tip,currentColor)"/>',

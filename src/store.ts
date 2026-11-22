@@ -60,6 +60,8 @@ export interface Settings {
   tbSimpleDone?: boolean;
   /** Look of My notebooks: dark (default) or light. */
   libTheme?: 'light' | 'dark';
+  /** The first-open welcome has been shown (or skipped). */
+  welcomeDone?: boolean;
 }
 
 /**
