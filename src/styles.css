@@ -10032,9 +10032,12 @@ button,
   border-radius: 18px;
   background: linear-gradient(135deg, #14b8a6, #0d9488);
   box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
-  clip-path: inset(0 calc(100% - 46px) 0 0 round 18px);
+  /* plain px (134 - 46), not calc(100% - 46px): Safari does not animate a calc() inset, the pill jumped open at once */
+  clip-path: inset(0px 88px 0px 0px round 18px);
   opacity: 0;
-  transition: clip-path 0.62s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s var(--ease);
+  /* same time and curve as the toolbar's Read only glide (MS = 820 in morphReadOnly): the pill then grows exactly as
+     fast as Screenshot moves out of its way, so they never overlap */
+  transition: clip-path 0.82s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s var(--ease);
   pointer-events: none;
 }
 .tb-ro-label {
@@ -10047,12 +10050,18 @@ button,
   white-space: nowrap;
   opacity: 0;
   transform: translate(-8px, -50%);
-  transition: opacity 0.35s var(--ease), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  /* off: gone quickly, before the pill shrinks under it */
+  transition: opacity 0.18s var(--ease), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 #app .toolbar .tb-ro.on { color: #fff; --eye: #fff; --eye-in: #0d9488; }
-.tb-ro.on .tb-ro-pill { clip-path: inset(0 0 0 0 round 18px); opacity: 1; }
-.tb-ro.on .tb-ro-label { opacity: 1; transform: translate(0, -50%); transition-delay: 0.08s; }
+.tb-ro.on .tb-ro-pill { clip-path: inset(0px 0px 0px 0px round 18px); opacity: 1; }
+.tb-ro.on .tb-ro-label {
+  opacity: 1;
+  transform: translate(0, -50%);
+  /* on: the words appear once the pill has nearly opened (not over Screenshot while it is still moving away) */
+  transition: opacity 0.35s var(--ease) 0.42s, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.32s;
+}
 /* the tools that change the page fade out (and cannot be tapped) while Read only is on */
 #app .tb-left > :not(.tb-ro):not(.tb-ind),
 #app .tb-right > [data-act='undo'],
