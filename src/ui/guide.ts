@@ -195,19 +195,23 @@ const CARDS: [string, string, string][] = [
   ['ⓘ', 'Need help? Tap the i', 'Every button explained, with search.'],
 ];
 
-/** Faint tool icons scattered at angles behind the first card: [icon, left %, top %, turn°, size px, colour]. */
-const BG: [string, number, number, number, number, string][] = [
-  ['pen', 6, 8, -18, 34, '#2f6bff'], ['shapes', 78, 6, 14, 30, '#9b5cf6'], ['ruler', 88, 40, 32, 34, '#ff8a1f'],
-  ['eraser', 4, 46, 22, 30, '#ff4fa3'], ['graph', 70, 78, -12, 32, '#1aa37a'], ['text', 14, 80, 10, 28, '#3a3a3c'],
-  ['pdf', 42, 3, -8, 26, '#fb2d48'], ['compass', 90, 74, -24, 28, '#2f6bff'], ['tape', 30, 90, 18, 26, '#fdb330'],
-  ['protractor', 2, 24, -30, 26, '#9b5cf6'], ['laser', 60, 92, 26, 24, '#fb2d48'], ['bucket', 94, 20, -16, 24, '#1a7cf5'],
+/**
+ * Faint grey pictures scattered at angles behind the first card: tools and school subjects. [what, left %, top %, turn°, size px]
+ * `what` is an app icon name, or a symbol in quotes ("π", "H₂O"): written as text in the correct maths/science form.
+ */
+const BG: [string, number, number, number, number][] = [
+  ['pen', 7, 9, -18, 44], ['atom', 24, 22, -10, 38], ['"π"', 90, 10, 12, 44],
+  ['flask', 6, 36, 14, 42], ['"√x"', 94, 36, -10, 34], ['ruler', 88, 60, 30, 46],
+  ['"Σ"', 4, 62, -8, 44], ['graph', 22, 88, -12, 42], ['"H₂O"', 50, 94, 0, 30],
+  ['compass', 78, 88, -20, 42], ['bolt', 30, 8, 16, 34], ['"∫"', 70, 6, 10, 46],
+  ['abc', 96, 82, 14, 34], ['"Δ"', 3, 88, 12, 36],
 ];
 
 /** The short welcome shown the first time Teachly opens: four calm cards, Skip any time. */
 export function showWelcome(host: HTMLElement, done: () => void): void {
   const back = document.createElement('div');
   back.className = 'welcome';
-  const bg = BG.map(([n, x, y, r, z, c]) => `<i style="left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${r}deg);color:${c}">${icon(n, z)}</i>`).join('');
+  const bg = BG.map(([n, x, y, r, z]) => `<i style="left:${x}%;top:${y}%;transform:translate(-50%,-50%) rotate(${r}deg);font-size:${z}px">${n.startsWith('"') ? esc(n.slice(1, -1)) : icon(n, z)}</i>`).join('');
   back.innerHTML = `<div class="wl-card" role="dialog" aria-label="Welcome to Teachly"><div class="wl-bg" aria-hidden="true">${bg}</div><div class="wl-ic" aria-hidden="true"></div><h2></h2><p></p><div class="wl-dots">${CARDS.map(() => '<i></i>').join('')}</div><div class="wl-btns"><button class="wl-skip" data-wl="skip">Skip</button><button class="wl-next" data-wl="next">Next</button></div></div>`;
   host.appendChild(back);
   let i = 0;
