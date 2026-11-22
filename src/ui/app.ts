@@ -565,7 +565,7 @@ export class App {
     const tools = () => [...left.children, ...right.children].filter((e): e is HTMLElement => e instanceof HTMLElement && !e.matches(STAY) && e.offsetWidth > 0);
     const stays = [...left.querySelectorAll<HTMLElement>('.tb-ro'), ...right.querySelectorAll<HTMLElement>('[data-act=shot], [data-act=pages]')].filter((e) => e.offsetWidth > 0 || !!e.closest('.toolbar'));
     // Slow enough to be enjoyed (the owner asked for a calmer, longer glide), still one movement.
-    const MS = 760;
+    const MS = 820;
     // The toolbar is already one bar in the middle of the top edge: Read only squeezes it right where it is, keeping its
     // shape (the calm squeeze from before). Anywhere else it glides up to the middle of the top edge.
     if (on) this.root.classList.toggle('ro-keep', !this.root.classList.contains('tb-stacked') && this.root.hasAttribute('data-tbjoin') && tbEdge() === 'top' && !tbFree());
@@ -654,9 +654,9 @@ export class App {
         ind.style.transition = 'opacity 0.1s ease';
         ind.style.opacity = '0';
       }
-      list.forEach((el, i) => {
-        const d = Math.min(i, 12) * 6;
-        el.style.transition = `opacity 0.2s ease ${d}ms, transform 0.32s ${EASE} ${d}ms`;
+      // the tools fade and shrink together with the white bar, on the same curve and over the same time (one movement)
+      list.forEach((el) => {
+        el.style.transition = `opacity ${Math.round(MS * 0.8)}ms ${EASE}, transform ${MS}ms ${EASE}`;
         el.style.opacity = '0';
         el.style.transform = 'scale(0.7)';
       });
@@ -687,7 +687,7 @@ export class App {
       const to = bars.map(rectOf);
       const now = stays.map(rectOf);
       const list = tools();
-      // the buttons that stay glide back from the top; the tools fade in a moment after the bars start moving
+      // the buttons that stay glide back from the top; the tools come in together with the white bar (no wait)
       stays.forEach((el, i) => {
         el.style.transformOrigin = 'left center';
         el.style.transition = 'none';
@@ -708,9 +708,9 @@ export class App {
         el.style.transition = `transform ${MS}ms ${EASE}`;
         el.style.transform = '';
       });
-      list.forEach((el, i) => {
-        const d = 280 + Math.min(i, 12) * 16;
-        el.style.transition = `opacity 0.4s ease ${d}ms, transform 0.5s ${EASE} ${d}ms`;
+      // same curve and time as the white bar opening out, starting with it: background and icons arrive as one
+      list.forEach((el) => {
+        el.style.transition = `opacity ${MS}ms ${EASE}, transform ${MS}ms ${EASE}`;
         el.style.opacity = '';
         el.style.transform = '';
       });
@@ -724,7 +724,7 @@ export class App {
           this.moveIndicator(left);
         }
       }, MS);
-      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), 280 + 12 * 16 + 560);
+      window.setTimeout(() => list.forEach((el) => (el.style.transition = '')), MS + 40);
     }
   }
 
