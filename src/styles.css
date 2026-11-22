@@ -7428,9 +7428,9 @@ button,
 
 /* ---- Simpler, friendlier toolbar: roomy rounded pill, one accent colour for the active tool ---- */
 #app[data-board] {
-  --ind-bg: linear-gradient(135deg, #3b82f6, #6366f1);
+  --ind-bg: linear-gradient(135deg, #14b8a6, #0d9488);
   --ind-fg: #ffffff;
-  --ind-shadow: 0 6px 16px rgba(79, 70, 229, 0.38);
+  --ind-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
 }
 
 #app[data-board] .toolbar {
@@ -10005,3 +10005,10 @@ button,
 .gd-item h3 { display: flex; align-items: center; gap: 10px; }
 .gd-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: #f2f4f8; color: #2f3a4f; }
 .gd-ic .icon { --tip: #2f6bff; }
+
+/* Chosen tool: teal background (owner's pick, 22 Nov), its line icon white so it reads on the teal. */
+#app .toolbar .tb-btn.active,
+#app .toolbar .tb-btn.active:hover,
+#app .toolbar .tb-btn.active:active {
+  color: #ffffff;
+}
