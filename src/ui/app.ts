@@ -2251,7 +2251,8 @@ export class App {
       right.style.left = `${Math.max(0, (W - right.offsetWidth * k) / 2)}px`;
       right.style.right = 'auto';
     }
-    else for (const bar of [left, right]) bar.style.top = bar.style.bottom = '';
+    // Stuck to an edge: the CSS places the bars (only a freely placed bar keeps the height set above).
+    if (!free) for (const bar of [left, right]) bar.style.top = bar.style.bottom = '';
     // Toolbar at the bottom: the page fills the whole screen and the bars
     // float over it. Toolbar on top: the page starts just below the bar (it
     // is never covered), and "Teachly by Physica" stays in the top right,

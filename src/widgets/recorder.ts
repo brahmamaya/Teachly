@@ -139,6 +139,9 @@ export async function toggleRecording(board: Board, host: HTMLElement): Promise<
     ctx.drawImage(board.bg, 0, 0, out.width, out.height);
     ctx.drawImage(board.ink, 0, 0, out.width, out.height);
     ctx.drawImage(board.wet, 0, 0, out.width, out.height);
+    // the last bit of the line being written (the small canvas at the pen tip)
+    const tp = board.tipPlace, kx = out.width / board.w;
+    if (tp) ctx.drawImage(board.tip, tp.x * kx, tp.y * kx, tp.s * kx, tp.s * kx);
     ctx.drawImage(board.overlay, 0, 0, out.width, out.height);
     ui?.draw(ctx);
     touches.draw(ctx);

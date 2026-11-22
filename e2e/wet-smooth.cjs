@@ -18,6 +18,9 @@ const { check, finish } = require('./lib.cjs');
     o.width = w; o.height = h;
     const g = o.getContext('2d');
     cs.forEach((c) => g.drawImage(c, 0, 0));
+    // the small canvas at the pen tip (the last bit of the line), where it sits
+    const b = window.teachly.board, k = w / b.w;
+    if (which.includes('overlay') && b.tipPlace) g.drawImage(b.tip, b.tipPlace.x * k, b.tipPlace.y * k);
     const d = g.getImageData(0, 0, w, h).data;
     let n = 0;
     for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] > 150 && d[i + 2] < 120) n++;
@@ -28,7 +31,7 @@ const { check, finish } = require('./lib.cjs');
   await tp('touchStart', ...pts[0]);
   for (const p of pts.slice(1)) { await tp('touchMove', ...p); await page.waitForTimeout(16); }
   await page.waitForTimeout(150);
-  const live = await ink(['wet', 'overlay']);
+  const live = await ink(['wet', 'overlay']); // + the tip canvas
   await tp('touchEnd');
   await page.waitForTimeout(500);
   const done = await ink(['ink']);

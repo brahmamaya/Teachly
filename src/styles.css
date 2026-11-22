@@ -130,8 +130,17 @@ button:focus-visible {
 
 .layer.bg,
 .layer.ink,
-.layer.wet {
+.layer.wet,
+.layer.tip {
   pointer-events: none;
+}
+
+/* the small canvas that follows the pen tip (moved with transform only) */
+.layer.tip {
+  inset: auto;
+  left: 0;
+  top: 0;
+  will-change: transform;
 }
 
 .board.panning .overlay {

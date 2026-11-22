@@ -44,6 +44,12 @@ export interface Tool {
   hidden?(): Set<string> | null;
   /** Redraw lines still being written on the wet-ink layer; true if any. */
   redrawWet?(ctx: CanvasRenderingContext2D): boolean;
+  /** Once per frame, before drawing: add what was written since the last frame (wet ink). */
+  frame?(): void;
+  /** Where the pen tip of the line being written is (world units), or null: the tip canvas is placed there. */
+  tipAt?(): [number, number] | null;
+  /** Draw the last bit of the line up to the pen tip on the small tip canvas (world space). */
+  drawTip?(ctx: CanvasRenderingContext2D): void;
   /** Extra world-space drawing on the ink layer (e.g. transform preview). */
   drawInk?(ctx: CanvasRenderingContext2D): void;
   onActivate?(): void;
@@ -51,6 +57,9 @@ export interface Tool {
 }
 
 type Layer = 'bg' | 'ink' | 'overlay';
+
+/** Size of the pen-tip canvas (CSS px): room for the last bit of a fast line and the guessed bit ahead. */
+const TIP = 320;
 
 /** Tools a finger may use even when "stylus only" is on: they edit, they do not write. */
 const FINGER_TOOLS = new Set<ToolId>(['select', 'text', 'fill', 'tape']);
@@ -81,6 +90,19 @@ export class Board {
   /** Pixels of the video being recorded (null = not recording). */
   recordPixels: number | null = null;
   private wetDirty = false;
+  /** Finished lines just went onto the ink layer: clear the wet layer in the next frame (not the same one). */
+  private wetLater = false;
+  /**
+   * A small canvas that follows the pen tip and holds only the last bit of the line being written. Each full-screen
+   * canvas that changes in a frame must be copied whole to the screen; with the tip on its own small canvas, writing
+   * changes just one big canvas (wet ink) per frame instead of two, which halves the cost of a frame on boards.
+   */
+  readonly tip: HTMLCanvasElement;
+  private tipCtx: CanvasRenderingContext2D;
+  /** Where the tip canvas is (screen px) while it shows something; null = empty. */
+  tipPlace: { x: number; y: number; s: number } | null = null;
+  /** The overlay had something drawn on it last frame (when not, an empty overlay is left untouched). */
+  private ovUsed = true;
   private bgCtx: CanvasRenderingContext2D;
   private inkCtx: CanvasRenderingContext2D;
   private ovCtx: CanvasRenderingContext2D;
@@ -131,9 +153,19 @@ export class Board {
     [this.bg, this.bgCtx] = mk('bg', false);
     [this.ink, this.inkCtx] = mk('ink', false);
     [this.wet, this.wetCtx] = mk('wet', false);
+    [this.tip, this.tipCtx] = mk('tip', false);
     // (No "desynchronized" canvases: on some Android boards they show wrong
     // colours and stutter.)
     [this.overlay, this.ovCtx] = mk('overlay', false);
+    // Note when something is drawn on the overlay, so an overlay that stays empty is not cleared (changed) every frame.
+    const ov = this.ovCtx as unknown as Record<string, (...a: unknown[]) => unknown>;
+    for (const m of ['fill', 'stroke', 'fillRect', 'strokeRect', 'fillText', 'strokeText', 'drawImage', 'putImageData']) {
+      const f = ov[m];
+      ov[m] = (...a: unknown[]) => {
+        this.ovUsed = true;
+        return f.apply(this.ovCtx, a);
+      };
+    }
     this.instruments = new Instruments(this);
 
     new ResizeObserver(() => this.resize()).observe(container);
@@ -344,6 +376,11 @@ export class Board {
       c.style.width = `${r.width}px`;
       c.style.height = `${r.height}px`;
     }
+    const ts = Math.round(TIP * this.dpr);
+    this.tip.width = this.tip.height = ts;
+    this.tip.style.width = this.tip.style.height = `${ts / this.dpr}px`;
+    this.tipPlace = null;
+    this.ovUsed = true;
     setPageSize(this.w, this.h);
     // Resizing a canvas wipes it: draw every layer from scratch.
     this.inkState = null;
@@ -385,6 +422,11 @@ export class Board {
     if (!this.raf) this.raf = requestAnimationFrame(() => this.frame());
   }
 
+  /** Ask for a frame without redrawing any layer (a tool has new wet ink to add). */
+  schedule(): void {
+    if (!this.raf) this.raf = requestAnimationFrame(() => this.frame());
+  }
+
   /** Render immediately (used for low-latency wet ink). */
   flushOverlay(): void {
     this.renderOverlay();
@@ -405,6 +447,7 @@ export class Board {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.wet.width, this.wet.height);
     this.wetDirty = false;
+    this.wetLater = false;
     this.worldTransform(ctx);
     if (this.tool.redrawWet?.(ctx)) this.wetDirty = true;
   }
@@ -413,11 +456,16 @@ export class Board {
     this.raf = 0;
     if (this.dirty.has('bg')) this.renderBg();
     if (this.dirty.has('ink')) this.renderInk();
-    // Finished lines are now on the ink layer (or the view moved): refresh the wet layer.
-    if ((this.dirty.has('ink') || this.dirty.has('bg')) && this.wetDirty) this.renderWet();
+    // The view moved: refresh the wet layer now. A line finished (now on the ink layer, drawn the same): clear the wet
+    // layer in the next frame, so one frame never changes both big canvases (a lift stays as quick as writing).
+    if (this.wetDirty && (this.dirty.has('bg') || this.wetLater)) this.renderWet();
+    else if (this.wetDirty && this.dirty.has('ink')) this.wetLater = true;
+    for (const t of this.tools.values()) t.frame?.();
+    this.renderTip();
     if (this.dirty.has('overlay') || this.animating) this.renderOverlay();
     this.dirty.clear();
     if (this.animating) this.invalidate('overlay');
+    if (this.wetLater) this.schedule();
   }
 
   private worldTransform(ctx: CanvasRenderingContext2D): void {
@@ -502,10 +550,33 @@ export class Board {
     this.inkView = { els, cam, w: this.ink.width, h: this.ink.height, dpr: this.dpr };
   }
 
+  /** Move the tip canvas to the pen tip and draw the last bit of the line there (or clear it). */
+  private renderTip(): void {
+    const c = this.tip, ctx = this.tipCtx;
+    let at: [number, number] | null = null, tool: Tool | null = null;
+    for (const t of this.tools.values()) if ((at = t.tipAt?.() ?? null)) { tool = t; break; }
+    if (this.tipPlace) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, c.width, c.height);
+      this.tipPlace = null;
+    }
+    if (!at || !tool) return;
+    const d = this.dpr, cm = this.cam;
+    // Placed on whole device pixels, so its pixels sit exactly on the wet layer's (sharp, no seam).
+    const [sx, sy] = this.toScreen(at[0], at[1]);
+    const x = Math.round((sx - TIP / 2) * d) / d, y = Math.round((sy - TIP / 2) * d) / d;
+    c.style.transform = `translate(${x}px, ${y}px)`;
+    ctx.setTransform(d * cm.z, 0, 0, d * cm.z, (-cm.x * cm.z - x) * d, (-cm.y * cm.z - y) * d);
+    tool.drawTip?.(ctx);
+    this.tipPlace = { x, y, s: c.width / d };
+  }
+
   private renderOverlay(): void {
     const ctx = this.ovCtx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
+    // An overlay that was empty and stays empty is not touched (a changed canvas costs a full copy to the screen).
+    if (this.ovUsed) ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
+    this.ovUsed = false;
     let anim = false;
     this.worldTransform(ctx);
     if (this.instruments.draw(ctx)) anim = true;

@@ -137,6 +137,53 @@ export class PenTool implements Tool {
     l.drawnTo = n - 1;
   }
 
+  /** The one line being written that the tip canvas shows (with two or more at once, the overlay shows the tips). */
+  private tipLine(): Live | null {
+    if (this.live.size !== 1) return null;
+    const l = this.live.values().next().value!;
+    return l.marker && !l.snapped ? l : null;
+  }
+
+  /** Once per frame: put what was written since the last frame on the wet layer. */
+  frame(): void {
+    for (const l of this.live.values()) if (l.marker && !l.snapped) this.drawWet(l);
+  }
+
+  tipAt(): [number, number] | null {
+    const l = this.tipLine();
+    const n = l ? l.pts.length : 0;
+    return l && n >= 6 ? [l.pts[n - 3], l.pts[n - 2]] : null;
+  }
+
+  drawTip(ctx: CanvasRenderingContext2D): void {
+    const l = this.tipLine();
+    if (l) this.drawStub(ctx, l);
+  }
+
+  /** The last short bit of a marker line, from where the wet layer ends to the pen tip (and the guessed bit ahead). */
+  private drawStub(ctx: CanvasRenderingContext2D, l: Live): void {
+    const n = l.pts.length;
+    if (n < 6) return;
+    ctx.globalAlpha = 1;
+    const look = lineLook(ctx, l.style, l.color, l.size);
+    ctx.strokeStyle = look.stroke;
+    ctx.lineWidth = look.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(l.midX, l.midY);
+    ctx.lineTo(l.pts[n - 3], l.pts[n - 2]);
+    ctx.stroke();
+    if (l.predicted.length) {
+      ctx.strokeStyle = l.color;
+      ctx.lineWidth = l.size;
+      ctx.beginPath();
+      ctx.moveTo(l.pts[n - 3], l.pts[n - 2]);
+      for (let i = 0; i < l.predicted.length; i += 3) ctx.lineTo(l.predicted[i], l.predicted[i + 1]);
+      ctx.stroke();
+    }
+  }
+
   /** The wet layer was cleared (a line finished, or the view moved): draw the lines still being written. */
   redrawWet(ctx: CanvasRenderingContext2D): boolean {
     let any = false;
@@ -224,15 +271,14 @@ export class PenTool implements Tool {
     }
     l.predicted = [];
     if (l.marker) {
-      // Marker: the wet layer shows the line; the overlay adds only the last short bit up to the pen tip.
-      this.drawWet(l);
-      this.board.invalidate('overlay');
-      // Optional: a short guess ahead of the pen (the browser's predicted points), drawn on the overlay only, so it
+      // Marker: the points are only kept here; once per frame the new part goes on the wet layer (frame()) and the
+      // last short bit up to the pen tip on the small tip canvas. Many touch samples arrive per frame on boards:
+      // drawing per sample did the same work several times over.
+      // Optional: a short guess ahead of the pen (the browser's predicted points), drawn with the tip only, so it
       // never becomes part of the stroke and vanishes at the next frame.
-      if (store.settings.inkPredict && !l.snapper) {
-        for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
-        this.board.invalidate('overlay');
-      }
+      if (store.settings.inkPredict && !l.snapper) for (const [x, y, pp] of p.predicted.slice(0, 2)) l.predicted.push(x, y, pp);
+      if (this.tipLine()) this.board.schedule();
+      else this.board.invalidate('overlay');
       const n2 = l.pts.length;
       if (n2 >= 6 && dist(l.pts[n2 - 3], l.pts[n2 - 2], l.pts[n2 - 6], l.pts[n2 - 5]) > 2 * this.board.px) this.armHold(p.id, l);
       return;
@@ -262,7 +308,6 @@ export class PenTool implements Tool {
     // The steadied line ends exactly where the finger lifted.
     if (!l.snapper && !l.snapped && l.rawX !== undefined && l.rawY !== undefined && dist(l.rawX, l.rawY, l.lastX, l.lastY) > 0.5 * this.board.px) {
       l.pts.push(l.rawX, l.rawY, l.pts[l.pts.length - 1]);
-      if (l.marker) this.drawWet(l);
     }
     let el: PathEl | null = l.snapped;
     if (!el) {
@@ -394,31 +439,9 @@ export class PenTool implements Tool {
       // Same smoothing as the finished stroke, so the line does not jump
       // when the pen is lifted.
       if (l.marker) {
-        // drawn on the wet-ink layer; the overlay has the last bit up to the pen tip (and the guessed bit ahead, if chosen)
-        const n = l.pts.length;
-        if (n >= 6) {
-          ctx.globalAlpha = 1;
-          const look = lineLook(ctx, l.style, l.color, l.size);
-          ctx.strokeStyle = look.stroke;
-          ctx.lineWidth = look.width;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.beginPath();
-          ctx.moveTo(l.midX, l.midY);
-          ctx.lineTo(l.pts[n - 3], l.pts[n - 2]);
-          ctx.stroke();
-        }
-        if (l.predicted.length && l.pts.length >= 3) {
-          ctx.globalAlpha = 1;
-          ctx.strokeStyle = l.color;
-          ctx.lineWidth = l.size;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.beginPath();
-          ctx.moveTo(l.pts[l.pts.length - 3], l.pts[l.pts.length - 2]);
-          for (let i = 0; i < l.predicted.length; i += 3) ctx.lineTo(l.predicted[i], l.predicted[i + 1]);
-          ctx.stroke();
-        }
+        // drawn on the wet-ink layer; the last bit up to the pen tip is on the tip canvas (two or more lines at once:
+        // here on the overlay)
+        if (this.tipLine() !== l) this.drawStub(ctx, l);
         continue;
       }
       const raw = l.predicted.length ? l.pts.concat(l.predicted) : l.pts;
