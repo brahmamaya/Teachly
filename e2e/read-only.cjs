@@ -35,7 +35,9 @@ const { check, finish } = require('./lib.cjs');
   await page.keyboard.press('e');
   await page.waitForTimeout(200);
   check('on: undo and tool keys change nothing', (await n()) === n0 && (await page.evaluate(() => window.__teachly.store.tool.tool)) === 'pen');
-  await page.click('[data-act=readonly]');
+  // one tap on the words "Read only" (not the icon) turns it off
+  const lb = await (await page.$('.tb-ro-label')).boundingBox();
+  await page.mouse.click(lb.x + lb.width / 2, lb.y + lb.height / 2);
   await page.waitForTimeout(600);
   check('off: the tools come back', (await page.evaluate(() => getComputedStyle(document.querySelector('.tb-left [data-tool=pen]')).opacity)) === '1');
   await draw(500);

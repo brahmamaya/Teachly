@@ -10124,3 +10124,5 @@ button,
 #app.ro-compact .hexdock { display: none !important; }
 #app.ro-compact .toolbar .tb-ro { width: 134px; justify-items: start; padding-left: 12px; }
 #app.tb-fadein .toolbar { transition: opacity 0.2s var(--ease); }
+/* the whole "Read only" pill (icon, words and teal) is the button: one tap anywhere on it brings the tools back */
+.tb-ro.on .tb-ro-pill, .tb-ro.on .tb-ro-label { pointer-events: auto; }

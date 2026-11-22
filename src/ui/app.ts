@@ -505,6 +505,7 @@ export class App {
   /** Read only on/off. The bar keeps only Read only, Screenshot and Pages (no empty gap), so its size changes: it fades
    *  out for a moment, is re-laid out, and fades back in while the button opens into its pill (opacity only, no jolt). */
   private toggleReadOnly(): void {
+    if (this.root.classList.contains('tb-swap')) return; // a second tap while the bar is changing
     const on = !store.readOnly;
     const swap = () => {
       store.setReadOnly(on);
