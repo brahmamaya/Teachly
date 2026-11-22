@@ -569,8 +569,38 @@ export class App {
     // How a button gets from where it is (a) to where it will be (b): its left edge and middle line move there and it
     // takes the other bar's scale (so the Read only pill is exactly its final size on the way, never bigger).
     const flip = (_el: HTMLElement, a: R, b: R) => `translate(${(b.x - a.x) / a.k}px, ${(b.y + b.h / 2 - (a.y + a.h / 2)) / a.k}px) scale(${b.k / a.k})`;
-    // The bars' backgrounds: one copy per bar glides from where that bar is to where it will be.
+    // The bars' backgrounds glide from where they are to where they will be: ONE copy when the toolbar is one shape
+    // (one bar in the middle, or a phone's two-row dock), else one per bar (the two halves in their corners).
     const ghosts = (from: R[], to: R[]) => {
+      const one = this.root.hasAttribute('data-tbjoin') || this.root.classList.contains('tb-stacked');
+      if (one) {
+        const u = (rs: R[]) => {
+          const x = Math.min(rs[0].x, rs[1].x), y = Math.min(rs[0].y, rs[1].y);
+          return { x, y, w: Math.max(rs[0].x + rs[0].w, rs[1].x + rs[1].w) - x, h: Math.max(rs[0].y + rs[0].h, rs[1].y + rs[1].h) - y };
+        };
+        const joined = this.root.hasAttribute('data-tbjoin');
+        const look = getComputedStyle(joined ? left : left, joined ? '::before' : undefined);
+        const g = document.createElement('div');
+        g.className = 'tb-morph';
+        const here = joined ? look.borderRadius : this.root.classList.contains('tb-stacked') ? (tbEdge() === 'top' ? '0 0 24px 24px' : '24px 24px 0 0') : '22px';
+        Object.assign(g.style, {
+          backgroundImage: look.backgroundImage !== 'none' ? look.backgroundImage : getComputedStyle(this.root).getPropertyValue('--bar'),
+          backgroundColor: look.backgroundColor,
+          boxShadow: '0 4px 14px rgba(15, 23, 42, 0.18)',
+          border: `1px solid ${look.borderBottomColor}`,
+        });
+        this.toolbar.appendChild(g);
+        const a = u(from), b2 = u(to);
+        // Read only on: from the bar as it is now to the small round bar; off: the other way
+        const [ra, rb] = on ? [here, '22px'] : ['22px', here];
+        const fr = (r: ReturnType<typeof u>, rad: string) => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px`, borderRadius: rad });
+        g.animate([fr(a, ra), fr(b2, rb)], { duration: MS, easing: EASE, fill: 'forwards' });
+        this.root.classList.add('tb-morphing');
+        return () => {
+          g.remove();
+          this.root.classList.remove('tb-morphing');
+        };
+      }
       const made = bars.map((bar, i) => {
         const joined = this.root.hasAttribute('data-tbjoin');
         const look = getComputedStyle(joined ? left : bar, joined ? '::before' : undefined);

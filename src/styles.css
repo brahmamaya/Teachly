@@ -10701,3 +10701,4 @@ button,
 .pgs-grid .pv-pad { display: block; grid-column: 1 / -1; }
 .pgs-grid .pgs-card { aspect-ratio: var(--pg-ar, 16 / 9); min-height: 0; }
 .pgs-grid .pgs-card img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+.pages-list, .pgs-grid { overflow-anchor: none; }
