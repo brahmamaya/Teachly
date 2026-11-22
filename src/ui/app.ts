@@ -775,7 +775,7 @@ export class App {
         return `<div class="hx hx-${i}${active ? ' active' : ''}">${html}</div>`;
       })
       .join('');
-    dock.innerHTML = `<div class="hx hx-move" data-hexmove title="Drag to move"><span>Move</span></div>${cells}`;
+    dock.innerHTML = `<div class="hx hx-move" data-hexmove title="Drag to move" aria-label="Move"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg></span></div>${cells}`;
     // While Edit toolbar is open (it covers the right side), the hexagon
     // waits on the left, in the middle, so the choices can be seen.
     const editing = this.popFor === 'tbedit' || this.popFor === 'menu';

@@ -10720,3 +10720,31 @@ button,
 .panel.panel-grab .calc-expr { touch-action: manipulation; }
 .panel.panel-grab .calc-expr { user-select: text; -webkit-user-select: text; }
 .panel.dragging { box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45); transition: box-shadow 0.2s ease; }
+
+/* ---------- Floating hexagon (owner's pick 2, 22 Nov): a teal honeycomb, round-cornered cells that touch ----------
+   The middle "Move" (four arrows) is teal; the chosen tool's cell and a pressed cell turn teal with a white icon. */
+#app .hexdock { --g: 1.03; }
+#app .hx {
+  clip-path: none;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 115.47'><path d='M43 3.6Q50 -0.4 57 3.6L93 24.4Q100 28.4 100 36.4V79.1Q100 87.1 93 91.1L57 111.9Q50 115.9 43 111.9L7 91.1Q0 87.1 0 79.1V36.4Q0 28.4 7 24.4Z' fill='black'/></svg>") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 115.47'><path d='M43 3.6Q50 -0.4 57 3.6L93 24.4Q100 28.4 100 36.4V79.1Q100 87.1 93 91.1L57 111.9Q50 115.9 43 111.9L7 91.1Q0 87.1 0 79.1V36.4Q0 28.4 7 24.4Z' fill='black'/></svg>") center / 100% 100% no-repeat;
+  background: linear-gradient(180deg, #ffffff, #f1f5f9);
+  transition: background 0.25s ease;
+}
+#app .hx-move,
+#app .hexdock.dragging .hx-move,
+#app .hx.active,
+#app .hx:active {
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  color: #fff;
+}
+#app .hexdock.dragging .hx-move { background: linear-gradient(135deg, #0d9488, #0f766e); }
+#app .hx.active .hx-btn,
+#app .hx:active .hx-btn { color: #fff; }
+#app .hx-move svg { width: calc(var(--R) * 0.8); height: calc(var(--R) * 0.8); }
+#app .hx .hx-btn { transition: transform 0.15s ease, color 0.25s ease; }
+#app .hx:active .hx-btn { transform: scale(0.92); }
+/* boards (lite): no shadow filter, so the white cells get a faint grey edge to stand out on a white page */
+.lite #app .hx { outline: none; }
+.lite #app .hx:not(.hx-move):not(.active):not(:active) { background: linear-gradient(180deg, #f8fafc, #e2e8f0); }
+@media (prefers-reduced-motion: reduce) { #app .hx, #app .hx .hx-btn { transition: none; } }
