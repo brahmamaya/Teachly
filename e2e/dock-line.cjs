@@ -33,8 +33,39 @@ const DEVICES = [
       const dh = m.d.b - m.d.t, dc = (m.d.t + m.d.b) / 2, bc = (bar.t + bar.b) / 2;
       const hits = [m.L, m.R].some((x) => m.d.l < x.r + 4 && m.d.r > x.l - 4 && m.d.t < x.b && m.d.b > x.t);
       check(`${name}, toolbar ${pos} / ${align}: the dock is a slim bar (not stretched)`, dh < 80, `${Math.round(dh)} px tall`);
-      check(`${name}, toolbar ${pos} / ${align}: on the toolbar's line, touching neither half`, Math.abs(dc - bc) < 4 && !hits, JSON.stringify({ dock: [Math.round(m.d.l), Math.round(m.d.r), Math.round(dc)], barMid: Math.round(bc), hits }));
+      // on the toolbar's line when there is room; otherwise right next to the bar (below it at the top, above it at the
+      // bottom), centred; never on the bar, never off the screen
+      const onLine = Math.abs(dc - bc) < 4;
+      const next = pos === 'top' ? m.d.t >= bar.b && m.d.t - bar.b < 40 : m.d.b <= bar.t && bar.t - m.d.b < 40;
+      const inScreen = m.d.l >= 0 && m.d.r <= w;
+      check(`${name}, toolbar ${pos} / ${align}: on the toolbar's line (or right next to the bar if no room), touching neither half`, (onLine || next) && !hits && inScreen, JSON.stringify({ dock: [Math.round(m.d.l), Math.round(m.d.r), Math.round(m.d.t), Math.round(m.d.b)], bar: [Math.round(bar.t), Math.round(bar.b)], onLine, hits }));
+      if (align === 'sides') check(`${name}, toolbar ${pos} / sides: on the toolbar's line between the halves`, onLine, '');
     }
+    // Placed while hidden (a menu open), with few toolbar buttons and the bar at the top in the middle: when the menu
+    // closes it must fit its free space (it measured 0 wide then and came out far too long, under the toolbar), and on
+    // an iPad keep clear of the time in the top left corner.
+    await p.evaluate(() => window.__teachly.store.setSettings({ tbPos: 'top', tbAlign: 'middle', tbY: undefined }));
+    await p.setViewportSize({ width: w + 1, height: h });
+    await p.waitForTimeout(150);
+    await p.setViewportSize({ width: w, height: h });
+    await p.waitForTimeout(700);
+    await p.tap('[data-pop=menu]');
+    await p.waitForTimeout(400);
+    await p.evaluate(() => window.__teachly.store.setSettings({ tbHidden: ['readonly', 'slide', 'text', 'tape', 'laser', 'insert', 'tools', 'shot', 'timer', 'poll', 'graph', 'record'], tbShown: [] }));
+    await p.waitForTimeout(600);
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(900);
+    const q = await p.evaluate(() => {
+      const L = Math.min(document.querySelector('.tb-left').getBoundingClientRect().left, document.querySelector('.tb-right').getBoundingClientRect().left);
+      const d = document.querySelector('.subj-dock').getBoundingClientRect();
+      return { L, d: [d.left, d.right, d.top, d.bottom], flush: document.querySelector('#app').hasAttribute('data-tbflush') };
+    });
+    const minLeft = q.flush && name === 'iPad' ? 190 : 0;
+    const besideOk = q.d[0] >= minLeft + 4 && q.d[1] <= q.L - 8;
+    const belowOk = q.d[2] >= 30; // the fallback: just below the bar
+    check(`${name}: placed while a menu was open, the dock still fits (beside the bar, clear of it and the iPad clock, or just below it)`, (besideOk || belowOk) && q.d[3] - q.d[2] < 80 && q.d[1] - q.d[0] < 700, JSON.stringify(q));
+    await p.evaluate(() => window.__teachly.store.setSettings({ tbHidden: [], tbShown: [] }));
+    await p.waitForTimeout(600);
     // Read only: the dock steps aside, then comes back on the line
     await p.tap('[data-act=readonly]');
     await p.waitForTimeout(1300);
@@ -44,7 +75,7 @@ const DEVICES = [
     await p.waitForTimeout(1500);
     const back = await look();
     const bc2 = (Math.min(back.L.t, back.R.t) + Math.max(back.L.b, back.R.b)) / 2;
-    check(`${name}: Read only off: the dock is back, on the toolbar's line`, back.d.op === 1 && Math.abs((back.d.t + back.d.b) / 2 - bc2) < 4, JSON.stringify(back.d));
+    check(`${name}: Read only off: the dock is back, slim, on the line or next to the bar`, back.d.op === 1 && back.d.b - back.d.t < 80 && (Math.abs((back.d.t + back.d.b) / 2 - bc2) < 4 || back.d.t >= Math.max(back.L.b, back.R.b)), JSON.stringify(back.d));
     check(`${name}: no page errors`, errs.length === 0, errs.join('|'));
     await ctx.close();
   }

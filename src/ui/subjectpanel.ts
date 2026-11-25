@@ -241,6 +241,12 @@ export class SubjectPanel {
       window.setTimeout(() => this.placeDock(), 150);
       return;
     }
+    // Hidden right now (a menu is open): it cannot be measured (it measured 0 wide, so every piece seemed to fit and
+    // the dock came out far too long, under the toolbar). Placed as soon as it shows again.
+    if (!el.getClientRects().length) {
+      window.setTimeout(() => this.placeDock(), 250);
+      return;
+    }
     const l = app.querySelector('.tb-left')?.getBoundingClientRect();
     const r = app.querySelector('.tb-right')?.getBoundingClientRect();
     const qb = app.querySelector<HTMLElement>('.quickbar:not([hidden])');
@@ -312,27 +318,38 @@ export class SubjectPanel {
     if (!best && this.cap >= 0 && !app.classList.contains('tb-stacked') && (edge === 'bottom' || edge === 'top')) {
       // The toolbar is one bar in the middle (no room between its halves): the dock sits on the SAME line, beside the
       // bar, in the free space on one side (at the top the left side, away from the clock in the right corner).
-      const L = Math.min(l.left, r.left), R = Math.max(l.right, r.right);
-      const sides = edge === 'top' ? (['left', 'right'] as const) : L >= window.innerWidth - R ? (['left', 'right'] as const) : (['right', 'left'] as const);
+      const L = Math.min(l.left, r.left), R = Math.max(l.right, r.right), Wd = window.innerWidth;
+      // At the top, an iPad shows the time (left) and battery (right) over the screen's top edge, and the clock with
+      // the app's name sits in the top right corner: the dock keeps clear of those (left of the bar only).
+      const apple = /iPad|iPhone/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+      const flush = edge === 'top' && apple && app.hasAttribute('data-tbflush');
+      const regions: [number, number][] = edge === 'top' ? [[flush ? 190 : 0, L]] : L >= Wd - R ? [[0, L], [R, Wd]] : [[R, Wd], [0, L]];
       if (qb && !popup) setQb('mini');
-      for (const side of sides) {
-        const room = side === 'left' ? L : window.innerWidth - R;
-        for (let n = total; n >= MIN; n--) {
+      for (const [a, z] of regions) {
+        for (let n = Math.min(total, this.cap); n >= MIN; n--) {
           showN(n);
-          if (room >= W(el) + GAP) {
-            el.classList.add('inline');
-            const x = side === 'left' ? L / 2 : R + room / 2;
-            put(el, x, c);
-            if (qb && !popup) {
-              // the small pen bar just above (or below, at the top) the dock
-              const box = el.getBoundingClientRect();
-              qb.classList.add('inline');
-              put(qb, x, edge === 'top' ? box.bottom + 10 + qb.getBoundingClientRect().height / 2 : box.top - 10 - qb.getBoundingClientRect().height / 2);
+          if (z - a < W(el) + GAP) continue;
+          el.classList.add('inline');
+          const x = (a + z) / 2;
+          put(el, x, c);
+          // checked with what is really on the screen: inside its free space, clear of the bar and the screen edge
+          const box = el.getBoundingClientRect();
+          if (box.left < a + 4 || box.right > z - 8 || box.width < 20) {
+            if (this.tries++ < 24) {
+              this.cap = n - 1;
+              return this.placeDock(true);
             }
-            return;
+            break;
           }
+          if (qb && !popup) {
+            // the small pen bar just above (or below, at the top) the dock
+            qb.classList.add('inline');
+            put(qb, x, edge === 'top' ? box.bottom + 10 + qb.getBoundingClientRect().height / 2 : box.top - 10 - qb.getBoundingClientRect().height / 2);
+          }
+          return;
         }
       }
+      showN(Math.min(tiles.length, 6));
     }
     if (!best) {
       // No room on the toolbar's line: just above the toolbar (below it at the top), and above the pen bar when that shows.
