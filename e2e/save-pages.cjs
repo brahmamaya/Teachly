@@ -40,6 +40,7 @@ const { check, finish } = require('./lib.cjs');
     const { store, autosave } = window.__teachly;
     store.goTo(5);
     store.addEls([{ id: 'new-line', type: 'path', pts: [10, 10, 0.5, 90, 90, 0.5], style: 'pen', color: '#fff', size: 3, opacity: 1 }]);
+    await new Promise((ok) => setTimeout(ok, 600)); // the page turn and the new line are drawn first: only the save is timed
     let g = 0, l = performance.now(), on = true;
     const f = (t) => {
       g = Math.max(g, t - l);

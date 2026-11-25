@@ -1867,8 +1867,14 @@ export class App {
       store.commit([newPage(store.page.bg, 'none')], 0);
       return this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, undefined, true));
     }
+    // reading the PDF's page shape takes a moment on a board: show that something is happening
+    const wait = document.createElement('div');
+    wait.className = 'progress-toast';
+    wait.textContent = 'Opening PDF…';
+    this.root.appendChild(wait);
     const { firstPageShape } = await import('../io/pdfpages');
     const shape = await firstPageShape(f).catch(() => 0);
+    wait.remove();
     const mine = PAGE.h / PAGE.w;
     const at = await askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name, ownFirst: !!shape && Math.abs(shape - mine) / mine > 0.03 });
     if (at === null) return;
