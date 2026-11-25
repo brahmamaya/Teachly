@@ -164,15 +164,18 @@ export function askPdfRange(host: HTMLElement, o: { total: number; current: numb
 }
 
 /**
- * Adding a PDF to a notebook that already has pages: where should its pages go? At the end (after the last page,
- * the usual choice for "the next chapter"), after the page that is open, or at the start. Resolves with the page
- * position to insert at, or null if cancelled.
+ * Adding a PDF to a notebook that already has pages: where should its pages go? As its own notebook (its pages then
+ * take the PDF's shape), at the end (after the last page, the usual choice for "the next chapter"), after the page
+ * that is open, or at the start. Resolves with the page position to insert at, -1 for its own notebook, or null if
+ * cancelled.
  */
-export function askPdfPlace(host: HTMLElement, o: { current: number; total: number; name: string }): Promise<number | null> {
+export function askPdfPlace(host: HTMLElement, o: { current: number; total: number; name: string; ownFirst?: boolean }): Promise<number | null> {
   return new Promise((resolve) => {
     const back = document.createElement('div');
     back.className = 'sv-back dl-back';
+    // -1: open the PDF as its own notebook, whose pages take the PDF's shape (each PDF page is a whole page)
     const rows: [string, string, number][] = [
+      ['own', 'As its own notebook · pages exactly like the PDF', -1],
       ['end', `At the end · after page ${o.total}`, o.total],
       ...(o.current < o.total ? [['after', `After this page · page ${o.current}`, o.current] as [string, string, number]] : []),
       ['start', 'At the start · before page 1', 0],
@@ -191,7 +194,8 @@ export function askPdfPlace(host: HTMLElement, o: { current: number; total: numb
     (back.querySelector('.dl-note') as HTMLElement).textContent = `${o.name} · where should its pages go?`;
     host.appendChild(back);
     const box = back.querySelector('.dl-box') as HTMLElement;
-    let mode = 'end';
+    // the PDF's pages have another shape than this notebook's: its own notebook is the natural choice
+    let mode = o.ownFirst ? 'own' : 'end';
     const paint = () => box.querySelectorAll<HTMLElement>('.dl-row').forEach((r) => r.classList.toggle('on', r.dataset.m === mode));
     const done = (v: number | null) => {
       fadeOut(back, 180);
