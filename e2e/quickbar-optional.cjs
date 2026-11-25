@@ -19,7 +19,7 @@ const { check, finish } = require('./lib.cjs');
   await page.click('[data-act=tbedit]');
   await page.waitForTimeout(400);
   check('Edit toolbar has the "Pen colour bar" switch (off)', (await page.getAttribute('[data-quickbar]', 'checked')) === null);
-  await page.check('[data-quickbar]');
+  await page.click('.tbe-qb'); // the switch (its box is hidden; the whole row is tapped)
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
   await page.keyboard.press('Escape'); // closes the menu again
   await page.waitForTimeout(500);
@@ -40,7 +40,7 @@ const { check, finish } = require('./lib.cjs');
   await page.waitForTimeout(300);
   await page.click('[data-act=tbedit]');
   await page.waitForTimeout(400);
-  await page.uncheck('[data-quickbar]');
+  await page.click('.tbe-qb');
   await page.waitForTimeout(500);
   check('switched off again: the bar is gone at once', !(await bar()));
   check('the pen menu (second tap) still has its colours', await (async () => { await page.evaluate(() => document.activeElement && document.activeElement.blur()); await page.keyboard.press('Escape'); await page.waitForTimeout(400); await page.click('[data-tool=pen]'); await page.waitForTimeout(300); return !!(await page.$('.pop-n3 .pt-cols')); })());
