@@ -64,6 +64,15 @@ export function startHousekeeping(board: Board): void {
     })();
   }, 8000);
 
+  // 3a. Turning pages of a book: the pictures of book pages far from the open one are let go a moment after each
+  // turn, quiet or not. A page picture is big (tens of MB once shown); kept for every page seen, a long lesson filled
+  // a board's memory and the app began to hang. (Pages near the open one stay, so turning back is instant.)
+  let turned = 0;
+  store.on('page', () => {
+    clearTimeout(turned);
+    turned = window.setTimeout(() => trimImageCache(imagesInUse(), (src) => src.startsWith('pdfp:')), 1500);
+  });
+
   // 3. Quiet-time memory tidy, every 5 minutes.
   window.setInterval(() => {
     const quiet = performance.now() - board.lastInput > QUIET_MS && !board.busyInput;

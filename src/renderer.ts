@@ -186,10 +186,26 @@ export async function imagesReady(p: { els: El[] }, maxMs = 12_000): Promise<boo
   return imgs.every((i) => i.complete && i.naturalWidth);
 }
 
-export function trimImageCache(keep: Set<string>): number {
+/** How many pictures are held (decoded) right now (for the long-lesson test). */
+export function imageCacheSize(): number {
+  return images.size;
+}
+
+/** Let go of one picture (it is fetched again if it is ever needed). */
+export function forgetImage(src: string): void {
+  const img = images.get(src);
+  if (!img) return;
+  img.onload = null;
+  if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+  img.src = '';
+  images.delete(src);
+}
+
+/** Let go of the pictures not in `keep` (only those `which` picks, if given). */
+export function trimImageCache(keep: Set<string>, which?: (src: string) => boolean): number {
   let freed = 0;
   for (const [src, img] of images) {
-    if (keep.has(src)) continue;
+    if (keep.has(src) || (which && !which(src))) continue;
     img.onload = null;
     if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
     img.src = '';

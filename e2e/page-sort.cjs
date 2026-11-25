@@ -98,7 +98,8 @@ const SHOT = process.env.SHOT;
   await page.waitForTimeout(300);
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('.pm-item[data-act=pdf]')]);
   await chooser.setFiles({ name: 'Chapter 2.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdfBytes) });
-  await page.waitForTimeout(500);
+  await page.waitForSelector('.dl-box', { timeout: 8000 }).catch(() => {}); // the PDF's page shape is read first
+  await page.waitForTimeout(300);
   check('a notebook with pages asks where the PDF goes', !!(await page.$('.dl-box [data-m=end].on')) && !!(await page.$('.dl-box [data-m=after]')) && !!(await page.$('.dl-box [data-m=start]')));
   if (SHOT) await page.screenshot({ path: SHOT + '/pdf-place.png' });
   await page.click('.dl-go');

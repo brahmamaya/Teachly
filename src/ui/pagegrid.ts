@@ -2,7 +2,7 @@ import { bbox, similarity, transformEl, uid } from '../geometry';
 import { download } from '../io/files';
 import { blankNotebook, saveNotebook } from '../io/library';
 import { PAGE } from '../page';
-import { imagesReady, pageRegion, renderRegion } from '../renderer';
+import { forgetImage, imagesReady, pageRegion, renderRegion } from '../renderer';
 import { newPage, store } from '../store';
 import type { Page } from '../types';
 import { icon } from './icons';
@@ -52,6 +52,9 @@ export async function makeThumb(p: Page): Promise<string | null> {
     return url;
   } catch {
     return null;
+  } finally {
+    // the small book-page pictures were needed only for this thumbnail: let them go (they piled up over a long lesson)
+    if (page !== p) for (const e of page.els) if (e.type === 'image' && e.src.startsWith('data:')) forgetImage(e.src);
   }
 }
 
