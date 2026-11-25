@@ -10809,3 +10809,13 @@ button,
   overflow: visible;
   line-height: 1.3;
 }
+
+/* ---------- Classroom boards (Android panels): buttons clear of the screen edge ----------
+   The board's touch frame covers the outer few millimetres of the screen: a toolbar touching the edge had its buttons
+   cut there (the teal circle half hidden). The bar still reaches the edge, its buttons sit a little in from it. */
+.board-panel #app[data-tb='bottom']:not([data-tbfree]) .toolbar.tb-left,
+.board-panel #app[data-tb='bottom']:not([data-tbfree]) .toolbar.tb-right { padding-bottom: 16px; }
+.board-panel #app[data-tb='top']:not([data-tbfree]):not(.ro-compact) .toolbar.tb-left,
+.board-panel #app[data-tb='top']:not([data-tbfree]):not(.ro-compact) .toolbar.tb-right { padding-top: 16px; }
+.board-panel #app[data-tbalign='sides']:not([data-tbfree]) .toolbar.tb-left { padding-left: 16px; }
+.board-panel #app[data-tbalign='sides']:not([data-tbfree]) .toolbar.tb-right { padding-right: 16px; }

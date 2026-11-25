@@ -13,6 +13,9 @@ import './ui/install';
 
 // Big classroom boards have slow graphics chips: drop costly glass blur there.
 if (liteDevice()) document.documentElement.classList.add('lite');
+// Android classroom panels: the touch frame covers the outer edge of the screen a little, so the toolbar keeps its
+// buttons clear of that edge (the bar still reaches the edge).
+if (/Android/i.test(navigator.userAgent) && Math.min(screen.width, screen.height) >= 700) document.documentElement.classList.add('board-panel');
 
 const root = document.getElementById('app')!;
 if (document.getElementById('splash')) root.classList.add('starting');

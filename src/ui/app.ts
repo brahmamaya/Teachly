@@ -1,6 +1,6 @@
 import { askPdfPlace } from './pdfrange';
 import { colorWheelSvg, PEN_DEFS, penSvg } from './pentray';
-import { Board, type Tool } from '../board';
+import { Board, inputIdleFor, type Tool } from '../board';
 import { bbox, regroup, resizeEl, similarity, transformEl, translateEl, uid, unionRects } from '../geometry';
 import {
   copySelection,
@@ -408,7 +408,9 @@ export class App {
     // The Record button shows when a recording runs (it turns red and pulses).
     onRecordingChange(() => this.renderToolbar());
     // Autosave (io/autosave.ts): shortly after each change, at once when the app is hidden or closed.
-    startAutosave(() => this.board.busyInput);
+    // writing words lifts the pen between letters: save only once the teacher pauses (a save of a big notebook
+    // takes a moment on a board's slow chip and made the next letter stall)
+    startAutosave(() => this.board.busyInput || inputIdleFor() < 1200);
     new SaveBadge(this.root.querySelector('.corner') as HTMLElement);
     // Back exactly where the lesson stopped: notebook, page, spot, pen.
     restoreTools();

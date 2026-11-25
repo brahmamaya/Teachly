@@ -79,6 +79,13 @@ export function liteDevice(): boolean {
   return modest || (android && bigScreen);
 }
 
+/** When a finger or pen last touched or moved on the board (background work waits until the teacher pauses). */
+let lastInputAt = -1e9;
+/** How long (ms) since the teacher last touched or moved on the board. */
+export function inputIdleFor(): number {
+  return performance.now() - lastInputAt;
+}
+
 export class Board {
   readonly el: HTMLElement;
   readonly bg: HTMLCanvasElement;
@@ -376,8 +383,8 @@ export class Board {
     const same = this.ink.width === cw && this.ink.height === ch && this.ink.style.width === `${r.width}px` && this.ink.style.height === `${r.height}px`;
     if (same) {
       setPageSize(this.w, this.h);
+      // nothing to draw again: the view only changes through the camera, which redraws by itself
       if (this.w && this.h) this.ensureCam();
-      this.invalidate('bg', 'ink', 'overlay');
       return;
     }
     for (const c of [this.bg, this.ink, this.wet, this.overlay]) {
@@ -727,6 +734,7 @@ export class Board {
   }
 
   private onDown(e: PointerEvent): void {
+    lastInputAt = performance.now();
     e.preventDefault();
     this.overlay.setPointerCapture(e.pointerId);
     const p = this.makePtr(e);
@@ -877,7 +885,7 @@ export class Board {
   }
 
   private onMove(e: PointerEvent): void {
-    this.lastSeen.set(e.pointerId, performance.now());
+    this.lastSeen.set(e.pointerId, (lastInputAt = performance.now()));
     const p = this.makePtr(e);
     if (p.type === 'pen') this.lastPenAt = performance.now();
     const route = this.routed.get(p.id);

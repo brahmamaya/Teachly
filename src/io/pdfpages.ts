@@ -1,4 +1,4 @@
-import { liteDevice } from '../board';
+import { inputIdleFor, liteDevice } from '../board';
 import { fitInPage } from '../page';
 import { getPagePicture, loadSourceBlob, putPagePicture } from './library';
 
@@ -17,12 +17,14 @@ let lib: Promise<PdfLib> | null = null;
 export function pdfjs(): Promise<PdfLib> {
   lib ??= (async () => {
     const m = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    // The worker goes through the build like the rest of the app (`?worker`), so it is translated for older browsers
+    // too: shipped as it is, its newer syntax (class `static {}` blocks, `??=`) made PDFs open to nothing on classroom
+    // boards with an older Android WebView. Single-file offline build: the worker travels inside the page.
     if (import.meta.env.MODE === 'single') {
-      // Single-file offline build: the worker travels inside the page as text.
-      const code = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?raw')).default;
-      m.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+      const W = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker&inline')).default;
+      m.GlobalWorkerOptions.workerPort = new W();
     } else {
-      m.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default;
+      m.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker&url')).default;
     }
     return m;
   })();
@@ -66,15 +68,19 @@ function parse(src: string): { key: string; page: number } | null {
   return m ? { key: m[1], page: Number(m[2]) } : null;
 }
 
-/** Draw one page as a JPEG: 3x its size on the board (2.2x on classroom boards), at most ~12 MP. */
+/**
+ * Draw one page as a JPEG: 3x its size on the board, at most ~12 MP. Classroom boards: 2x, at most ~6 MP (drawing and
+ * showing a 12 MP page took long enough on a board's slow chip to make writing stall now and then).
+ */
 async function draw(key: string, page: number): Promise<Blob> {
   const doc = await openSource(key);
   const p = await doc.getPage(page + 1);
   try {
     const base = p.getViewport({ scale: 1 });
     const rect = fitInPage(base.width, base.height);
-    const want = (rect.w * (liteDevice() ? 2.2 : 3)) / base.width;
-    const scale = Math.min(5, want, Math.sqrt(12_000_000 / (base.width * base.height)));
+    const lite = liteDevice();
+    const want = (rect.w * (lite ? 2 : 3)) / base.width;
+    const scale = Math.min(5, want, Math.sqrt((lite ? 6_000_000 : 12_000_000) / (base.width * base.height)));
     const vp = p.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(vp.width);
@@ -100,6 +106,10 @@ async function pump(): Promise<void> {
   if (busy) return;
   busy = true;
   while (waiting.length) {
+    // A page drawn in advance waits until the teacher pauses writing (drawing a page is heavy on a board's chip and
+    // made the ink stall now and then); the page being looked at is drawn at once.
+    while (waiting.length && waiting[waiting.length - 1].ahead && inputIdleFor() < 1500) await new Promise((ok) => setTimeout(ok, 400));
+    if (!waiting.length) break;
     const job = waiting.pop()!;
     const at = parse(job.src)!;
     let blob: Blob | null = null;
