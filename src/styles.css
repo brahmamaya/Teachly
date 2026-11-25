@@ -10832,3 +10832,12 @@ button,
 #app.ro .subj-dock,
 #app.ro .quickbar { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .subj-dock, .quickbar { transition: none; } }
+
+/* ---------- Toolbar on top, too wide to stay clear of the iPad's time and battery ----------
+   It used to sit below the status bar, leaving an empty strip above it on both sides. Now it still touches the top
+   edge: its background reaches up behind the status bar and only its buttons sit below it. */
+#app[data-tb='top']:not([data-tbflush]):not([data-tbfree]):not(.ro-compact) .toolbar,
+#app[data-tb='top']:not([data-tbflush]):not([data-tbfree]):not(.ro-compact)[data-board] .toolbar {
+  top: 0;
+  padding-top: calc(3px + env(safe-area-inset-top, 0px));
+}
