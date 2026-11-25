@@ -1,3 +1,4 @@
+import { pageRect } from '../store';
 import { GState, jsPDF, type jsPDF as JsPDF } from 'jspdf';
 import { bbox } from '../geometry';
 import { drawBackground, drawEl, drawPathEl, imagesReady, pageRegion, withPathMaker } from '../renderer';
@@ -276,7 +277,7 @@ export async function makePdf(notebookPages: Page[], k: number): Promise<{ blob:
     return layers++;
   };
   for (const page of pages) {
-    const r = pageRegion(page.els);
+    const r = pageRegion(page.els, pageRect(page));
     const parts: Plan['parts'] = [];
     let run: El[] = [];
     let first = true;

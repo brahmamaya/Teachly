@@ -1,6 +1,6 @@
 import { refreshAngles } from './subjects/angles';
 import { fitIntoPage, regroup, uid } from './geometry';
-import { setPageShape } from './page';
+import { pageRectFor, setPageShape } from './page';
 import { isDarkColor } from './renderer';
 import type { BgPattern, Camera, Doc, El, EraserMode, Page, PenKind, ShapeKind, ToolId } from './types';
 
@@ -215,7 +215,19 @@ export class Store {
   }
 
   emit(evt: string): void {
+    // the open page decides the page's shape (a PDF's page keeps its own; the others the notebook's)
+    if (evt === 'page' || evt === 'doc') this.applyShape();
     this.listeners.get(evt)?.forEach((fn) => fn());
+  }
+
+  /** The page in view takes its own shape (a PDF page as the file has it), else the notebook's. */
+  private shapeNow: number | null | undefined;
+  private applyShape(): void {
+    const d = this.doc;
+    const r = this.doc.pages[this.index]?.shape ?? d.shape ?? (d.orient === 'portrait' ? 4 / 3 : null);
+    if (r === this.shapeNow) return;
+    this.shapeNow = r;
+    setPageShape(r);
   }
 
   get page(): Page {
@@ -431,14 +443,14 @@ export class Store {
   setShape(ratio: number): void {
     const r = Math.min(3, Math.max(0.33, ratio));
     this.doc = { ...this.doc, shape: r };
-    setPageShape(r);
+    this.shapeNow = undefined;
     this.emit('doc');
   }
 
   loadDoc(doc: Doc): void {
     this.emit('leave');
     this.doc = doc.id ? doc : { ...doc, id: uid() };
-    setPageShape(doc.shape ?? (doc.orient === 'portrait' ? 4 / 3 : null));
+    this.shapeNow = undefined;
     this.index = 0;
     this.undoStack = [];
     this.redoStack = [];
@@ -492,3 +504,8 @@ export class Store {
 }
 
 export const store = new Store();
+
+/** A page's own rectangle (its own shape, else the notebook's), whichever page is open. */
+export function pageRect(p: Page, doc: Doc = store.doc) {
+  return pageRectFor(p.shape ?? doc.shape ?? (doc.orient === 'portrait' ? 4 / 3 : null));
+}

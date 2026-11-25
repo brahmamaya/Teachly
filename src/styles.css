@@ -10964,3 +10964,31 @@ button,
 @media (prefers-reduced-motion: reduce) {
   .pop-menu .mt-tile, .mt-ic, .tbe-chip { transition: none; }
 }
+
+/* ---------- Settings > Check writing speed: a small card with the result (nothing is sent) ---------- */
+.speed-card {
+  position: fixed;
+  left: 50%;
+  top: 76px; /* near the top: the board stays free to write on while it measures */
+  translate: -50% 0;
+  z-index: 7000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(92vw, 420px);
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--surface-solid, #18181b);
+  color: inherit;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  animation: soft-in 0.22s var(--ease) both;
+  pointer-events: auto;
+}
+.speed-card > b { font-size: 18px; }
+.speed-card > span { opacity: 0.65; }
+.speed-card .sp-rows { display: flex; flex-direction: column; gap: 6px; }
+.speed-card .sp-rows div { display: flex; justify-content: space-between; gap: 12px; }
+.speed-card .sp-rows span { opacity: 0.65; }
+.speed-card .sp-rows b { text-align: right; font-weight: 600; }
+.pop-menu .mt-speed { margin: 4px 12px 10px; min-height: 38px; }

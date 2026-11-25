@@ -4,7 +4,7 @@ import { allKeys, atomic, db, get, put, serial, STORE } from './idb';
 import { migrateDoc, SCHEMA } from './migrate';
 import { imagesReady, pageRegion, renderRegion } from '../renderer';
 import { PAGE } from '../page';
-import { newPage } from '../store';
+import { newPage, pageRect } from '../store';
 import type { Doc, ImageEl, Page } from '../types';
 
 // On-device notebook library (IndexedDB). Unlimited notebooks, each saved
@@ -67,7 +67,7 @@ async function coverThumb(doc: Doc): Promise<string> {
     // Pictures come from the device when first drawn: wait for them, or the cover would be blank.
     const ready = await imagesReady(first, 2500);
     // In the page's own shape (a tall A4 notebook gets a tall cover), at most 240 × 180.
-    const r = pageRegion(first.els);
+    const r = pageRegion(first.els, pageRect(first, doc));
     const k = Math.min(240 / r.w, 180 / r.h);
     const img = renderRegion(first, r, Math.max(1, Math.round(r.w * k)), Math.max(1, Math.round(r.h * k))).toDataURL('image/jpeg', 0.7);
     if (ready) covers.set(first, img);

@@ -3,7 +3,7 @@ import { download } from '../io/files';
 import { blankNotebook, saveNotebook } from '../io/library';
 import { PAGE } from '../page';
 import { forgetImage, imagesReady, pageRegion, renderRegion } from '../renderer';
-import { newPage, store } from '../store';
+import { newPage, store, pageRect } from '../store';
 import type { Page } from '../types';
 import { icon } from './icons';
 import { askName } from './library';
@@ -45,7 +45,7 @@ export async function makeThumb(p: Page): Promise<string | null> {
   }
   await imagesReady(page);
   try {
-    const r = pageRegion(page.els);
+    const r = pageRegion(page.els, pageRect(p));
     const w = 440, h = Math.max(60, Math.min(700, Math.round((w * r.h) / r.w)));
     const url = renderRegion(page, r, w, h).toDataURL('image/jpeg', 0.82);
     thumbs.set(p, url);

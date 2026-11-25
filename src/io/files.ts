@@ -1,8 +1,8 @@
 import { type Board, liteDevice } from '../board';
 import { regroup, uid } from '../geometry';
-import { fitInPage, PAGE } from '../page';
+import { fitInPage, PAGE, pageRectFor } from '../page';
 import { imagesReady, pageRegion, renderRegion } from '../renderer';
-import { newPage, store } from '../store';
+import { newPage, store, pageRect } from '../store';
 import { inlinePictures } from './assets';
 import { saveSource } from './library';
 import { migrateDoc } from './migrate';
@@ -220,8 +220,12 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
       );
       sizes.forEach((base, k) => {
         const i = nums[k];
-        const img: ImageEl = { id: uid(), type: 'image', src: pageSrc(source, i - 1), ...fitInPage(base.width, base.height), rot: 0, locked: true, pdf: { src: source, page: i - 1 } };
+        // each PDF page becomes a page exactly as the file has it: its own shape, filled edge to edge (nothing fitted
+        // into a page of another shape)
+        const shape = base.height / base.width;
+        const img: ImageEl = { id: uid(), type: 'image', src: pageSrc(source, i - 1), ...pageRectFor(shape), rot: 0, locked: true, pdf: { src: source, page: i - 1 } };
         const p = newPage(store.page.bg, 'none');
+        p.shape = shape;
         p.els = [img];
         pages[i - 1] = p;
       });
@@ -247,8 +251,8 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const base = page.getViewport({ scale: 1 });
-    // Each PDF page sits exactly on the board page (whole page visible).
-    const rect = fitInPage(base.width, base.height);
+    // Each PDF page becomes a page of its own shape, filled edge to edge.
+    const rect = pageRectFor(base.height / base.width);
     // Crisp when zoomed in (3x the page; classroom boards 2.2x to save
     // memory), at most ~12 million pixels per page.
     const want = (rect.w * (liteDevice() ? 2.2 : 3)) / base.width;
@@ -265,6 +269,7 @@ export async function importPdf(board: Board, file?: File, onProgress?: (done: n
     canvas.width = canvas.height = 1;
     page.cleanup();
     const p = newPage(store.page.bg, 'none');
+    p.shape = base.height / base.width;
     p.els = [img];
     pages.push(p);
     onProgress?.(i, pdf.numPages);
@@ -362,7 +367,7 @@ export async function openFile(file?: File): Promise<void> {
 
 function exportCanvas(_board: Board, page: Page, maxSide = 4800): HTMLCanvasElement {
   // Exports show the page plus anything written beyond it, sharp (up to 3x).
-  const r: Rect = pageRegion(page.els);
+  const r: Rect = pageRegion(page.els, pageRect(page));
   const k = Math.min(3, maxSide / Math.max(r.w, r.h), Math.sqrt(14_000_000 / (r.w * r.h)));
   return renderRegion(page, r, r.w * k, r.h * k);
 }

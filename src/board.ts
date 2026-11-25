@@ -374,7 +374,9 @@ export class Board {
     // Boards: up to ~3.2 million pixels a layer (5 M made writing lag on
     // a real 86" board).
     const budget = liteDevice() ? 3_200_000 : 8_400_000;
-    this.dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
+    // (a board whose screen is huge in CSS pixels, e.g. a 4K panel at pixel ratio 1, may draw a little below 1:1:
+    // four layers of 8 million pixels each made writing lag; lines stay clean at 0.7)
+    this.dpr = Math.max(liteDevice() ? 0.7 : 1, Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(budget / area)));
     // While a lesson video is recorded, draw at the video's size (up to 4K) so it is sharp.
     if (this.recordPixels) this.dpr = Math.min(4, Math.max(this.dpr, Math.sqrt(this.recordPixels / area)));
     // Same size as before (a toolbar change asked for a resize): leave the canvases alone. Setting a canvas's size wipes

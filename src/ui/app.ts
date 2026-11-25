@@ -27,7 +27,6 @@ import { SubjectPanel } from './subjectpanel';
 import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { chapterById } from '../subjects/catalog';
 import { newPage, readableInk, SIMPLE_HIDDEN, store, type ToolState } from '../store';
-import { PAGE } from '../page';
 import { importPptx } from '../io/office';
 import { saveNow, startAutosave } from '../io/autosave';
 import { blankNotebook, loadLastNotebook, saveNotebook, takeMigrationNotes } from '../io/library';
@@ -1372,6 +1371,7 @@ export class App {
             ${sw('holdShapes', 'Hold pen to make a shape', s.holdShapes)}
             ${sw('inkPredict', 'Ink ahead of the pen (try on slow boards)', !!s.inkPredict)}
             ${sw('bigControls', 'Large buttons (classroom boards, fingers)', !!s.bigControls)}
+            <button class="mt-wide mt-speed" data-act="speedcheck">${icon('timer', 18)} Check writing speed</button>
           </details>
           <div class="mt-foot"><button data-act="privacy">Privacy</button>·<button data-act="terms">Terms</button><span>v ${BUILD_TIME}</span></div>`;
         pop.querySelector('[data-resize]')?.addEventListener('toggle', () => {
@@ -1821,6 +1821,10 @@ export class App {
         this.closePopover();
         void import('./guide').then((m) => m.openGuide(this.root));
         return;
+      case 'speedcheck':
+        this.closePopover();
+        void import('./speedcheck').then((m) => m.speedCheck(this.root, this.board));
+        return;
       case 'privacy':
       case 'terms':
         this.closePopover();
@@ -1892,16 +1896,8 @@ export class App {
       store.commit([newPage(store.page.bg, 'none')], 0);
       return this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, undefined, true));
     }
-    // reading the PDF's page shape takes a moment on a board: show that something is happening
-    const wait = document.createElement('div');
-    wait.className = 'progress-toast';
-    wait.textContent = 'Opening PDF…';
-    this.root.appendChild(wait);
-    const { firstPageShape } = await import('../io/pdfpages');
-    const shape = await firstPageShape(f).catch(() => 0);
-    wait.remove();
-    const mine = PAGE.h / PAGE.w;
-    const at = await askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name, ownFirst: !!shape && Math.abs(shape - mine) / mine > 0.03 });
+    // every PDF page keeps its own shape wherever it goes, so it can simply be added to this notebook
+    const at = await askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name });
     if (at === null) return;
     if (at === -1) {
       // its own notebook (the current one stays in My notebooks)

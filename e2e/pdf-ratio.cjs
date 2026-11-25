@@ -55,7 +55,7 @@ const makePdf = eval('(' + src.slice(src.indexOf('function makePdf'), src.indexO
   }, bytes);
   const near = (a, b2) => Math.abs(a - b2) < 0.01;
   const in1 = (a, b2) => Math.abs(a - b2) <= 1; // the page's height is rounded to whole units
-  check('a page filled by its PDF page: the region is exactly the page (no band round it)', in1(r.one.region.x, 0) && in1(r.one.region.y, 0) && in1(r.one.region.w, r.one.page.w) && in1(r.one.region.h, r.one.page.h), JSON.stringify(r.one.region));
+  check('a page filled by its PDF page: the region is exactly the page (no band round it)', in1(r.one.region.x, 0) && in1(r.one.region.y, 0) && in1(r.one.region.w, r.one.page.w) && in1(r.one.region.h, r.one.page.h), JSON.stringify(r.one));
   check('…and Save PDF gives that page in the PDF\'s own shape', near(r.one.saved, 842 / 595), String(r.one.saved));
   check('older notebook, written on inside the PDF page: the saved page has the PDF page\'s shape', near(r.two.inside, 842 / 595), String(r.two.inside));
   check('older notebook, written on outside it: the whole page is kept', near(r.two.outside, r.two.wide), JSON.stringify(r.two));

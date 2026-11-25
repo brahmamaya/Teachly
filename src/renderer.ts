@@ -830,7 +830,7 @@ export function contentBounds(els: El[]): Rect | null {
  * page, in the file's own shape, so a saved PDF, a thumbnail or a cover shows the page as the file had it (not inside
  * a page of another shape with a band of board around it). Null when something lies outside it.
  */
-function filePage(els: El[]): Rect | null {
+function filePage(els: El[], PAGE: Rect): Rect | null {
   let base: (El & { type: 'image' }) | null = null;
   for (const e of els) if (e.type === 'image' && e.locked && !e.rot && (!base || e.w * e.h > base.w * base.h)) base = e;
   if (!base || base.w * base.h < PAGE.w * PAGE.h * 0.3) return null;
@@ -843,10 +843,12 @@ function filePage(els: El[]): Rect | null {
   return r;
 }
 
-export function pageRegion(els: El[]): Rect {
+/** `base`: that page's own rectangle (pages can have their own shape; the open page's by default). */
+export function pageRegion(els: El[], base: Rect = PAGE): Rect {
+  const PAGE = base;
   const b = contentBounds(els);
   if (!b) return { ...PAGE };
-  const file = filePage(els);
+  const file = filePage(els, PAGE);
   if (file) return file;
   // a margin only on a side where something was written beyond the page (a page filled edge to edge by its PDF page
   // got a band of board colour all round)
