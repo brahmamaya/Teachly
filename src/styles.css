@@ -10841,3 +10841,12 @@ button,
   top: 0;
   padding-top: calc(3px + env(safe-area-inset-top, 0px));
 }
+
+/* ---------- Every toolbar button in its own colour (owner, 25 Nov): Select, the page arrows and number, All pages
+   and Menu were grey. The chosen / pressed button still turns teal with a white icon. ---------- */
+#app .toolbar [data-tool='select'] { color: #0284c7; }
+#app .toolbar [data-act='prev'],
+#app .toolbar [data-act='next'] { color: #0d9488; }
+#app .toolbar .page-label { color: #0f766e; }
+#app .toolbar [data-act='pages'] { color: #7c3aed; }
+#app .toolbar [data-pop='menu'] { color: #e11d48; }
