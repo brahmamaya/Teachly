@@ -15,7 +15,7 @@ function precacheList(): Plugin {
       this.emitFile({ type: 'asset', fileName: 'precache.json', source: JSON.stringify([...new Set([...extra, ...files])]) });
       // app-update.json: what the Android app downloads to update itself
       // (only the app's own files; it never sends anything).
-      const appFiles = [...new Set(['index.html', 'fonts/orbitron.woff2', 'fonts/exo2.woff2', 'fonts/figtree.woff2', 'fonts/figtree-ext.woff2', 'favicon.png', ...files])].filter((f) => f !== 'precache.json');
+      const appFiles = [...new Set(['index.html', 'fonts/orbitron.woff2', 'fonts/exo2.woff2', 'fonts/figtree.woff2', 'fonts/figtree-ext.woff2', 'favicon.png', 'icon-192.png', 'icon-512.png', ...files])].filter((f) => f !== 'precache.json');
       this.emitFile({
         type: 'asset',
         fileName: 'app-update.json',
