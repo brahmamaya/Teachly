@@ -135,6 +135,8 @@ export interface Page {
   els: El[];
   /** A short label put on the page in the page grid (Tag). */
   tag?: string;
+  /** This page's own shape (height / width), e.g. a PDF's page: missing = the notebook's shape. */
+  shape?: number;
 }
 
 export interface Doc {

@@ -36,6 +36,13 @@ export function setPageShape(ratio: number | null): void {
   }
 }
 
+/** The page rectangle for a shape (height / width) without changing the current page: 900 wide if tall, else 1600. */
+export function pageRectFor(ratio: number | null | undefined): Rect {
+  if (!ratio) return { x: 0, y: 0, w: 1600, h: fixedShape ? Math.round(1600 * fixedShape) : Math.round(1600 * screenShape) };
+  const w = ratio >= 1 ? 900 : 1600;
+  return { x: 0, y: 0, w, h: Math.round(w * ratio) };
+}
+
 /** Fit a w×h picture inside the page (centred, keeping its proportions). */
 export function fitInPage(w: number, h: number, margin = 0): Rect {
   const k = Math.min((PAGE.w - margin * 2) / w, (PAGE.h - margin * 2) / h);

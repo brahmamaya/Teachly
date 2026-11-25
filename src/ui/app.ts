@@ -27,7 +27,6 @@ import { SubjectPanel } from './subjectpanel';
 import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { chapterById } from '../subjects/catalog';
 import { newPage, readableInk, SIMPLE_HIDDEN, store, type ToolState } from '../store';
-import { PAGE } from '../page';
 import { importPptx } from '../io/office';
 import { saveNow, startAutosave } from '../io/autosave';
 import { blankNotebook, loadLastNotebook, saveNotebook, takeMigrationNotes } from '../io/library';
@@ -195,6 +194,21 @@ const HEX_NAMES: Record<string, string> = {
   select: 'Select', pen: 'Pen', eraser: 'Eraser', shape: 'Shapes', fill: 'Fill colour', text: 'Text', tape: 'Tape', laser: 'Laser',
   slide: 'Slide mode', undo: 'Undo', redo: 'Redo', insert: 'Insert', tools: 'Tools', timer: 'Timer', poll: 'Poll', graph: 'Graph',
   record: 'Record', next: 'Next page', prev: 'Previous page', pages: 'All pages',
+};
+
+/** Each toolbar / hexagon button's icon and colour, for the Edit toolbar's chips (bright: they sit on a dark menu). */
+const BTN_LOOK: Record<string, [string, string]> = {
+  readonly: ['readonly', '#2dd4bf'], select: ['select', '#38bdf8'], slide: ['pan', '#fbbf24'], pen: ['pen', '#60a5fa'],
+  eraser: ['eraser', '#f472b6'], shape: ['shapes', '#a78bfa'], fill: ['bucket', '#22d3ee'], text: ['text', '#e2e8f0'],
+  tape: ['tape', '#fb923c'], laser: ['laser', '#f87171'], undo: ['undo', '#4ade80'], redo: ['redo', '#4ade80'],
+  insert: ['plus', '#60a5fa'], tools: ['ruler', '#fb923c'], shot: ['shot', '#38bdf8'], timer: ['timer', '#2dd4bf'],
+  poll: ['poll', '#c084fc'], graph: ['graph', '#818cf8'], record: ['rec', '#fb7185'], pagenav: ['next', '#2dd4bf'],
+  pages: ['pages', '#a78bfa'], next: ['next', '#2dd4bf'], prev: ['prev', '#2dd4bf'],
+};
+/** A switch-like chip: the button's coloured icon and its name (teal when on). */
+const chip = (attr: string, key: string, name: string, on: boolean, disabled = false) => {
+  const [ic, c] = BTN_LOOK[key] ?? ['plus', '#94a3b8'];
+  return `<label class="tbe-chip ${on ? 'on' : ''}" style="--c:${c}"><input type="checkbox" ${attr} ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span class="tbe-ic">${icon(ic, 18)}</span><span class="tbe-n">${name}</span></label>`;
 };
 
 /** When this version was built (shown in the menu, to check updates arrived). */
@@ -1238,11 +1252,13 @@ export class App {
         const group = () =>
           TB_ITEMS.map(([k, n]) => {
               const shown = TB_OPT_IN.has(k) ? (store.settings.tbShown ?? []).includes(k) : !hide.has(k);
-              return `<label class="check tbe-item"><input type="checkbox" data-tbitem="${k}" ${shown ? 'checked' : ''}> ${n}</label>`;
+              return chip(`data-tbitem="${k}"`, k, n, shown);
             })
             .join('');
         pop.className = 'popover pop-tbedit';
         pop.innerHTML = `<div class="pop-title">Edit toolbar</div>
+          <section class="tbe-card">
+          <div class="tbe-h">${icon('fit', 16)}<span>Position</span></div>
           <div class="seg tbe-pos tbe-row"><span>Toolbar at</span>${(['bottom', 'top'] as const).map((k) => `<button class="${tbEdge() === k ? 'on' : ''}" data-tbpos="${k}">${k === 'bottom' ? 'Bottom' : 'Top'}</button>`).join('')}</div>
           <div class="seg tbe-pos tbe-row"><span>Buttons</span>${(['middle', 'sides'] as const).map((k) => `<button class="${tbMiddle() === (k === 'middle') ? 'on' : ''}" data-tbalign="${k}">${k === 'middle' ? 'Middle' : 'Sides'}</button>`).join('')}</div>
           <div class="slider-row">
@@ -1250,12 +1266,16 @@ export class App {
             <input type="range" min="0" max="100" step="1" value="${Math.round((store.settings.tbY ?? (tbEdge() === 'top' ? 0 : 1)) * 100)}" data-tby aria-label="Toolbar height: top to bottom">
           </div>
           <button class="btn wide" data-tbstick ${tbFree() ? '' : 'disabled'}>Stick to the ${tbEdge()} edge</button>
-          <label class="check tbe-item tbe-qb"><input type="checkbox" data-quickbar ${store.settings.quickBar === true ? 'checked' : ''}> Pen colour bar (colours and thickness next to the toolbar)</label>
-          <div class="muted small">Tick the buttons you want on the toolbar.</div>
+          <label class="mt-switch tbe-qb"><span>Pen colour bar <small>colours and thickness next to the toolbar</small></span><input type="checkbox" data-quickbar ${store.settings.quickBar === true ? 'checked' : ''}><i aria-hidden="true"></i></label>
+          </section>
+          <section class="tbe-card">
+          <div class="tbe-h">${icon('grid', 16)}<span>Buttons on the toolbar</span></div>
           <div class="tbe-grid">${group()}</div>
           <div class="seg tbe-pos"><button data-tbsimple>Simple toolbar</button><button data-tbreset>Show all buttons</button></div>
-          <div class="pop-title">Floating hexagon</div>
-          <div class="muted small">Pick up to 6 buttons for a hexagon you can drag anywhere ("Move" in the middle). None = no hexagon.</div>
+          </section>
+          <section class="tbe-card">
+          <div class="tbe-h">${icon('magic', 16)}<span>Floating hexagon</span></div>
+          <div class="muted small">Up to 6 buttons in a hexagon you can drag anywhere. None = no hexagon.</div>
           <div class="slider-row">
             <span class="slider-label">Size</span>
             <input type="range" min="20" max="44" step="1" value="${store.settings.hexSize ?? 28}" data-hexsize aria-label="Hexagon size">
@@ -1269,11 +1289,13 @@ export class App {
             .map((k) => {
               const on = (store.settings.hexItems ?? []).includes(k);
               const full = (store.settings.hexItems ?? []).length >= 6;
-              return `<label class="check tbe-item"><input type="checkbox" data-hexitem="${k}" ${on ? 'checked' : ''} ${!on && full ? 'disabled' : ''}> ${HEX_NAMES[k]}</label>`;
+              return chip(`data-hexitem="${k}"`, k, HEX_NAMES[k], on, !on && full);
             })
-            .join('')}</div>`;
+            .join('')}</div>
+          </section>`;
         pop.onchange = (e) => {
           const el = e.target as HTMLInputElement;
+          el.closest('.tbe-chip')?.classList.toggle('on', el.checked);
           if (el.dataset.tby !== undefined) {
             this.applyScale(true);
             this.fillPopover();
@@ -1312,7 +1334,9 @@ export class App {
         const s = store.settings;
         // Compact: board colour + pattern sketches, actions as icon tiles,
         // switches tucked under Settings, legal links small at the bottom.
-        const tile = (act: string, ic: string, label: string, extra = '') => `<button class="mt-tile" data-act="${act}" title="${label}">${icon(ic, 22)}<span>${label}</span>${extra}</button>`;
+        // each action in its own colour: the icon sits in a soft tile of that colour (clear at a glance, no clutter)
+        const TILE_C: Record<string, string> = { library: '#2dd4bf', new: '#60a5fa', save: '#4ade80', open: '#fbbf24', 'open-pdf': '#f87171', 'open-pptx': '#fb923c', export: '#f472b6', 'export-png': '#c084fc', record: '#fb7185', 'delete-page': '#94a3b8', fullscreen: '#38bdf8', 'share-app': '#818cf8', tbedit: '#2dd4bf', install: '#2dd4bf' };
+        const tile = (act: string, ic: string, label: string, extra = '') => `<button class="mt-tile" data-act="${act}" title="${label}" style="--c:${TILE_C[act] ?? '#94a3b8'}"><i class="mt-ic">${icon(ic, 22)}</i><span>${label}</span>${extra}</button>`;
         const sw = (key: keyof typeof s, label: string, on: boolean) => `<label class="mt-switch"><span>${label}</span><input type="checkbox" data-set="${key}" ${on ? 'checked' : ''}><i aria-hidden="true"></i></label>`;
         pop.className = 'popover pop-menu';
         pop.innerHTML = `
@@ -1347,6 +1371,7 @@ export class App {
             ${sw('holdShapes', 'Hold pen to make a shape', s.holdShapes)}
             ${sw('inkPredict', 'Ink ahead of the pen (try on slow boards)', !!s.inkPredict)}
             ${sw('bigControls', 'Large buttons (classroom boards, fingers)', !!s.bigControls)}
+            <button class="mt-wide mt-speed" data-act="speedcheck">${icon('timer', 18)} Check writing speed</button>
           </details>
           <div class="mt-foot"><button data-act="privacy">Privacy</button>·<button data-act="terms">Terms</button><span>v ${BUILD_TIME}</span></div>`;
         pop.querySelector('[data-resize]')?.addEventListener('toggle', () => {
@@ -1796,6 +1821,10 @@ export class App {
         this.closePopover();
         void import('./guide').then((m) => m.openGuide(this.root));
         return;
+      case 'speedcheck':
+        this.closePopover();
+        void import('./speedcheck').then((m) => m.speedCheck(this.root, this.board));
+        return;
       case 'privacy':
       case 'terms':
         this.closePopover();
@@ -1867,16 +1896,8 @@ export class App {
       store.commit([newPage(store.page.bg, 'none')], 0);
       return this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, undefined, true));
     }
-    // reading the PDF's page shape takes a moment on a board: show that something is happening
-    const wait = document.createElement('div');
-    wait.className = 'progress-toast';
-    wait.textContent = 'Opening PDF…';
-    this.root.appendChild(wait);
-    const { firstPageShape } = await import('../io/pdfpages');
-    const shape = await firstPageShape(f).catch(() => 0);
-    wait.remove();
-    const mine = PAGE.h / PAGE.w;
-    const at = await askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name, ownFirst: !!shape && Math.abs(shape - mine) / mine > 0.03 });
+    // every PDF page keeps its own shape wherever it goes, so it can simply be added to this notebook
+    const at = await askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name });
     if (at === null) return;
     if (at === -1) {
       // its own notebook (the current one stays in My notebooks)

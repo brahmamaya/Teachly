@@ -621,11 +621,9 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
       const img = getImage(el.src);
       // A book page lies on the board like a sheet of paper: a soft shadow
       // under it and a fine edge (four faint rectangles: cheap to draw).
+      // A file's page (PDF / picture page) is drawn as it is: no shadow or edge line around it (they showed as lines
+      // round dark pages, and in saved PDFs).
       const sheet = !!el.locked;
-      if (sheet) {
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.04)';
-        for (let i = 1; i <= 5; i++) ctx.fillRect(-i * 1.8, -i * 1.8 + 3, el.w + i * 3.6, el.h + i * 3.6);
-      }
       if (img.complete && img.naturalWidth) {
         const c = el.crop;
         if (c) ctx.drawImage(img, c.x * img.naturalWidth, c.y * img.naturalHeight, c.w * img.naturalWidth, c.h * img.naturalHeight, 0, 0, el.w, el.h);
@@ -635,11 +633,6 @@ function drawBox(ctx: CanvasRenderingContext2D, el: BoxEl): void {
         // Not drawn yet: clean white paper (book page) or a soft placeholder.
         ctx.fillStyle = sheet ? '#ffffff' : '#e2e8f0';
         ctx.fillRect(0, 0, el.w, el.h);
-      }
-      if (sheet) {
-        ctx.strokeStyle = 'rgba(15, 23, 42, 0.16)';
-        ctx.lineWidth = 0.75;
-        ctx.strokeRect(0, 0, el.w, el.h);
       }
       break;
     }
@@ -832,12 +825,36 @@ export function contentBounds(els: El[]): Rect | null {
 }
 
 /** The part of a page worth showing: the page itself plus anything written beyond it. */
-export function pageRegion(els: El[]): Rect {
+/**
+ * A page that is a file's page (a PDF or picture page lying on it) with everything else written on it: exactly that
+ * page, in the file's own shape, so a saved PDF, a thumbnail or a cover shows the page as the file had it (not inside
+ * a page of another shape with a band of board around it). Null when something lies outside it.
+ */
+function filePage(els: El[], PAGE: Rect): Rect | null {
+  let base: (El & { type: 'image' }) | null = null;
+  for (const e of els) if (e.type === 'image' && e.locked && !e.rot && (!base || e.w * e.h > base.w * base.h)) base = e;
+  if (!base || base.w * base.h < PAGE.w * PAGE.h * 0.3) return null;
+  const r = { x: base.x, y: base.y, w: base.w, h: base.h }, tol = 2;
+  for (const e of els) {
+    if (e === base) continue;
+    const b = bbox(e);
+    if (b.x < r.x - tol || b.y < r.y - tol || b.x + b.w > r.x + r.w + tol || b.y + b.h > r.y + r.h + tol) return null;
+  }
+  return r;
+}
+
+/** `base`: that page's own rectangle (pages can have their own shape; the open page's by default). */
+export function pageRegion(els: El[], base: Rect = PAGE): Rect {
+  const PAGE = base;
   const b = contentBounds(els);
   if (!b) return { ...PAGE };
+  const file = filePage(els, PAGE);
+  if (file) return file;
+  // a margin only on a side where something was written beyond the page (a page filled edge to edge by its PDF page
+  // got a band of board colour all round)
   const pad = 24;
-  const x1 = Math.min(PAGE.x, b.x - pad), y1 = Math.min(PAGE.y, b.y - pad);
-  const x2 = Math.max(PAGE.x + PAGE.w, b.x + b.w + pad), y2 = Math.max(PAGE.y + PAGE.h, b.y + b.h + pad);
+  const x1 = b.x < PAGE.x - 0.5 ? b.x - pad : PAGE.x, y1 = b.y < PAGE.y - 0.5 ? b.y - pad : PAGE.y;
+  const x2 = b.x + b.w > PAGE.x + PAGE.w + 0.5 ? b.x + b.w + pad : PAGE.x + PAGE.w, y2 = b.y + b.h > PAGE.y + PAGE.h + 0.5 ? b.y + b.h + pad : PAGE.y + PAGE.h;
   return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
 }
 
