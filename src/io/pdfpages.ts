@@ -58,6 +58,25 @@ export function openSource(key: string, file?: Blob): Promise<PdfDoc> {
   return d;
 }
 
+/** The shape (height / width) of a PDF's first page, read without loading the whole file. */
+export async function firstPageShape(file: Blob): Promise<number> {
+  const m = await pdfjs();
+  const range = new m.PDFDataRangeTransport(file.size, null);
+  range.requestDataRange = (begin: number, end: number) => {
+    void file
+      .slice(begin, end)
+      .arrayBuffer()
+      .then((buf) => range.onDataRange(begin, new Uint8Array(buf)));
+  };
+  const task = m.getDocument({ range, disableAutoFetch: true, disableStream: true });
+  try {
+    const v = (await (await task.promise).getPage(1)).getViewport({ scale: 1 });
+    return v.height / v.width;
+  } finally {
+    void task.destroy();
+  }
+}
+
 /** Picture name for page `page` (0-based) of kept file `key`. */
 export function pageSrc(key: string, page: number): string {
   return `pdfp:${key}:${page}`;

@@ -26,7 +26,8 @@ import { openCrop } from './cropper';
 import { SubjectPanel } from './subjectpanel';
 import { blockInfo, nearest, seat, surfaces } from '../subjects/snap';
 import { chapterById } from '../subjects/catalog';
-import { readableInk, SIMPLE_HIDDEN, store, type ToolState } from '../store';
+import { newPage, readableInk, SIMPLE_HIDDEN, store, type ToolState } from '../store';
+import { PAGE } from '../page';
 import { importPptx } from '../io/office';
 import { saveNow, startAutosave } from '../io/autosave';
 import { blankNotebook, loadLastNotebook, saveNotebook, takeMigrationNotes } from '../io/library';
@@ -1701,8 +1702,7 @@ export class App {
         void pickFiles('application/pdf,.pdf').then(async (files) => {
           const f = files[0];
           if (!f) return;
-          const at = await this.pdfPlace(f);
-          if (at !== null) await this.withProgress('Opening PDF', (p) => importPdf(b, f, p, at));
+          await this.addPdf(f);
         });
         return;
       case 'pptx':
@@ -1760,7 +1760,8 @@ export class App {
           // Open it as its own notebook; the current one stays in My notebooks.
           await saveNow();
           store.loadDoc(await saveNotebook(blankNotebook(f.name.replace(/\.\w+$/, ''), store.page.bg)));
-          if (pdf) await this.withProgress('Opening PDF', (p) => importPdf(b, f, p));
+          // its pages take the PDF's own shape (each PDF page is a whole page)
+          if (pdf) await this.withProgress('Opening PDF', (p) => importPdf(b, f, p, undefined, true));
           else await this.openSlides(f);
         });
         return;
@@ -1853,10 +1854,31 @@ export class App {
    * Where a PDF added to this notebook goes: a notebook with pages asks (at the end, after this page, or at the start);
    * an empty notebook just takes it. Undefined = the usual place, null = cancelled.
    */
-  private async pdfPlace(f: File): Promise<number | null | undefined> {
+  /**
+   * Add a PDF to this notebook so that its pages ARE the notebook's pages (not pictures pasted on pages of another
+   * shape). A notebook with nothing written in it takes the PDF's shape; otherwise the teacher chooses where the pages
+   * go, and when the shapes differ the first choice is to open the PDF as its own notebook (pages exactly like it).
+   */
+  private async addPdf(f: File): Promise<void> {
     const pages = store.doc.pages;
-    if (pages.length === 1 && pages[0].els.length === 0) return undefined;
-    return askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name: f.name.replace(/\.pdf$/i, '') });
+    const name = f.name.replace(/\.pdf$/i, '');
+    if (pages.every((p) => p.els.length === 0)) {
+      // nothing written yet: the PDF's pages become this notebook's pages, in their own shape
+      store.commit([newPage(store.page.bg, 'none')], 0);
+      return this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, undefined, true));
+    }
+    const { firstPageShape } = await import('../io/pdfpages');
+    const shape = await firstPageShape(f).catch(() => 0);
+    const mine = PAGE.h / PAGE.w;
+    const at = await askPdfPlace(this.root, { current: store.index + 1, total: pages.length, name, ownFirst: !!shape && Math.abs(shape - mine) / mine > 0.03 });
+    if (at === null) return;
+    if (at === -1) {
+      // its own notebook (the current one stays in My notebooks)
+      await saveNow();
+      store.loadDoc(await saveNotebook(blankNotebook(name, store.page.bg)));
+      return this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, undefined, true));
+    }
+    return this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, at));
   }
 
   private async withProgress(label: string, fn: (p: (d: number, t: number) => void) => Promise<void>): Promise<void> {
@@ -2570,8 +2592,7 @@ export class App {
       if (images.length) await insertImages(this.board, images);
       for (const f of files) {
         if (f.type === 'application/pdf') {
-          const at = await this.pdfPlace(f);
-          if (at !== null) await this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, at));
+          await this.addPdf(f);
         }
         else if (/\.pptx?$/i.test(f.name)) await this.openSlides(f);
         else if (/\.(teachly|json)$/i.test(f.name)) await openFile(f);
