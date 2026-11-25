@@ -10821,3 +10821,14 @@ button,
 .board-panel #app[data-tb='top']:not([data-tbfree]):not(.ro-compact) .toolbar.tb-right { padding-top: 16px; }
 .board-panel #app[data-tbalign='sides']:not([data-tbfree]) .toolbar.tb-left { padding-left: 16px; }
 .board-panel #app[data-tbalign='sides']:not([data-tbfree]) .toolbar.tb-right { padding-right: 16px; }
+
+/* ---------- Read only: the pieces dock and the pen bar step aside ----------
+   They are writing aids: hidden (softly) while the toolbar glides and while Read only is on, back afterwards in place
+   (placed against a moving toolbar they jumped about and the transition looked odd). */
+.subj-dock,
+.quickbar { transition: opacity 0.22s var(--ease); }
+#app.tb-morphing .subj-dock,
+#app.tb-morphing .quickbar,
+#app.ro .subj-dock,
+#app.ro .quickbar { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .subj-dock, .quickbar { transition: none; } }

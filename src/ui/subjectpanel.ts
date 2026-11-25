@@ -235,6 +235,12 @@ export class SubjectPanel {
     const el = this.dock;
     if (!el) return;
     const app = this.host;
+    // While the toolbar glides (Read only on / off) the dock is hidden and waits: placing it against a moving toolbar
+    // made it jump about. It is placed once the toolbar has settled.
+    if (app.classList.contains('tb-morphing')) {
+      window.setTimeout(() => this.placeDock(), 150);
+      return;
+    }
     const l = app.querySelector('.tb-left')?.getBoundingClientRect();
     const r = app.querySelector('.tb-right')?.getBoundingClientRect();
     const qb = app.querySelector<HTMLElement>('.quickbar:not([hidden])');
@@ -290,20 +296,6 @@ export class SubjectPanel {
         if (gap >= W(el) + GAP) best = { size: null, n, score: n };
       }
     }
-    if (!best) {
-      // Above the toolbar (and above the pen bar when that is showing).
-      showN(Math.min(tiles.length, 6));
-      if (qb && !popup) setQb('mini');
-      const top = Math.min(l.top, r.top);
-      const lift = qb ? qb.getBoundingClientRect().height + 10 : 0;
-      if (edge === 'top') el.style.top = `${Math.max(l.bottom, r.bottom) + 12 + lift}px`;
-      else el.style.bottom = `${viewportBottom() - top + 12 + lift}px`;
-      el.style.left = '50%';
-      return;
-    }
-    if (best.size) setQb(best.size);
-    showN(best.n);
-    el.classList.add('inline');
     const c = (l.top + l.bottom) / 2;
     const put = (x: HTMLElement, centreX: number, centreY: number) => {
       x.style.left = `${centreX}px`;
@@ -317,6 +309,51 @@ export class SubjectPanel {
       }
       alignMiddle(x, centreY, edge === 'bottom');
     };
+    if (!best && this.cap >= 0 && !app.classList.contains('tb-stacked') && (edge === 'bottom' || edge === 'top')) {
+      // The toolbar is one bar in the middle (no room between its halves): the dock sits on the SAME line, beside the
+      // bar, in the free space on one side (at the top the left side, away from the clock in the right corner).
+      const L = Math.min(l.left, r.left), R = Math.max(l.right, r.right);
+      const sides = edge === 'top' ? (['left', 'right'] as const) : L >= window.innerWidth - R ? (['left', 'right'] as const) : (['right', 'left'] as const);
+      if (qb && !popup) setQb('mini');
+      for (const side of sides) {
+        const room = side === 'left' ? L : window.innerWidth - R;
+        for (let n = total; n >= MIN; n--) {
+          showN(n);
+          if (room >= W(el) + GAP) {
+            el.classList.add('inline');
+            const x = side === 'left' ? L / 2 : R + room / 2;
+            put(el, x, c);
+            if (qb && !popup) {
+              // the small pen bar just above (or below, at the top) the dock
+              const box = el.getBoundingClientRect();
+              qb.classList.add('inline');
+              put(qb, x, edge === 'top' ? box.bottom + 10 + qb.getBoundingClientRect().height / 2 : box.top - 10 - qb.getBoundingClientRect().height / 2);
+            }
+            return;
+          }
+        }
+      }
+    }
+    if (!best) {
+      // No room on the toolbar's line: just above the toolbar (below it at the top), and above the pen bar when that shows.
+      showN(Math.min(tiles.length, 6));
+      if (qb && !popup) setQb('mini');
+      const top = Math.min(l.top, r.top);
+      const lift = qb ? qb.getBoundingClientRect().height + 10 : 0;
+      // (only one of top / bottom: with both set the dock was stretched into a tall white pill)
+      if (edge === 'top') {
+        el.style.top = `${Math.max(l.bottom, r.bottom) + 12 + lift}px`;
+        el.style.bottom = 'auto';
+      } else {
+        el.style.bottom = `${viewportBottom() - top + 12 + lift}px`;
+        el.style.top = 'auto';
+      }
+      el.style.left = '50%';
+      return;
+    }
+    if (best.size) setQb(best.size);
+    showN(best.n);
+    el.classList.add('inline');
     const mid = (l.right + r.left) / 2;
     if (beside && qb) {
       const dW = W(el), qW = W(qb), start = mid - (dW + 10 + qW) / 2;
