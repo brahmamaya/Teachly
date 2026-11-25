@@ -1,3 +1,4 @@
+import { inputIdleFor } from '../board';
 import { uid } from '../geometry';
 import { store } from '../store';
 import type { Page } from '../types';
@@ -68,9 +69,18 @@ export class PagesPanel {
       e.dataTransfer.setData(PAGE_DRAG, t.dataset.i ?? '');
       e.dataTransfer.effectAllowed = 'copy';
     });
-    const offDoc = store.on('doc', () => this.render());
+    // A change of the notebook while the teacher writes (every line is one): the list is made again only once the
+    // writing pauses. Remaking it (and the open page's picture) after every line made writing stall on boards.
+    let later = 0;
+    const soon = () => {
+      clearTimeout(later);
+      if (inputIdleFor() < 700) later = window.setTimeout(soon, 350);
+      else this.render();
+    };
+    const offDoc = store.on('doc', soon);
     const offPage = store.on('page', () => this.render());
     this.unsub = () => {
+      clearTimeout(later);
       offDoc();
       offPage();
     };
