@@ -9,6 +9,7 @@ import * as page from './page';
 import { store } from './store';
 import { toast } from './ui/panel';
 import { liteDevice } from './board';
+import { imageCacheSize } from './renderer';
 import './ui/install';
 
 // Big classroom boards have slow graphics chips: drop costly glass blur there.
@@ -52,7 +53,7 @@ if (splash) {
 }
 (window as unknown as { teachly: App }).teachly = app;
 // A small handle for the browser checks in e2e/ (they must see the app's own objects, not new copies).
-(window as unknown as { __teachly: object }).__teachly = { store, autosave, library, page, showUpdatePill };
+(window as unknown as { __teachly: object }).__teachly = { store, autosave, library, page, showUpdatePill, pictures: imageCacheSize };
 
 // No service worker for the single-file version opened from a pen drive (file://).
 // (Nor inside the Android app, which carries its own files.)

@@ -5,7 +5,7 @@ import { migrateDoc, SCHEMA } from './migrate';
 import { imagesReady, pageRegion, renderRegion } from '../renderer';
 import { PAGE } from '../page';
 import { newPage } from '../store';
-import type { Doc, ImageEl } from '../types';
+import type { Doc, ImageEl, Page } from '../types';
 
 // On-device notebook library (IndexedDB). Unlimited notebooks, each saved
 // on its own, plus a small index with titles and cover pictures so the
@@ -87,6 +87,51 @@ export function takeMigrationNotes(id: string): string[] {
   return n;
 }
 
+// ---------------------------------------------------------------------------
+// Each page is stored on its own (pg:<notebook>:<page>), the notebook itself only lists them. A save writes just the
+// pages that changed since the last save: writing the whole notebook every time took the app away for up to a second
+// on a board once a lesson had grown to hundreds of pages, and the board began to hang during long lessons.
+
+/** The stored notebook: everything but the pages, which are listed by key. */
+type StoredHead = Doc & { pageKeys?: string[] };
+/** Pages of each notebook that are on the device exactly as they are now (page object → the key it is stored under). */
+const onDevice = new Map<string, WeakMap<Page, string>>();
+/** The key of every page of a notebook (a page id used twice gets a numbered key). */
+function pageKeys(id: string, pages: Page[]): string[] {
+  const seen = new Map<string, number>();
+  return pages.map((p) => {
+    const n = seen.get(p.id) ?? 0;
+    seen.set(p.id, n + 1);
+    return `pg:${id}:${p.id}${n ? `~${n}` : ''}`;
+  });
+}
+/** Read several keys in one go. */
+async function getMany<T>(keys: string[]): Promise<(T | undefined)[]> {
+  const out: (T | undefined)[] = new Array(keys.length);
+  await atomic<void>((os) => {
+    keys.forEach((k, i) => {
+      const r = os.get(k);
+      r.onsuccess = () => (out[i] = r.result as T | undefined);
+    });
+  });
+  return out;
+}
+/** A stored notebook with its pages put back (stored either way: pages listed by key, or inside as before). */
+async function readDoc(key: string): Promise<{ doc: Doc; keys?: string[] } | undefined> {
+  const head = await get<StoredHead>(key);
+  if (!head) return undefined;
+  if (!Array.isArray(head.pageKeys)) return { doc: head };
+  const got = await getMany<Page>(head.pageKeys);
+  const keys = head.pageKeys.filter((_, i) => !!got[i]);
+  const { pageKeys: _k, ...doc } = head;
+  return { doc: { ...doc, pages: got.filter((p): p is Page => !!p) }, keys };
+}
+/** All page records of these notebooks (to remove them with the notebook). */
+async function pageRecords(ids: string[]): Promise<string[]> {
+  if (!ids.length) return [];
+  return (await allKeys()).filter((k) => ids.some((id) => k.startsWith(`pg:${id}:`)));
+}
+
 /** Original notebook data of every notebook that was converted: bak:<id>:v<format>. */
 const backupKey = (id: string, v: number) => `bak:${id}:v${v}`;
 
@@ -104,6 +149,12 @@ async function writeNotebook(input: Doc, folder?: string): Promise<{ doc: Doc; s
   const stored: Doc = { ...withKeys(doc, keys), schema: SCHEMA, rev: doc.rev ?? 0 };
   const thumb = await coverThumb(doc);
   const uses = usedKeys(stored);
+  // only the pages that changed since the last save are written; the notebook lists its pages by key
+  const keysNow = pageKeys(id, stored.pages);
+  const known = onDevice.get(id);
+  const changed = stored.pages.map((p, i) => [keysNow[i], p, doc.pages[i]] as const).filter(([k, , original]) => known?.get(original) !== k);
+  const { pages: _pages, ...rest } = stored;
+  const head: StoredHead = { ...rest, pages: [], pageKeys: keysNow };
   const saved = await atomic<boolean>((os, done) => {
     // Only the small revision note is read to detect a newer stored version: reading the whole old
     // notebook back (a structured clone of every page) cost a long stall at every save of a big notebook.
@@ -125,7 +176,15 @@ async function writeNotebook(input: Doc, folder?: string): Promise<{ doc: Doc; s
           for (const k of Object.keys(refs)) refs[k] = refs[k].filter((x) => x !== id);
           for (const k of uses) (refs[k] ??= []).push(id);
           for (const k of Object.keys(refs)) if (!refs[k].length) delete refs[k];
-          os.put(stored, `nb:${id}`);
+          for (const [k, page] of changed) os.put(page, k);
+          // pages taken out of the notebook since the last save are removed
+          const gh = os.get(`nb:${id}`);
+          gh.onsuccess = () => {
+            const before = (gh.result as StoredHead | undefined)?.pageKeys ?? [];
+            const now = new Set(keysNow);
+            for (const k of before) if (!now.has(k)) os.delete(k);
+            os.put(head, `nb:${id}`);
+          };
           os.put(stored.rev ?? 0, `rv:${id}`);
           os.put([meta, ...list.filter((m) => m.id !== id)], INDEX);
           os.put(refs, SRCREFS);
@@ -141,6 +200,10 @@ async function writeNotebook(input: Doc, folder?: string): Promise<{ doc: Doc; s
     };
   });
   if (saved) {
+    // these pages are on the device as they are now: the next save skips them while they stay unchanged
+    const map = onDevice.get(id) ?? new WeakMap<Page, string>();
+    doc.pages.forEach((p, i) => map.set(p, keysNow[i]));
+    onDevice.set(id, map);
     pendingMigration.delete(id);
     try {
       localStorage.setItem(LAST, id);
@@ -163,7 +226,8 @@ export async function saveNotebookChecked(doc: Doc): Promise<boolean> {
 
 export async function loadNotebook(id: string): Promise<Doc | null> {
   try {
-    const raw = await get<Doc>(`nb:${id}`);
+    const read = await readDoc(`nb:${id}`);
+    const raw = read?.doc;
     if (!raw || !Array.isArray(raw.pages) || !raw.pages.length) return null;
     const m = migrateDoc(raw);
     const notes = [...m.notes];
@@ -179,7 +243,14 @@ export async function loadNotebook(id: string): Promise<Doc | null> {
     }
     if (m.changed) pendingMigration.add(id);
     if (notes.length) migrationNotes.set(id, notes);
-    return { ...m.doc, id };
+    const doc = { ...m.doc, id };
+    // pages read exactly as stored (each on its own) need no writing until they change
+    if (!m.changed && read?.keys && read.keys.length === doc.pages.length) {
+      const map = new WeakMap<Page, string>();
+      doc.pages.forEach((p, i) => map.set(p, read.keys![i]));
+      onDevice.set(id, map);
+    } else onDevice.delete(id);
+    return doc;
   } catch {
     return null;
   }
@@ -241,7 +312,8 @@ export async function restoreNotebook(id: string): Promise<void> {
 export async function deleteNotebook(id: string): Promise<void> {
   return serial(async () => {
     const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
-    await put([[INDEX, list.filter((m) => m.id !== id)]], [`nb:${id}`, `rv:${id}`]);
+    await put([[INDEX, list.filter((m) => m.id !== id)]], [`nb:${id}`, `rv:${id}`, ...(await pageRecords([id]))]);
+    onDevice.delete(id);
     await dropSources([id]);
   });
 }
@@ -251,7 +323,8 @@ export async function emptyTrash(): Promise<number> {
   return serial(async () => {
     const list = (await get<NotebookMeta[]>(INDEX)) ?? [];
     const gone = list.filter((m) => m.trashed);
-    await put([[INDEX, list.filter((m) => !m.trashed)]], gone.flatMap((m) => [`nb:${m.id}`, `rv:${m.id}`]));
+    await put([[INDEX, list.filter((m) => !m.trashed)]], [...gone.flatMap((m) => [`nb:${m.id}`, `rv:${m.id}`]), ...(await pageRecords(gone.map((m) => m.id)))]);
+    for (const m of gone) onDevice.delete(m.id);
     await dropSources(gone.map((m) => m.id));
     return gone.length;
   });
@@ -373,9 +446,9 @@ export async function recoverOrphans(): Promise<number> {
       const back: NotebookMeta[] = [];
       for (const k of keys.map(String)) {
         if (!k.startsWith('nb:') || known.has(k)) continue;
-        const doc = await get<Doc>(k);
-        if (!doc || !Array.isArray(doc.pages) || !doc.pages.length) continue;
-        const pages = doc.pages.length;
+        const doc = await get<StoredHead>(k);
+        const pages = doc ? (Array.isArray(doc.pageKeys) ? doc.pageKeys.length : Array.isArray(doc.pages) ? doc.pages.length : 0) : 0;
+        if (!doc || !pages) continue;
         back.push({ id: k.slice(3), title: doc.title || 'Recovered notebook', updated: Date.now(), pages, thumb: '', folder: '' });
       }
       if (back.length) await put([[INDEX, [...back, ...list]]]);
