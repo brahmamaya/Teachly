@@ -2244,10 +2244,17 @@ export class App {
       if (!b || b.hasAttribute('disabled') || e.button > 0) return;
       done = null;
       b.classList.add('pressed');
-      const t0 = performance.now();
+      // A quick tap still shows its teal for a moment (then it fades out softly): at least 140 ms counted from the
+      // first frame actually drawn with it, so on a slow board, where the button's work keeps the app busy, the teal
+      // is not taken away before it was ever on the screen.
+      let shownAt = 0;
+      requestAnimationFrame(() => requestAnimationFrame(() => (shownAt = performance.now())));
       const release = () => {
-        // a quick tap still shows its teal for a moment (then it fades out softly)
-        window.setTimeout(() => b.classList.remove('pressed'), Math.max(0, 140 - (performance.now() - t0)));
+        const off = () => {
+          if (!shownAt) return void requestAnimationFrame(off);
+          window.setTimeout(() => b.classList.remove('pressed'), Math.max(0, 140 - (performance.now() - shownAt)));
+        };
+        off();
         window.removeEventListener('pointerup', release, true);
         window.removeEventListener('pointercancel', release, true);
       };
