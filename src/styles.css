@@ -10992,3 +10992,84 @@ button,
 .speed-card .sp-rows span { opacity: 0.65; }
 .speed-card .sp-rows b { text-align: right; font-weight: 600; }
 .pop-menu .mt-speed { margin: 4px 12px 10px; min-height: 38px; }
+
+/* ======================================================================================================
+   Pages panel and toolbar, fresh look (owner, 26 Nov): calm cards, the open page in teal, each action in its own
+   colour, a teal New page button. Only colours, corners and shadows change (nothing moves differently).
+   ====================================================================================================== */
+#app .pages-panel {
+  border-radius: 24px;
+  border: 1px solid rgba(127, 127, 127, 0.14);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 48px rgba(0, 0, 0, 0.4);
+  padding: 0.9em;
+}
+#app .pages-head span {
+  flex: none;
+  min-width: 1.8em;
+  padding: 0.05em 0.55em;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.8em;
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.16);
+}
+#app .pages-head b { flex: 1; }
+#app[data-board='dark'] .pages-head span { color: #5eead4; }
+/* page cards: no hard white frame; the open page has a teal ring and glow */
+#app .page-thumb {
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(127, 127, 127, 0.22), 0 4px 12px rgba(0, 0, 0, 0.18);
+  transition: box-shadow 0.2s var(--ease), transform 0.15s var(--ease);
+}
+#app .page-thumb:active { transform: scale(0.98); }
+#app .page-thumb.on { box-shadow: 0 0 0 3px #14b8a6, 0 6px 18px rgba(20, 184, 166, 0.35); }
+#app .page-thumb span {
+  left: 0.5em;
+  top: 0.5em;
+  min-width: 1.6em;
+  text-align: center;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.66);
+}
+#app .page-thumb.on span { background: #0d9488; }
+/* actions: each in its own colour, in a soft tile like the menu */
+#app .pages-actions button { --c: #94a3b8; color: inherit; }
+#app .pages-actions [data-pg='up'],
+#app .pages-actions [data-pg='down'] { --c: #38bdf8; }
+#app .pages-actions [data-pg='copy'] { --c: #a78bfa; }
+#app .pages-actions [data-pg='paste'] { --c: #fbbf24; }
+#app .pages-actions [data-pg='delete'] { --c: #f87171; }
+#app .pages-actions button .icon {
+  box-sizing: content-box;
+  padding: 0.35em;
+  border-radius: 0.7em;
+  color: var(--c);
+  background: rgba(127, 127, 127, 0.1);
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+}
+#app:not([data-board='dark']) .pages-actions button .icon { color: color-mix(in srgb, var(--c) 72%, #000); }
+#app .pages-actions button:hover { background: none; }
+#app .pages-actions button:active .icon { transform: scale(0.92); }
+#app .pages-actions button.danger { color: inherit; }
+/* New page: teal */
+#app .pages-panel [data-pg='add'] {
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #14b8a6, #0d9488);
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
+}
+#app .pages-panel [data-pg='add'] .icon { color: #fff; }
+/* the Expand tab in teal */
+#app .pages-expand { background-color: #0d9488; color: #fff; border-color: transparent; }
+#app .pages-expand svg { color: #fff; }
+
+/* toolbar: a soft gradient bar with a faint top light, lighter separators */
+#app .toolbar.tb-left,
+#app .toolbar.tb-right,
+#app[data-tbjoin] .toolbar.tb-left::before {
+  --bar: linear-gradient(180deg, #ffffff, #f3f6fa);
+}
+#app .toolbar .tb-sep,
+#app .toolbar .tb-divider { background: rgba(15, 23, 42, 0.09); }
