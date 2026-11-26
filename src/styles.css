@@ -11073,3 +11073,49 @@ button,
 }
 #app .toolbar .tb-sep,
 #app .toolbar .tb-divider { background: rgba(15, 23, 42, 0.09); }
+
+/* ---------- Subject picker, fresh look (owner, 26 Nov): solid (the writing showed through the see-through box),
+   each subject with its own coloured symbol, chapter numbers in soft circles, ready chapters in teal ---------- */
+.subj-picker {
+  background: var(--surface-solid, #18181b);
+  border: 1px solid rgba(127, 127, 127, 0.16);
+  padding: 16px;
+}
+.spk-title { gap: 10px; font-size: 18px; }
+.spk-title small { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: rgba(127, 127, 127, 0.14); font-size: 11px; }
+.spk-badge { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.subj-picker .spk-item { border: 0; background: rgba(127, 127, 127, 0.08); min-height: 54px; justify-content: flex-start; }
+.subj-picker .spk-item > span:not(.spk-ic) { flex: 1; }
+.spk-ic {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: var(--c, #94a3b8);
+  background: rgba(127, 127, 127, 0.12);
+  background: color-mix(in srgb, var(--c, #94a3b8) 18%, transparent);
+  font: 800 14px system-ui, sans-serif;
+}
+.spk-none { --c: #94a3b8; opacity: 0.8; }
+.spk-subj i { font-size: 20px; opacity: 0.5; }
+.spk-ch { gap: 12px; }
+.spk-n {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 13px;
+  background: rgba(127, 127, 127, 0.16);
+}
+.subj-picker .spk-item.ready { background: rgba(20, 184, 166, 0.1); border: 0; }
+.subj-picker .spk-item.ready .spk-n { color: #fff; background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.subj-picker .spk-item i { padding: 3px 9px; border-radius: 999px; font-size: 11px; background: rgba(127, 127, 127, 0.14); }
+.subj-picker .spk-item.ready i { color: #fff; background: #0d9488; opacity: 1; }
+.subj-picker .spk-subj i { background: none; padding: 0; }
+.subj-picker .spk-item.on { box-shadow: inset 0 0 0 2px #14b8a6; }
+.subj-picker .spk-item:disabled { opacity: 0.5; }
+.spk-close { margin-top: 10px; padding: 10px 26px; }
