@@ -575,20 +575,25 @@ export class SubjectPanel {
     const draw = () => {
       let html = '';
       if (step.k === 'subject') {
-        html = `<div class="spk-title">Subject <small>(optional)</small></div>
-          <button class="spk-item ${current ? '' : 'on'}" data-s="none">No subject</button>
-          ${SUBJECTS.map((s) => `<button class="spk-item" data-s="${s.id}">${esc(s.name)}<i>›</i></button>`).join('')}`;
+        // each subject with its own coloured symbol (physics: an atom in teal, the next ones in their own colours)
+        const LOOK: Record<string, [string, string]> = { physics: ['atom', '#14b8a6'], chemistry: ['flask', '#f59e0b'], maths: ['graph', '#6366f1'], biology: ['magic', '#22c55e'] };
+        html = `<div class="spk-title"><span class="spk-badge">${icon('atom', 18)}</span>Choose a subject <small>optional</small></div>
+          ${SUBJECTS.map((s) => {
+            const [ic, c] = LOOK[s.id] ?? ['atom', '#14b8a6'];
+            return `<button class="spk-item spk-subj" data-s="${s.id}" style="--c:${c}"><span class="spk-ic">${icon(ic, 22)}</span><span>${esc(s.name)}</span><i>›</i></button>`;
+          }).join('')}
+          <button class="spk-item spk-none ${current ? '' : 'on'}" data-s="none"><span class="spk-ic">${icon('close', 18)}</span><span>No subject</span></button>`;
       } else if (step.k === 'class') {
         const s = SUBJECTS.find((x) => x.id === (step as { s: string }).s)!;
         html = `<div class="spk-title"><button class="spk-back" data-back="1" aria-label="Back">‹</button>${esc(s.name)}</div>
-          ${s.classes.map((c) => `<button class="spk-item" data-c="${c.id}">${esc(c.name)}<i>›</i></button>`).join('')}`;
+          ${s.classes.map((c) => `<button class="spk-item spk-subj" data-c="${c.id}" style="--c:#6366f1"><span class="spk-ic spk-num">${esc(c.id)}</span><span>${esc(c.name)}</span><i>›</i></button>`).join('')}`;
       } else {
         const st = step;
         const s = SUBJECTS.find((x) => x.id === st.s)!;
         const c = s.classes.find((x) => x.id === st.c)!;
         html = `<div class="spk-title"><button class="spk-back" data-back="1" aria-label="Back">‹</button>${esc(s.name)} · ${esc(c.name)}</div>
           <div class="spk-list">${c.chapters
-            .map((ch, i) => `<button class="spk-item ${ch.comps ? 'ready' : ''} ${current === ch.id ? 'on' : ''}" data-ch="${ch.id}" ${ch.comps ? '' : 'disabled'}><span>${i + 1}. ${esc(ch.name)}</span>${ch.comps ? '<i>Pieces ready</i>' : '<i>Soon</i>'}</button>`)
+            .map((ch, i) => `<button class="spk-item spk-ch ${ch.comps ? 'ready' : ''} ${current === ch.id ? 'on' : ''}" data-ch="${ch.id}" ${ch.comps ? '' : 'disabled'}><b class="spk-n">${i + 1}</b><span>${esc(ch.name)}</span>${ch.comps ? '<i>Ready</i>' : '<i>Soon</i>'}</button>`)
             .join('')}</div>`;
       }
       box.innerHTML = html + `<button class="spk-close" data-close="1">Close</button>`;
