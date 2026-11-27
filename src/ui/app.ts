@@ -858,6 +858,9 @@ export class App {
       ind.style.opacity = '0';
       return;
     }
+    // shown again: it was hidden while a tool without a button on the toolbar was chosen (from the hexagon or the Tools
+    // menu), and stayed hidden after, so the next chosen tool had a white icon on the white bar and no teal behind it
+    ind.style.opacity = '';
     const to = { x: btn.offsetLeft, y: btn.offsetTop, w: btn.offsetWidth, h: btn.offsetHeight };
     const place = (r: typeof to) => {
       ind.style.width = `${r.w}px`;

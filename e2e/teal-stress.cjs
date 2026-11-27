@@ -59,6 +59,18 @@ const rnd = (n) => ((seed = (seed * 1103515245 + 12345) % 2147483648), seed % n)
       ['toolbar top', () => relayout({ tbPos: 'top', tbAlign: ['middle', 'sides'][rnd(2)] })],
       ['toolbar bottom', () => relayout({ tbPos: 'bottom', tbAlign: ['middle', 'sides'][rnd(2)] })],
     ];
+    // a tool without a button on the toolbar (chosen from the hexagon / Tools menu), then a toolbar tool: its teal must
+    // come back (it stayed hidden: a white icon on the white bar)
+    {
+      await p.evaluate(() => { const s = window.__teachly.store; s.setSettings({ tbHidden: ['tape', 'laser', 'text'] }); s.setTool({ tool: 'tape' }); });
+      await p.waitForTimeout(600);
+      await p.tap('.tb-left [data-tool=pen]');
+      await p.waitForTimeout(800);
+      const v = await p.evaluate(() => { const i = document.querySelector('.tb-left .tb-ind'), b2 = document.querySelector('.tb-left [data-tool=pen]'); const a = b2.getBoundingClientRect(), m = i.getBoundingClientRect(); return { op: +getComputedStyle(i).opacity, off: Math.round(Math.abs(a.left - m.left) + Math.abs(a.top - m.top)) }; });
+      check(`${name}: after a tool with no toolbar button, the pen's teal is back behind it`, v.op > 0.95 && v.off <= 3, JSON.stringify(v));
+      await p.evaluate(() => window.__teachly.store.setSettings({ tbHidden: [] }));
+      await p.waitForTimeout(400);
+    }
     const bad = [];
     for (let i = 0; i < STEPS; i++) {
       const [label, fn] = actions[rnd(actions.length)];
