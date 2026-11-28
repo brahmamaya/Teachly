@@ -8,7 +8,9 @@
     <!-- Installed on iPad / iPhone home screen: open full screen like an app. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "black", not "black-translucent": the page starts below the status bar, so iPadOS does not lay its blurred
+         status-bar shade over the writing at the top of the board. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Physica Notes" />
     <meta name="description" content="Physica Notes — a smooth, feature-rich interactive whiteboard for smart boards and classrooms." />
     <link rel="icon" href="./favicon.png" type="image/png" />
