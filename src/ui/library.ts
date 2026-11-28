@@ -211,10 +211,13 @@ export class Library {
   private armed = '';
   /** The notebook whose ⋯ menu is open. */
   private menuFor = '';
+  /** Files being turned into notebooks right now: a "Preparing…" card each, in the grid. */
+  private preparing: { k: number; name: string }[] = [];
 
   constructor(
     private host: HTMLElement,
-    private importFiles: (files: File[]) => Promise<boolean> = async () => false,
+    /** step(i, done, total) while file i is read; step(i, -1, 0) once it is a notebook. */
+    private importFiles: (files: File[], step?: (i: number, done: number, total: number) => void) => Promise<boolean> = async () => false,
   ) {}
 
   get open(): boolean {
@@ -369,8 +372,20 @@ export class Library {
     });
     const inTrash = this.view === 'trash';
     const newCard = inTrash ? '' : `<button class="nb-card nb-new" data-lib="add"><span class="nb-cover">${icon('plus', 34)}</span><span class="nb-title">New notebook</span></button>`;
+    const prep = inTrash
+      ? ''
+      : this.preparing
+          .map(
+            (x) => `
+        <div class="nb-card nb-prep" data-k="${x.k}" data-o="p" aria-busy="true">
+          <span class="nb-cover"><span class="nb-prep-in">Preparing…</span></span>
+          <span class="nb-row"><span class="nb-text"><span class="nb-title">${esc(x.name)}</span><span class="nb-meta">Preparing…</span></span></span>
+        </div>`,
+          )
+          .join('');
     (el.querySelector('.lib-grid') as HTMLElement).innerHTML =
       newCard +
+      prep +
       items
         .map((m, n) => {
           const where = this.folders.find((f) => f.id === this.folderOf(m))?.name;
@@ -492,7 +507,26 @@ export class Library {
         const { pickFiles } = await import('../io/files');
         const files = await pickFiles('application/pdf,.pdf,image/*,.pptx,.teachly,.json', true);
         if (!files.length) return;
-        if (await this.importFiles(files)) {
+        // Like other note apps: a "Preparing…" card for each file at once, which turns into its cover when ready.
+        this.preparing = files.map((f, k) => ({ k, name: f.name.replace(/\.\w+$/, '') || 'Notebook' }));
+        this.view = 'all';
+        this.render();
+        const step = (i: number, d: number, t: number) => {
+          if (d >= 0) {
+            const meta = this.el?.querySelector(`.nb-prep[data-k="${i}"] .nb-meta`);
+            if (meta) meta.textContent = t ? `${d} of ${t} pages` : 'Preparing…';
+            return;
+          }
+          this.preparing = this.preparing.filter((x) => x.k !== i);
+          void this.refresh();
+        };
+        let ok = false;
+        try {
+          ok = await this.importFiles(files, step);
+        } finally {
+          this.preparing = [];
+        }
+        if (ok) {
           toast(files.length === 1 ? `"${files[0].name.replace(/\.\w+$/, '')}" is now a notebook` : `${files.length} files are now notebooks`, 3500);
         }
         return this.refresh();

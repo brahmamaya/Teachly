@@ -341,7 +341,7 @@ export class App {
     this.grid = new PagesGrid(root, () => this.renderToolbar());
     this.pages = new PagesPanel(root, () => { this.renderToolbar(); requestAnimationFrame(() => this.positionProps()); }, () => this.grid.toggle(), (i, x, y) => this.dropPage(i, x, y));
     this.subject = new SubjectPanel(root, this.board, () => this.renderToolbar());
-    this.library = new Library(root, (files) => this.importAsNotebooks(files));
+    this.library = new Library(root, (files, step) => this.importAsNotebooks(files, step));
     new QuickBar(root);
     this.pasteChip();
     this.props = root.querySelector('.props') as HTMLElement;
@@ -1851,9 +1851,10 @@ export class App {
    * shape (an A4 PDF makes A4 pages); slides open as a notebook too; a Physica Notes file opens as it was saved.
    * The last one stays open behind My notebooks. False if nothing could be opened.
    */
-  async importAsNotebooks(files: File[]): Promise<boolean> {
+  /** Each file becomes its own notebook. step (from My notebooks) shows the progress on the file's card, not a toast. */
+  async importAsNotebooks(files: File[], step?: (i: number, done: number, total: number) => void): Promise<boolean> {
     let opened = false;
-    for (const f of files) {
+    for (const [i, f] of files.entries()) {
       const name = f.name.replace(/\.\w+$/, '') || 'Notebook';
       const kind = f.type === 'application/pdf' || /\.pdf$/i.test(f.name) ? 'pdf' : f.type.startsWith('image/') ? 'img' : /\.pptx?$/i.test(f.name) ? 'pptx' : /\.(teachly|json)$/i.test(f.name) ? 'nb' : '';
       if (!kind) {
@@ -1864,12 +1865,13 @@ export class App {
       if (kind === 'nb') await openFile(f);
       else {
         store.loadDoc(await saveNotebook(blankNotebook(name, '#ffffff')));
-        if (kind === 'pdf') await this.withProgress(`Opening ${name}`, (p) => importPdf(this.board, f, p, undefined, true));
+        if (kind === 'pdf') await this.withProgress(`Opening ${name}`, (p) => importPdf(this.board, f, p, undefined, true), step && ((d, t) => step(i, d, t)));
         else if (kind === 'img') await importImagePage(this.board, f);
         else await this.openSlides(f);
       }
       await saveNow();
       opened = true;
+      step?.(i, -1, 0);
     }
     return opened;
   }
@@ -1911,13 +1913,14 @@ export class App {
     return this.withProgress('Opening PDF', (p) => importPdf(this.board, f, p, at));
   }
 
-  private async withProgress(label: string, fn: (p: (d: number, t: number) => void) => Promise<void>): Promise<void> {
+  /** Runs fn with a progress toast, or with quiet (a card shows the progress) instead of the toast. */
+  private async withProgress(label: string, fn: (p: (d: number, t: number) => void) => Promise<void>, quiet?: (d: number, t: number) => void): Promise<void> {
     const el = document.createElement('div');
     el.className = 'progress-toast';
     el.textContent = `${label}…`;
-    this.root.appendChild(el);
+    if (!quiet) this.root.appendChild(el);
     try {
-      await fn((d, t) => (el.textContent = `${label}… ${d}/${t}`));
+      await fn(quiet ?? ((d, t) => (el.textContent = `${label}… ${d}/${t}`)));
     } catch (e) {
       // Physica Notes was updated while this page stayed open: the part that opens
       // PDF / PowerPoint / files is a newer file now. Save, reload once (the
