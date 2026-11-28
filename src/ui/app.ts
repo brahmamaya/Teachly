@@ -2431,19 +2431,17 @@ export class App {
     // moving under the bar only when the bar reaches that corner.
     let barBottom = 0;
     if (pos === 'top' && !free && (!roLayout || this.root.classList.contains('ro-keep'))) {
-      // The bar touches the top edge when it stays clear of the status bar's
-      // time (left) and battery (right) on iPad / iPhone; otherwise it sits
-      // just below the status bar.
-      const W = window.innerWidth, clear = 190;
-      const clearOfStatus = mid && !stacked && left.getBoundingClientRect().left >= clear && W - right.getBoundingClientRect().right >= clear;
-      this.root.toggleAttribute('data-tbflush', clearOfStatus);
+      // The bar sits just below the status bar, never in its row: iPadOS lays a blurred shade over that row.
+      this.root.removeAttribute('data-tbflush');
       for (const bar of [left, right]) barBottom = Math.max(barBottom, bar.getBoundingClientRect().bottom);
       const corner = this.root.querySelector('.corner') as HTMLElement | null;
       const cw = (corner?.offsetWidth ?? 120) * ui() + 24;
       const reaches = Math.max(left.getBoundingClientRect().right, right.getBoundingClientRect().right) > window.innerWidth - cw;
       this.root.style.setProperty('--corner-top', reaches ? `${Math.round(barBottom + 6)}px` : '');
       this.root.style.setProperty('--bar-end', `${Math.round(barBottom)}px`);
-      this.root.style.setProperty('--board-top', `${Math.round(barBottom)}px`);
+      // the board itself starts below the status bar (CSS), so the clip is measured from its own top
+      const boardTop = this.root.querySelector('.board')?.getBoundingClientRect().top ?? 0;
+      this.root.style.setProperty('--board-top', `${Math.max(0, Math.round(barBottom - boardTop))}px`);
     } else {
       this.root.removeAttribute('data-tbflush');
       this.root.style.removeProperty('--corner-top');

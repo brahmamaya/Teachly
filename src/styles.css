@@ -119,6 +119,8 @@ button:focus-visible {
 .board {
   position: absolute;
   inset: 0;
+  /* Below the iPad / iPhone status bar: iPadOS lays a blurred shade over anything drawn under it. 0 elsewhere. */
+  top: env(safe-area-inset-top, 0px);
   overflow: hidden;
   touch-action: none;
 }
