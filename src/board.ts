@@ -500,13 +500,16 @@ export class Board {
     const p = store.page, c = this.cam;
     // The background only changes with colour, pattern, view or size:
     // skip the redraw (and its shadow blur) after every stroke.
-    const key = `${p.bg}|${p.pattern}|${c.x}|${c.y}|${c.z}|${this.w}|${this.h}|${this.dpr}`;
+    // A file's page (a PDF page filling it) is shown like a sheet on a grey desk, so its edges show and nothing
+    // around it looks like part of the page; other pages keep the endless board.
+    const file = p.els.some((e) => e.type === 'image' && e.pdf);
+    const key = `${p.bg}|${p.pattern}|${c.x}|${c.y}|${c.z}|${this.w}|${this.h}|${this.dpr}|${file ? PAGE.w + 'x' + PAGE.h : ''}`;
     if (key === this.bgKey) return;
     this.bgKey = key;
     const ctx = this.bgCtx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     // The board surface goes on beyond the page (slide it with the Hand).
-    drawBackground(ctx, p.bg, p.pattern, c, this.w, this.h);
+    drawBackground(ctx, p.bg, p.pattern, c, this.w, this.h, file ? { x: 0, y: 0, w: PAGE.w, h: PAGE.h } : undefined);
   }
 
   renderInk(): void {

@@ -9054,7 +9054,7 @@ button,
 .nbc[data-m] .nbc-tw {
   left: 10cqw;
 }
-#app .library .lib-grid .nb-card:not(.nb-new) .nb-cover {
+#app .library .lib-grid .nb-card:not(.nb-new):not(.nb-prep) .nb-cover {
   background: transparent !important;
   border: 0 !important;
 }
@@ -11119,3 +11119,38 @@ button,
 .subj-picker .spk-item.on { box-shadow: inset 0 0 0 2px #14b8a6; }
 .subj-picker .spk-item:disabled { opacity: 0.5; }
 .spk-close { margin-top: 10px; padding: 10px 26px; }
+
+/* My notebooks: a file being imported shows a "Preparing…" card at once (soft breathing, opacity only), which turns
+   into its cover when the notebook is ready. */
+.library .nb-prep {
+  pointer-events: none;
+  animation: fade-in 0.25s ease both;
+}
+#app .library .nb-prep .nb-cover {
+  display: grid;
+  place-items: center;
+  width: 70%;
+  height: auto;
+  aspect-ratio: 210 / 297;
+  margin: 0 auto;
+  border: 1.5px dashed rgba(20, 184, 166, 0.6);
+  background: rgba(20, 184, 166, 0.07);
+  box-shadow: none;
+}
+.library .nb-prep-in {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--lb-accent);
+  animation: prep-breathe 1.4s ease-in-out infinite;
+}
+@keyframes prep-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .library .nb-prep,
+  .library .nb-prep-in {
+    animation: none;
+  }
+}
