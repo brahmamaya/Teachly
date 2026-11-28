@@ -1,0 +1,12 @@
+import{r as e}from"./panel-CJ0WMbUB.js";import{n as t}from"./index-BVWGGs3z.js";var n=6;function r(r,i){var a;(a=document.querySelector(`.speed-card`))==null||a.remove();let o=document.createElement(`div`);o.className=`speed-card`,o.setAttribute(`role`,`status`),r.appendChild(o);let s=e=>o.innerHTML=e;s(`<b>Write on the board now</b><span>Measuring for ${n} seconds…</span>`);let c=[],l=0,u=0,d=0,f=performance.now(),p=f,m=0,h=e=>{c.push(e-f),f=e,e-p<n*1e3&&(m=requestAnimationFrame(h))};m=requestAnimationFrame(h);let g=()=>l++,_=i.overlay,v=`onpointerrawupdate`in window;_.addEventListener(v?`pointerrawupdate`:`pointermove`,g);let y=null;try{y=new PerformanceObserver(e=>{for(let t of e.getEntries())u++,d=Math.max(d,t.duration)}),y.observe({entryTypes:[`longtask`]})}catch{y=null}window.setTimeout(()=>{var r,a,f;cancelAnimationFrame(m),_.removeEventListener(v?`pointerrawupdate`:`pointermove`,g),y==null||y.disconnect();let p=c.slice(2).sort((e,t)=>e-t),h=e=>p.length?p[Math.min(p.length-1,Math.floor(p.length*e))]:0,b=p.length?p[p.length-1]:0,x=p.filter(e=>e>50).length,S=p.length?1e3/h(.5):0,C=b<60&&x<=2?[`Smooth`,`#14b8a6`]:b<150&&x<=10?[`A little uneven`,`#f59e0b`]:[`Slow`,`#ef4444`],w=navigator,T=(r=/Chrome\/(\d+)/.exec(navigator.userAgent))==null?void 0:r[1],E=(a=/Version\/(\d+)[^ ]* (Mobile\/\S+ )?Safari/.exec(navigator.userAgent))==null?void 0:a[1],D=(e,t)=>`<div><span>${e}</span><b>${t}</b></div>`;s(`<b style="color:${C[1]}">${C[0]}</b>
+      <div class="sp-rows">
+        ${D(`Frames`,`${Math.round(S)} per second · worst ${Math.round(b)} ms · ${x} slow`)}
+        ${D(`Busy moments`,y?`${u}${u?` (longest ${Math.round(d)} ms)`:``}`:`not measured here`)}
+        ${D(`Pen / touch samples`,`${Math.round(l/n)} per second`)}
+        ${D(`Screen`,`${innerWidth} × ${innerHeight} · pixel ratio ${devicePixelRatio}`)}
+        ${D(`Drawing size`,`${i.ink.width} × ${i.ink.height} (${i.dpr.toFixed(2)}×)`)}
+        ${D(`Browser`,T?`Chrome ${T}`:E?`Safari ${E}`:`other`)}
+        ${D(`Device`,`${navigator.hardwareConcurrency||`?`} cores${w.deviceMemory?` · ${w.deviceMemory} GB`:``} · ${t()?`board mode`:`normal mode`}${`TeachlyAndroid`in window?` · Android app`:``}`)}
+      </div>
+      <span>Nothing is sent: show this card when asking for help.</span>
+      <button type="button" class="btn" data-sp-close>Close</button>`),(f=o.querySelector(`[data-sp-close]`))==null||f.addEventListener(`click`,()=>e(o,180))},6050)}export{r as speedCheck};

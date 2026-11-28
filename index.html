@@ -9,7 +9,9 @@
     <!-- Installed on iPad / iPhone home screen: open full screen like an app. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "black", not "black-translucent": the page starts below the status bar, so iPadOS does not lay its blurred
+         status-bar shade over the writing at the top of the board. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Physica Notes" />
     <meta name="description" content="Physica Notes — a smooth, feature-rich interactive whiteboard for smart boards and classrooms." />
     <link rel="icon" href="./favicon.png" type="image/png" />
@@ -20,7 +22,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>Physica Notes</title>
-    <script type="module" crossorigin src="./assets/index-DylmXYzG.js"></script>
+    <script type="module" crossorigin src="./assets/index-BVWGGs3z.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-Dd_uD5pT.js">
     <link rel="modulepreload" crossorigin href="./assets/panel-CJ0WMbUB.js">
     <link rel="modulepreload" crossorigin href="./assets/defineProperty-BbfpZ9Tg.js">
